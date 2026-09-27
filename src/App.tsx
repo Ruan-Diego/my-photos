@@ -1,49 +1,55 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
+import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { healthView, type AppHealth, type HealthScreen } from "./health/view";
+import { linkedMotionLibraries } from "./motion/libraries";
 import "./App.css";
 
-function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
+function errorText(error: unknown): string {
+  if (typeof error === "string") {
+    return error;
+  }
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return String(error);
+}
 
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    setGreetMsg(await invoke("greet", { name }));
+function App() {
+  const [screen, setScreen] = useState<HealthScreen | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    async function load() {
+      try {
+        linkedMotionLibraries();
+        const health = await invoke<AppHealth>("app_health");
+        if (active) {
+          setScreen(healthView(health, null));
+        }
+      } catch (error) {
+        if (active) {
+          setScreen(healthView(null, errorText(error)));
+        }
+      }
+    }
+
+    void load();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  if (screen === null) {
+    return null;
   }
 
   return (
-    <main className="container">
-      <h1>Welcome to Tauri + React</h1>
-
-      <div className="row">
-        <a href="https://vite.dev" target="_blank">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
-
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          greet();
-        }}
-      >
-        <input
-          id="greet-input"
-          onChange={(e) => setName(e.currentTarget.value)}
-          placeholder="Enter a name..."
-        />
-        <button type="submit">Greet</button>
-      </form>
-      <p>{greetMsg}</p>
+    <main>
+      {screen.failure !== null ? <p>{screen.failure}</p> : null}
+      {screen.ready !== null ? <h1>{screen.ready}</h1> : null}
+      {screen.sqlite !== null ? <p>{screen.sqlite}</p> : null}
+      {screen.libraries !== null ? <p>{screen.libraries}</p> : null}
     </main>
   );
 }
