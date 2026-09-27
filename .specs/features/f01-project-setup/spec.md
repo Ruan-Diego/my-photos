@@ -150,23 +150,23 @@ Cada ambiguidade está resolvida ou registrada aqui.
 
 | Requirement ID | Story | Phase | Status |
 | -------------- | ----- | ----- | ------ |
-| SETUP-01 | P1: Comprovante da stack | Specify | Pending |
-| SETUP-02 | P1: Comprovante da stack | Specify | Pending |
-| SETUP-03 | P1: Comprovante da stack | Specify | Pending |
-| SETUP-04 | P1: Comprovante da stack | Specify | Pending |
-| SETUP-05 | P1: Comprovante da stack | Specify | Pending |
-| SETUP-06 | P1: Bibliotecas de movimento | Specify | Pending |
-| SETUP-07 | P1: Bibliotecas de movimento | Specify | Pending |
-| SETUP-08 | P1: Bibliotecas de movimento | Specify | Pending |
-| SETUP-09 | P1: Bibliotecas de movimento | Specify | Pending |
-| SETUP-10 | P1: Layout do repositório | Specify | Pending |
-| SETUP-11 | P1: Layout do repositório | Specify | Pending |
-| SETUP-12 | P1: Layout do repositório | Specify | Pending |
-| SETUP-13 | P1: Layout do repositório | Specify | Pending |
-| SETUP-14 | P1: CI básico | Specify | Pending |
-| SETUP-15 | P1: CI básico | Specify | Pending |
-| SETUP-16 | P1: CI básico | Specify | Pending |
-| SETUP-17 | P1: CI básico | Specify | Pending |
+| SETUP-01 | P1: Comprovante da stack | Execute | Verified |
+| SETUP-02 | P1: Comprovante da stack | Execute | Verified |
+| SETUP-03 | P1: Comprovante da stack | Execute | Verified |
+| SETUP-04 | P1: Comprovante da stack | Execute | Verified |
+| SETUP-05 | P1: Comprovante da stack | Execute | Verified |
+| SETUP-06 | P1: Bibliotecas de movimento | Execute | Verified |
+| SETUP-07 | P1: Bibliotecas de movimento | Execute | Verified |
+| SETUP-08 | P1: Bibliotecas de movimento | Execute | Verified |
+| SETUP-09 | P1: Bibliotecas de movimento | Execute | Verified |
+| SETUP-10 | P1: Layout do repositório | Execute | Verified |
+| SETUP-11 | P1: Layout do repositório | Execute | Verified |
+| SETUP-12 | P1: Layout do repositório | Execute | Verified |
+| SETUP-13 | P1: Layout do repositório | Execute | Verified |
+| SETUP-14 | P1: CI básico | Execute | Verified |
+| SETUP-15 | P1: CI básico | Execute | Verified |
+| SETUP-16 | P1: CI básico | Execute | Verified |
+| SETUP-17 | P1: CI básico | Execute | Verified |
 
 **Coverage:** 17 requisitos, 0 mapeados para tasks, 17 unmapped. O mapeamento acontece na fase de tasks.
 

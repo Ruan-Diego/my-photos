@@ -60,11 +60,11 @@
 
 ## Handoff
 
-- **Feature**: F01 Project Setup — `.specs/features/f01-project-setup/spec.md`
-- **Phase / Task**: Specify — spec escrita, aguardando confirmação do usuário
-- **Completed**: Roadmap, AD-001–AD-006, spec.md da F01 (gate de fechamento aplicado; defaults não confirmados marcados)
-- **In-progress**: nenhum
-- **Next step**: Usuário confirma a spec (e os defaults com Confirmed? `n`). Só então Design.
-- **Blockers**: nenhum
-- **Uncommitted files**: `.specs/STATE.md`, `.specs/ROADMAP.md`, `.specs/features/f01-project-setup/spec.md`, PRD HTML untracked
+- **Feature**: F01 Project Setup — `.specs/features/f01-project-setup/`
+- **Phase / Task**: Execute complete. Validation PASS (17/17).
+- **Completed**: T1–T6, fix of the health JSON, `src-tauri/src/db/`, and the motion dependency check
+- **In-progress**: none
+- **Next step**: Specify F02 (Takeout Discovery) or F04 (Database Schema). The media library folder is `E:\` (AD-007). F01 does not read it.
+- **Blockers**: none
+- **Uncommitted files**: PRD HTML (untracked, left out of commits)
 - **Branch**: main
