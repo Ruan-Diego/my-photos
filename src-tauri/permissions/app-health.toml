@@ -1,0 +1,4 @@
+[[permission]]
+identifier = "allow-app-health"
+description = "Enables the app_health command."
+commands.allow = ["app_health"]
