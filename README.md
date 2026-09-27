@@ -1,7 +1,20 @@
-# Tauri + React + Typescript
+# My Photos
 
-This template should help get you started developing with Tauri, React and Typescript in Vite.
+## Pré-requisitos
 
-## Recommended IDE Setup
+- Windows 10 ou 11
+- Rust stable
+- Node.js Active LTS
+- WebView2, já incluso no Windows 11
+- Build Tools do Visual Studio com o compilador C++ (o linker MSVC)
 
-- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+## Desenvolvimento
+
+Na raiz do repositório:
+
+```
+npm install
+npm run tauri dev
+```
+
+A janela do desktop se chama My Photos.
