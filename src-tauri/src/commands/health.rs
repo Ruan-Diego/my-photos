@@ -34,6 +34,10 @@ mod tests {
         let health = health_from_probe(Ok(1)).expect("probe");
         assert_eq!(health.app_name, "My Photos");
         assert_eq!(health.sqlite_ok, true);
+        assert_eq!(
+            serde_json::to_string(&health).expect("json"),
+            r#"{"appName":"My Photos","sqliteOk":true}"#
+        );
     }
 
     #[test]
