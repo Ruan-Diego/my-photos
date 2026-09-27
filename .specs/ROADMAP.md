@@ -4,6 +4,24 @@
 >
 > Princípio inegociável: **não destrutividade** — a biblioteca original é sempre a fonte da verdade.
 
+## Diretriz de UI/UX (todas as telas)
+
+Toda interface segue **AD-006**. O visual é fluido e moderno; a fotografia é o protagonista. O que se evita é o visual genérico de interface gerada por IA (gradiente roxo padrão, glassmorphism de template, motion decorativo sem função).
+
+| Biblioteca | Papel |
+|------------|--------|
+| [Motion](https://motion.dev) | Presença, layout e gestos dos componentes React |
+| [GSAP](https://gsap.com) | Timelines e sequências coreografadas de tela |
+| [anime.js](https://animejs.com) | Microinterações leves (ícones, SVG, contadores) |
+| [Three.js](https://threejs.org) | Momentos espaciais pontuais — onboarding e profundidade, nunca no lugar da grade |
+
+Regras para qualquer tela (F15 em diante e features futuras de UI):
+
+- Movimento serve continuidade e navegação. A foto não compete com o efeito.
+- `prefers-reduced-motion` desliga ou simplifica a animação.
+- A grade da timeline permanece virtualizada e fluida (~60 fps). Three.js não roda em loop sobre ela.
+- Cada interação usa uma biblioteca do papel acima. As quatro não animam o mesmo elemento ao mesmo tempo.
+
 ---
 
 ## Visão Geral das Fases
@@ -26,7 +44,7 @@ Phase 5 ─ Pós-MVP (v1.1+)           Futuro
 
 | Feature ID | Nome | Descrição | RFs Relacionados | Prioridade |
 |------------|------|-----------|------------------|------------|
-| **F01** | Project Setup | Scaffold Tauri 2 + React + TypeScript + Vite; SQLite embarcado via `rusqlite`; estrutura de pastas; CI básico | — | P1 ⭐ |
+| **F01** | Project Setup | Scaffold Tauri 2 + React + TypeScript + Vite; SQLite embarcado via `rusqlite`; dependências de UI (`three`, `gsap`, `animejs`, `motion`); estrutura de pastas; CI básico | — | P1 ⭐ |
 | **F02** | Takeout Discovery | PoC: parser de JSON do Takeout + matcher mídia↔JSON com fixtures reais; validar todas as variações conhecidas (seção 9.1–9.4 do PRD) | RF-003, RF-004 | P1 ⭐ |
 | **F03** | Performance Baseline | Benchmark de varredura de sistema de arquivos + hashing SHA-256 em bibliotecas sintéticas (50k, 150k itens) em HDD e SSD | RNF-001, RNF-002 | P1 ⭐ |
 
@@ -59,6 +77,7 @@ Phase 5 ─ Pós-MVP (v1.1+)           Futuro
 ## Phase 2 — UI Foundation
 
 > Interface React com os componentes core: timeline, viewer, navegação.
+> Toda tela desta fase segue a diretriz de UI/UX (Motion, GSAP, anime.js, Three.js).
 
 | Feature ID | Nome | Descrição | RFs Relacionados | Prioridade |
 |------------|------|-----------|------------------|------------|
@@ -77,6 +96,7 @@ Phase 5 ─ Pós-MVP (v1.1+)           Futuro
 ## Phase 3 — Features MVP
 
 > Funcionalidades que completam a experiência MVP.
+> Telas desta fase seguem a mesma diretriz de UI/UX da Phase 2.
 
 | Feature ID | Nome | Descrição | RFs Relacionados | Prioridade |
 |------------|------|-----------|------------------|------------|

@@ -42,13 +42,29 @@
 - **Date**: 2026-09-27
 - **Status**: active
 
+### AD-006
+- **Decision**: Toda UI/UX do My Photos usa **Three.js**, **GSAP**, **anime.js** e **Motion** (`motion.dev`). O visual é fluido e moderno, com a fotografia como protagonista — sem o visual genérico de interface gerada por IA.
+- **Reason**: Definido pelo stakeholder. Motion dá presença, layout e gestos em React; GSAP coreografa timelines e sequências de tela; anime.js cobre microinterações leves; Three.js fica em momentos espaciais pontuais (onboarding, profundidade), nunca no lugar da grade de fotos.
+- **Trade-off**: Quatro bibliotecas de movimento aumentam o bundle e o risco de animação competindo com a timeline virtualizada (~60 fps). Cada tela usa a ferramenta do papel dela; `prefers-reduced-motion` é obrigatório; WebGL não roda em loop sobre a grade.
+- **Scope**: Todas as features de UI/UX (Phase 2 em diante, e qualquer tela futura). F01 inclui as dependências no scaffold.
+- **Date**: 2026-09-27
+- **Status**: active
+
+### AD-007
+- **Decision**: A pasta da biblioteca de mídia que o My Photos vai indexar é `E:\`.
+- **Reason**: Definida pelo stakeholder como a pasta do acervo nesta máquina.
+- **Trade-off**: Caminho absoluto e local. Outra máquina precisa de outra pasta. Não é configuração portátil.
+- **Scope**: Indexação e onboarding (F05, F16 e qualquer feature que leia a biblioteca). A F01 não varre, não lista e não escreve em `E:\`.
+- **Date**: 2026-09-27
+- **Status**: active
+
 ## Handoff
 
-- **Feature**: Roadmap inicial / análise do PRD
-- **Phase / Task**: Specify — criação do roadmap e estrutura de features
-- **Completed**: Análise do PRD, criação de STATE.md, criação do roadmap
+- **Feature**: F01 Project Setup — `.specs/features/f01-project-setup/spec.md`
+- **Phase / Task**: Specify — spec escrita, aguardando confirmação do usuário
+- **Completed**: Roadmap, AD-001–AD-006, spec.md da F01 (gate de fechamento aplicado; defaults não confirmados marcados)
 - **In-progress**: nenhum
-- **Next step**: Escolher a primeira feature para especificar em detalhe (recomendado: F01-project-setup)
+- **Next step**: Usuário confirma a spec (e os defaults com Confirmed? `n`). Só então Design.
 - **Blockers**: nenhum
-- **Uncommitted files**: .specs/
+- **Uncommitted files**: `.specs/STATE.md`, `.specs/ROADMAP.md`, `.specs/features/f01-project-setup/spec.md`, PRD HTML untracked
 - **Branch**: main
