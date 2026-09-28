@@ -1,6 +1,6 @@
 use serde_json::Value;
 
-use crate::takeout::model::MediaMetadata;
+use crate::takeout::model::{AlbumMetadata, MediaMetadata};
 
 pub fn parse_media_json(bytes: &[u8]) -> Result<MediaMetadata, ()> {
     let value: Value = serde_json::from_slice(bytes).map_err(|_| ())?;
@@ -15,6 +15,25 @@ pub fn parse_media_json(bytes: &[u8]) -> Result<MediaMetadata, ()> {
         title: read_text(&value, "title"),
         description: read_text(&value, "description"),
         url: read_text(&value, "url"),
+    })
+}
+
+pub fn parse_album_json(bytes: &[u8]) -> Result<AlbumMetadata, ()> {
+    let value: Value = serde_json::from_slice(bytes).map_err(|_| ())?;
+    let (latitude, longitude, altitude) = value
+        .get("geoData")
+        .and_then(read_point)
+        .unwrap_or((None, None, None));
+    Ok(AlbumMetadata {
+        title: read_text(&value, "title"),
+        description: read_text(&value, "description"),
+        date_unix: value
+            .get("date")
+            .and_then(|date| date.get("timestamp"))
+            .and_then(parse_timestamp),
+        latitude,
+        longitude,
+        altitude,
     })
 }
 
@@ -89,7 +108,7 @@ fn read_text(value: &Value, key: &str) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::parse_media_json;
+    use super::{parse_album_json, parse_media_json};
 
     #[test]
     fn td11_taken_at_comes_from_photo_taken_time() {
@@ -213,5 +232,33 @@ mod tests {
         .expect("json");
         assert_eq!(metadata.taken_at_unix, Some(1660142220));
         assert_eq!(metadata.creation_time_unix, None);
+    }
+
+    #[test]
+    fn td20_album_example_drops_empty_description_and_zero_coordinates() {
+        let album = parse_album_json(
+            br#"{
+                "title": "Viagem Europa 2022",
+                "description": "",
+                "access": "protected",
+                "date": {
+                    "timestamp": "1660000000",
+                    "formatted": "9 de ago. de 2022, 00:00:00 UTC"
+                },
+                "geoData": { "latitude": 0.0, "longitude": 0.0, "altitude": 0.0 }
+            }"#,
+        )
+        .expect("json");
+        assert_eq!(album.title.as_deref(), Some("Viagem Europa 2022"));
+        assert_eq!(album.description, None);
+        assert_eq!(album.date_unix, Some(1660000000));
+        assert_eq!(album.latitude, None);
+        assert_eq!(album.longitude, None);
+        assert_eq!(album.altitude, None);
+    }
+
+    #[test]
+    fn album_bytes_that_are_not_json_return_an_error() {
+        assert!(parse_album_json(b"not json").is_err());
     }
 }
