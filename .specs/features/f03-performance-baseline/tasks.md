@@ -124,11 +124,11 @@ T6 ──┘         └─→ T9 [P] ──┴──→ T10
 
 **Done when**:
 
-- [ ] `file_bytes(i)` returns 4096 bytes and byte `j` is `(i + j) % 251`
-- [ ] `relative_path` uses `/` and the spec formula. Index 0 is `f03/2000/01/item-0000000.bin`. Index 100 is month `02`. Index 1199 is still year 2000. Index 1200 is `f03/2001/01/item-0001200.bin`
-- [ ] Two unit tests pass, one for the byte rule and one for those four indexes
-- [ ] Gate: `cargo test --manifest-path src-tauri/Cargo.toml` exits 0
-- [ ] Test count: 2 new tests in `corpus`. No existing test deleted
+- [x] `file_bytes(i)` returns 4096 bytes and byte `j` is `(i + j) % 251`
+- [x] `relative_path` uses `/` and the spec formula. Index 0 is `f03/2000/01/item-0000000.bin`. Index 100 is month `02`. Index 1199 is still year 2000. Index 1200 is `f03/2001/01/item-0001200.bin`
+- [x] Two unit tests pass, one for the byte rule and one for those four indexes
+- [x] Gate: `cargo test --manifest-path src-tauri/Cargo.toml` exits 0
+- [x] Test count: 2 new tests in `corpus`. No existing test deleted
 
 **Tests**: unit
 **Gate**: quick
