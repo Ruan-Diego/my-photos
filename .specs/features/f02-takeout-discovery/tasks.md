@@ -146,14 +146,14 @@ T6 ──┴──→ T7
 
 **Done when**:
 
-- [ ] `truncate_sidecar_name` returns the input when it is at most 51 UTF-8 bytes, the 46-byte prefix plus `.json` when it is longer, and `None` when byte 46 splits a character
-- [ ] Step 1 is `Exact` for `{file}.json` and for `{stem}.json`. Both present is a tie
-- [ ] Step 2 matches a full or truncated `supplemental-metadata` name as `Heuristic`
-- [ ] Step 3 matches the truncated `{file}.json` only when step 1 missed, as `Heuristic`
-- [ ] Two logical names that truncate to one file are one candidate
-- [ ] Six unit tests pass for TD-01, TD-02, TD-03, TD-04, TD-05, and the UTF-8 boundary that returns `None`
-- [ ] Gate: `cargo test --manifest-path src-tauri/Cargo.toml` exits 0
-- [ ] Test count: 6 tests in `matching`. The 6 `classify` tests still pass
+- [x] `truncate_sidecar_name` returns the input when it is at most 51 UTF-8 bytes, the 46-byte prefix plus `.json` when it is longer, and `None` when byte 46 splits a character
+- [x] Step 1 is `Exact` for `{file}.json` and for `{stem}.json`. Both present is a tie
+- [x] Step 2 matches a full or truncated `supplemental-metadata` name as `Heuristic`
+- [x] Step 3 matches the truncated `{file}.json` only when step 1 missed, as `Heuristic`
+- [x] Two logical names that truncate to one file are one candidate
+- [x] Six unit tests pass for TD-01, TD-02, TD-03, TD-04, TD-05, and the UTF-8 boundary that returns `None`
+- [x] Gate: `cargo test --manifest-path src-tauri/Cargo.toml` exits 0
+- [x] Test count: 6 tests in `matching`. The 6 `classify` tests still pass
 
 **Tests**: unit
 **Gate**: quick
