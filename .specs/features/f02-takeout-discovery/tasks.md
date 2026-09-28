@@ -9,7 +9,7 @@ Implement these tasks with the `tlc-spec-driven` skill: **activate it by name an
 ---
 
 **Design**: `.specs/features/f02-takeout-discovery/design.md`
-**Status**: In progress
+**Status**: Implemented, awaiting verification
 
 ---
 
@@ -240,11 +240,11 @@ T6 ──┴──→ T7
 
 **Done when**:
 
-- [ ] The section 9.3 example yields title `Viagem Europa 2022`, absent description, `date_unix` `1660000000`, and no coordinates
-- [ ] Invalid bytes return `Err(())` and do not panic
-- [ ] Two new unit tests pass, one per bullet
-- [ ] Gate: `cargo test --manifest-path src-tauri/Cargo.toml` exits 0
-- [ ] Test count: 12 tests in `parse` (10 from T5 plus 2). No test deleted
+- [x] The section 9.3 example yields title `Viagem Europa 2022`, absent description, `date_unix` `1660000000`, and no coordinates
+- [x] Invalid bytes return `Err(())` and do not panic
+- [x] Two new unit tests pass, one per bullet
+- [x] Gate: `cargo test --manifest-path src-tauri/Cargo.toml` exits 0
+- [x] Test count: 12 tests in `parse` (10 from T5 plus 2). No test deleted
 
 **Tests**: unit
 **Gate**: quick
@@ -268,18 +268,18 @@ T6 ──┴──→ T7
 
 **Done when**:
 
-- [ ] `discover` returns `Err` only when the root is not a readable directory. Symlinks are not followed
-- [ ] Report paths use `/` and the three lists are lexicographically ordered by that path
-- [ ] A second `discover` on the same tree returns the equal value
-- [ ] JSON outside the media's directory does not match. `metadata.json` is never the media sidecar. `Photos from 2022` without that file produces no album
-- [ ] Invalid JSON and an injected read error fail only that file. A neighbor with a valid sidecar stays `Exact`
-- [ ] `archive_browser.html` and `notas.txt` are absent from media, albums, sidecars, and problems
-- [ ] An unmatched `.json` is `OrphanJson` and is not read. A media file with no JSON is `None` with no `InvalidJson` problem
-- [ ] Paths, sizes, and bytes of the fixture tree are unchanged after `discover`
-- [ ] Fixtures contain empty media files and small JSON. Nothing reads `E:\`
-- [ ] Twenty-one integration tests pass, one for each requirement and edge named in this task's Requirement field
-- [ ] Gate: `cargo test --manifest-path src-tauri/Cargo.toml` exits 0, then `npm run build` exits 0, and `node --experimental-strip-types --test src/health/view.test.ts` exits 0
-- [ ] Test count: 54 passing (5 existing + 6 classify + 10 matching + 12 parse + 21 discover). No test deleted
+- [x] `discover` returns `Err` only when the root is not a readable directory. Symlinks are not followed
+- [x] Report paths use `/` and the three lists are lexicographically ordered by that path
+- [x] A second `discover` on the same tree returns the equal value
+- [x] JSON outside the media's directory does not match. `metadata.json` is never the media sidecar. `Photos from 2022` without that file produces no album
+- [x] Invalid JSON and an injected read error fail only that file. A neighbor with a valid sidecar stays `Exact`
+- [x] `archive_browser.html` and `notas.txt` are absent from media, albums, sidecars, and problems
+- [x] An unmatched `.json` is `OrphanJson` and is not read. A media file with no JSON is `None` with no `InvalidJson` problem
+- [x] Paths, sizes, and bytes of the fixture tree are unchanged after `discover`
+- [x] Fixtures contain empty media files and small JSON. Nothing reads `E:\`
+- [x] Twenty-one integration tests pass, one for each requirement and edge named in this task's Requirement field
+- [x] Gate: `cargo test --manifest-path src-tauri/Cargo.toml` exits 0, then `npm run build` exits 0, and `node --experimental-strip-types --test src/health/view.test.ts` exits 0
+- [x] Test count: 54 passing (5 existing + 6 classify + 10 matching + 12 parse + 21 discover). No test deleted
 
 **Tests**: integration
 **Gate**: full

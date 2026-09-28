@@ -1,4 +1,555 @@
+// Reachable from later features. The shell does not call discovery yet.
+#![allow(dead_code)]
+
 mod classify;
 mod matching;
 mod model;
 mod parse;
+
+use std::collections::BTreeMap;
+use std::fs;
+use std::path::{Path, PathBuf};
+
+use classify::{classify, FileRole};
+use matching::match_directory;
+use parse::{parse_album_json, parse_media_json};
+
+#[allow(unused_imports)]
+pub use model::{
+    AlbumHit, AlbumMetadata, Confidence, DiscoveryReport, MediaHit, MediaMetadata, Problem,
+    ProblemKind, UnmatchedReason,
+};
+
+pub fn discover(root: &Path) -> Result<DiscoveryReport, String> {
+    discover_with(root, |path| fs::read(path).map_err(|error| error.to_string()))
+}
+
+pub(crate) fn discover_with(
+    root: &Path,
+    read_json: impl Fn(&Path) -> Result<Vec<u8>, String>,
+) -> Result<DiscoveryReport, String> {
+    let metadata = fs::symlink_metadata(root).map_err(|error| error.to_string())?;
+    if !metadata.is_dir() {
+        return Err(format!("{} não é um diretório", root.display()));
+    }
+
+    let mut files = BTreeMap::new();
+    read_tree(root, "", &mut files)?;
+
+    let mut media = Vec::new();
+    let mut albums = Vec::new();
+    let mut problems: Vec<Problem> = Vec::new();
+
+    for (directory, names) in &files {
+        let matches = match_directory(names);
+        let mut consumed = Vec::new();
+        let mut parsed: BTreeMap<String, Result<MediaMetadata, ProblemKind>> = BTreeMap::new();
+
+        for item in matches {
+            let relative_path = join_relative(directory, &item.media_name);
+            let Some(json_name) = item.json_name else {
+                media.push(MediaHit {
+                    relative_path,
+                    confidence: item.confidence,
+                    json_relative_path: None,
+                    metadata: None,
+                    reason: item.reason,
+                });
+                continue;
+            };
+
+            let json_relative = join_relative(directory, &json_name);
+            if !consumed
+                .iter()
+                .any(|used: &String| used.eq_ignore_ascii_case(&json_name))
+            {
+                consumed.push(json_name);
+            }
+            let outcome = if let Some(outcome) = parsed.get(&json_relative) {
+                outcome.clone()
+            } else {
+                let outcome = read_media_json(&read_json, root, &json_relative);
+                parsed.insert(json_relative.clone(), outcome.clone());
+                outcome
+            };
+            match outcome {
+                Ok(metadata) => media.push(MediaHit {
+                    relative_path,
+                    confidence: item.confidence,
+                    json_relative_path: Some(json_relative),
+                    metadata: Some(metadata),
+                    reason: None,
+                }),
+                Err(kind) => {
+                    if !problems.iter().any(|problem| {
+                        problem.relative_path == json_relative && problem.kind == kind
+                    }) {
+                        problems.push(Problem {
+                            relative_path: json_relative,
+                            kind,
+                        });
+                    }
+                    media.push(unmatched(relative_path));
+                }
+            }
+        }
+
+        for name in names {
+            if classify(name) != FileRole::JsonSidecar {
+                continue;
+            }
+            if consumed
+                .iter()
+                .any(|used| used.eq_ignore_ascii_case(name))
+            {
+                continue;
+            }
+            problems.push(Problem {
+                relative_path: join_relative(directory, name),
+                kind: ProblemKind::OrphanJson,
+            });
+        }
+
+        for name in names {
+            if classify(name) != FileRole::AlbumMetadata {
+                continue;
+            }
+            let relative_path = join_relative(directory, name);
+            match read_json(&absolute_from_relative(root, &relative_path)) {
+                Err(_) => problems.push(Problem {
+                    relative_path,
+                    kind: ProblemKind::Unreadable,
+                }),
+                Ok(bytes) => match parse_album_json(&bytes) {
+                    Err(()) => problems.push(Problem {
+                        relative_path,
+                        kind: ProblemKind::InvalidJson,
+                    }),
+                    Ok(metadata) => albums.push(AlbumHit {
+                        relative_path,
+                        metadata,
+                    }),
+                },
+            }
+        }
+    }
+
+    media.sort_by(|left, right| left.relative_path.cmp(&right.relative_path));
+    albums.sort_by(|left, right| left.relative_path.cmp(&right.relative_path));
+    problems.sort_by(|left, right| left.relative_path.cmp(&right.relative_path));
+    Ok(DiscoveryReport {
+        media,
+        albums,
+        problems,
+    })
+}
+
+fn read_media_json(
+    read_json: &impl Fn(&Path) -> Result<Vec<u8>, String>,
+    root: &Path,
+    relative: &str,
+) -> Result<MediaMetadata, ProblemKind> {
+    let bytes = read_json(&absolute_from_relative(root, relative))
+        .map_err(|_| ProblemKind::Unreadable)?;
+    parse_media_json(&bytes).map_err(|_| ProblemKind::InvalidJson)
+}
+
+fn unmatched(relative_path: String) -> MediaHit {
+    MediaHit {
+        relative_path,
+        confidence: Confidence::None,
+        json_relative_path: None,
+        metadata: None,
+        reason: None,
+    }
+}
+
+fn read_tree(
+    directory: &Path,
+    relative: &str,
+    files: &mut BTreeMap<String, Vec<String>>,
+) -> Result<(), String> {
+    let entries = match fs::read_dir(directory) {
+        Ok(entries) => entries,
+        Err(error) if relative.is_empty() => return Err(error.to_string()),
+        Err(_) => return Ok(()),
+    };
+    for entry in entries {
+        let entry = match entry {
+            Ok(entry) => entry,
+            Err(error) if relative.is_empty() => return Err(error.to_string()),
+            Err(_) => continue,
+        };
+        let file_type = match entry.file_type() {
+            Ok(file_type) => file_type,
+            Err(error) if relative.is_empty() => return Err(error.to_string()),
+            Err(_) => continue,
+        };
+        if file_type.is_symlink() {
+            continue;
+        }
+        let Ok(name) = entry.file_name().into_string() else {
+            continue;
+        };
+        if file_type.is_dir() {
+            read_tree(&entry.path(), &join_relative(relative, &name), files)?;
+        } else if file_type.is_file() {
+            files.entry(relative.to_string()).or_default().push(name);
+        }
+    }
+    Ok(())
+}
+
+fn join_relative(directory: &str, name: &str) -> String {
+    if directory.is_empty() {
+        name.to_string()
+    } else {
+        format!("{directory}/{name}")
+    }
+}
+
+fn absolute_from_relative(root: &Path, relative: &str) -> PathBuf {
+    let mut path = root.to_path_buf();
+    for part in relative.split('/') {
+        path.push(part);
+    }
+    path
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::BTreeMap;
+    use std::fs;
+    use std::path::{Path, PathBuf};
+
+    use super::{discover, discover_with};
+    use crate::takeout::model::{Confidence, ProblemKind, UnmatchedReason};
+
+    fn fixture(name: &str) -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("fixtures")
+            .join("takeout")
+            .join(name)
+    }
+
+    fn hit<'a>(
+        report: &'a crate::takeout::model::DiscoveryReport,
+        relative_path: &str,
+    ) -> &'a crate::takeout::model::MediaHit {
+        report
+            .media
+            .iter()
+            .find(|item| item.relative_path == relative_path)
+            .unwrap_or_else(|| panic!("missing {relative_path}"))
+    }
+
+    #[test]
+    fn td01_exact_sidecar_in_the_same_folder() {
+        let report = discover(&fixture("td01")).expect("directory");
+        let media = hit(&report, "IMG_20220810_143700.jpg");
+        assert_eq!(media.confidence, Confidence::Exact);
+        assert_eq!(
+            media.json_relative_path.as_deref(),
+            Some("IMG_20220810_143700.jpg.json")
+        );
+        assert!(media.metadata.is_some());
+        assert_eq!(media.reason, None);
+    }
+
+    #[test]
+    fn td02_case_difference_is_still_exact() {
+        let report = discover(&fixture("td02")).expect("directory");
+        let media = hit(&report, "IMG_20220810_143700.JPG");
+        assert_eq!(media.confidence, Confidence::Exact);
+        assert_eq!(
+            media.json_relative_path.as_deref(),
+            Some("IMG_20220810_143700.jpg.json")
+        );
+    }
+
+    #[test]
+    fn td03_stem_json_is_exact() {
+        let report = discover(&fixture("td03")).expect("directory");
+        let media = hit(&report, "foto.jpg");
+        assert_eq!(media.confidence, Confidence::Exact);
+        assert_eq!(media.json_relative_path.as_deref(), Some("foto.json"));
+    }
+
+    #[test]
+    fn td04_supplemental_metadata_is_heuristic() {
+        let report = discover(&fixture("td04")).expect("directory");
+        let media = hit(&report, "foto.jpg");
+        assert_eq!(media.confidence, Confidence::Heuristic);
+        assert_eq!(
+            media.json_relative_path.as_deref(),
+            Some("foto.jpg.supplemental-metadata.json")
+        );
+    }
+
+    #[test]
+    fn td05_truncated_name_is_heuristic() {
+        let report = discover(&fixture("td05")).expect("directory");
+        let media = hit(&report, "foto_com_nome_longo_demais_para_o_takeout_001.jpg");
+        assert_eq!(media.confidence, Confidence::Heuristic);
+        assert_eq!(
+            media.json_relative_path.as_deref(),
+            Some("foto_com_nome_longo_demais_para_o_takeout_001..json")
+        );
+    }
+
+    #[test]
+    fn td06_duplicate_marker_sidecar_is_heuristic() {
+        let report = discover(&fixture("td06")).expect("directory");
+        let media = hit(&report, "camphoto_1271212614(1).jpg");
+        assert_eq!(media.confidence, Confidence::Heuristic);
+        assert_eq!(
+            media.json_relative_path.as_deref(),
+            Some("camphoto_1271212614.jpg.supplemental-metadata(1).json")
+        );
+    }
+
+    #[test]
+    fn td07_edited_reuses_original_json() {
+        let report = discover(&fixture("td07")).expect("directory");
+        let original = hit(&report, "foto.jpg");
+        let edited = hit(&report, "foto-edited.jpg");
+        assert_eq!(original.confidence, Confidence::Exact);
+        assert_eq!(edited.confidence, Confidence::Heuristic);
+        assert_ne!(edited.confidence, Confidence::Exact);
+        assert_eq!(original.json_relative_path.as_deref(), Some("foto.jpg.json"));
+        assert_eq!(edited.json_relative_path.as_deref(), Some("foto.jpg.json"));
+        assert_eq!(
+            original.metadata.as_ref().and_then(|item| item.taken_at_unix),
+            Some(1660142220)
+        );
+        assert_eq!(
+            edited.metadata.as_ref().and_then(|item| item.taken_at_unix),
+            Some(1660142220)
+        );
+    }
+
+    #[test]
+    fn td08_shared_truncated_json_is_ambiguous() {
+        let prefix = "a".repeat(46);
+        let report = discover(&fixture("td08")).expect("directory");
+        for name in [format!("{prefix}1.jpg"), format!("{prefix}2.jpg")] {
+            let media = hit(&report, &name);
+            assert_eq!(media.confidence, Confidence::None);
+            assert_eq!(media.json_relative_path, None);
+            assert_eq!(media.reason, Some(UnmatchedReason::Ambiguous));
+        }
+        assert!(report.problems.iter().any(|problem| {
+            problem.relative_path == format!("{prefix}.json")
+                && problem.kind == ProblemKind::OrphanJson
+        }));
+    }
+
+    #[test]
+    fn td09_json_in_the_parent_folder_does_not_match() {
+        let report = discover(&fixture("td09")).expect("directory");
+        let media = hit(&report, "child/foto.jpg");
+        assert_eq!(media.confidence, Confidence::None);
+        assert_eq!(media.json_relative_path, None);
+        assert_eq!(media.reason, None);
+    }
+
+    #[test]
+    fn td10_second_discover_matches_the_first_in_path_order() {
+        let root = fixture("td10");
+        let first = discover(&root).expect("directory");
+        let second = discover(&root).expect("directory");
+        assert_eq!(first, second);
+        let paths: Vec<&str> = first
+            .media
+            .iter()
+            .map(|item| item.relative_path.as_str())
+            .collect();
+        assert_eq!(paths, vec!["a/a.jpg", "b.jpg"]);
+        assert!(paths.iter().all(|path| !path.contains('\\')));
+    }
+
+    #[test]
+    fn td19_metadata_json_is_not_the_media_sidecar() {
+        let report = discover(&fixture("td19")).expect("directory");
+        let media = hit(&report, "Viagem Europa 2022/foto001.jpg");
+        assert_eq!(media.confidence, Confidence::Exact);
+        assert_eq!(
+            media.json_relative_path.as_deref(),
+            Some("Viagem Europa 2022/foto001.jpg.json")
+        );
+        assert_ne!(
+            media.json_relative_path.as_deref(),
+            Some("Viagem Europa 2022/metadata.json")
+        );
+    }
+
+    #[test]
+    fn td20_album_metadata_fields() {
+        let report = discover(&fixture("td19")).expect("directory");
+        assert_eq!(report.albums.len(), 1);
+        let album = &report.albums[0];
+        assert_eq!(album.relative_path, "Viagem Europa 2022/metadata.json");
+        assert_eq!(album.metadata.title.as_deref(), Some("Viagem Europa 2022"));
+        assert_eq!(album.metadata.description, None);
+        assert_eq!(album.metadata.date_unix, Some(1660000000));
+        assert_eq!(album.metadata.latitude, None);
+        assert_eq!(album.metadata.longitude, None);
+        assert_eq!(album.metadata.altitude, None);
+    }
+
+    #[test]
+    fn td21_folder_without_metadata_json_has_no_album() {
+        let report = discover(&fixture("td21")).expect("directory");
+        assert!(report.albums.is_empty());
+        assert_eq!(
+            hit(&report, "Photos from 2022/foto.jpg").relative_path,
+            "Photos from 2022/foto.jpg"
+        );
+    }
+
+    #[test]
+    fn td22_invalid_album_metadata_stays_a_problem() {
+        let report = discover(&fixture("td22")).expect("directory");
+        let media = hit(&report, "Viagem Europa 2022/foto001.jpg");
+        assert_eq!(media.confidence, Confidence::Exact);
+        assert!(report.albums.is_empty());
+        assert!(report.problems.iter().any(|problem| {
+            problem.relative_path == "Viagem Europa 2022/metadata.json"
+                && problem.kind == ProblemKind::InvalidJson
+        }));
+    }
+
+    #[test]
+    fn td23_invalid_json_does_not_drop_the_neighbor() {
+        let report = discover(&fixture("td23")).expect("directory");
+        let broken = hit(&report, "foto.jpg");
+        let neighbor = hit(&report, "outra.jpg");
+        assert_eq!(broken.confidence, Confidence::None);
+        assert_eq!(broken.json_relative_path, None);
+        assert_eq!(broken.reason, None);
+        assert_eq!(neighbor.confidence, Confidence::Exact);
+        assert_eq!(neighbor.json_relative_path.as_deref(), Some("outra.jpg.json"));
+        assert!(report.problems.iter().any(|problem| {
+            problem.relative_path == "foto.jpg.json" && problem.kind == ProblemKind::InvalidJson
+        }));
+    }
+
+    #[test]
+    fn td24_unreadable_json_does_not_drop_the_neighbor() {
+        let report = discover_with(&fixture("td24"), |path| {
+            if path.file_name().and_then(|name| name.to_str()) == Some("foto.jpg.json") {
+                Err("bloqueado".into())
+            } else {
+                fs::read(path).map_err(|error| error.to_string())
+            }
+        })
+        .expect("directory");
+        let blocked = hit(&report, "foto.jpg");
+        let neighbor = hit(&report, "outra.jpg");
+        assert_eq!(blocked.confidence, Confidence::None);
+        assert_eq!(blocked.reason, None);
+        assert_eq!(neighbor.confidence, Confidence::Exact);
+        assert!(neighbor.metadata.is_some());
+        assert!(report.problems.iter().any(|problem| {
+            problem.relative_path == "foto.jpg.json" && problem.kind == ProblemKind::Unreadable
+        }));
+    }
+
+    #[test]
+    fn ignored_files_are_absent_from_the_report() {
+        let report = discover(&fixture("td25")).expect("directory");
+        assert!(report.media.is_empty());
+        assert!(report.albums.is_empty());
+        assert!(report.problems.is_empty());
+    }
+
+    #[test]
+    fn td27_discover_does_not_change_fixture_bytes() {
+        let root = fixture("td27");
+        let before = tree_bytes(&root);
+        let report = discover(&root).expect("directory");
+        assert_eq!(tree_bytes(&root), before);
+        assert!(before.contains_key("nested/foto.jpg"));
+        assert_eq!(
+            hit(&report, "nested/foto.jpg").confidence,
+            Confidence::Exact
+        );
+        assert!(discover(&root.join("nested").join("foto.jpg")).is_err());
+        assert!(discover(&fixture("missing-root")).is_err());
+        assert_symlink_is_not_followed();
+    }
+
+    #[test]
+    fn media_without_json_is_none_without_an_invalid_json_problem() {
+        let report = discover(&fixture("edge-none")).expect("directory");
+        let media = hit(&report, "foto.jpg");
+        assert_eq!(media.confidence, Confidence::None);
+        assert_eq!(media.reason, None);
+        assert_eq!(media.json_relative_path, None);
+        assert!(report
+            .problems
+            .iter()
+            .all(|problem| problem.kind != ProblemKind::InvalidJson));
+    }
+
+    #[test]
+    fn unmatched_json_is_an_unread_orphan() {
+        let report = discover_with(&fixture("edge-orphan"), |_| Err("lido".into())).expect("directory");
+        assert!(report.media.is_empty());
+        assert_eq!(report.problems.len(), 1);
+        assert_eq!(report.problems[0].relative_path, "lonely.json");
+        assert_eq!(report.problems[0].kind, ProblemKind::OrphanJson);
+    }
+
+    #[test]
+    fn edited_without_original_json_is_none() {
+        let report = discover(&fixture("edge-edited")).expect("directory");
+        let edited = hit(&report, "foto-edited.jpg");
+        assert_eq!(edited.confidence, Confidence::None);
+        assert_eq!(edited.json_relative_path, None);
+        assert_eq!(edited.reason, None);
+    }
+
+    fn tree_bytes(root: &Path) -> BTreeMap<String, (u64, Vec<u8>)> {
+        let mut found = BTreeMap::new();
+        fn walk(directory: &Path, relative: &str, found: &mut BTreeMap<String, (u64, Vec<u8>)>) {
+            for entry in fs::read_dir(directory).expect("read dir") {
+                let entry = entry.expect("entry");
+                let file_type = entry.file_type().expect("type");
+                if file_type.is_symlink() {
+                    continue;
+                }
+                let name = entry.file_name().into_string().expect("utf-8");
+                let relative = if relative.is_empty() {
+                    name
+                } else {
+                    format!("{relative}/{name}")
+                };
+                if file_type.is_dir() {
+                    walk(&entry.path(), &relative, found);
+                } else if file_type.is_file() {
+                    let bytes = fs::read(entry.path()).expect("bytes");
+                    let size = bytes.len() as u64;
+                    found.insert(relative, (size, bytes));
+                }
+            }
+        }
+        walk(root, "", &mut found);
+        found
+    }
+
+    fn assert_symlink_is_not_followed() {
+        let temp = std::env::temp_dir().join(format!("my-photos-f02-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&temp);
+        fs::create_dir_all(temp.join("outside")).expect("outside");
+        fs::write(temp.join("outside").join("secret.jpg"), b"secret").expect("secret");
+        fs::create_dir_all(temp.join("root")).expect("root");
+        std::os::windows::fs::symlink_dir(temp.join("outside"), temp.join("root").join("link"))
+            .expect("symlink");
+        let report = discover(&temp.join("root")).expect("directory");
+        assert!(report.media.is_empty());
+        assert!(report.problems.is_empty());
+        fs::remove_dir_all(&temp).expect("cleanup");
+    }
+}
+
