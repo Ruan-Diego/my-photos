@@ -232,6 +232,13 @@ mod tests {
         .expect("json");
         assert_eq!(metadata.taken_at_unix, Some(1660142220));
         assert_eq!(metadata.creation_time_unix, None);
+        assert_eq!(metadata.title, None);
+        assert_eq!(metadata.description, None);
+        assert_eq!(metadata.url, None);
+        assert_eq!(metadata.latitude, None);
+        assert_eq!(metadata.longitude, None);
+        assert_eq!(metadata.altitude, None);
+        assert_eq!(metadata.people, Vec::<String>::new());
     }
 
     #[test]
