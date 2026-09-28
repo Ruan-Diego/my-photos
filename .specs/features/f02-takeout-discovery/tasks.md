@@ -208,15 +208,15 @@ T6 ──┴──→ T7
 
 **Done when**:
 
-- [ ] Bytes that are not JSON return `Err(())`. A bad field does not
-- [ ] `taken_at_unix` comes only from `photoTakenTime.timestamp`. `creationTime.timestamp` goes to `creation_time_unix`
-- [ ] `geoData` `0.0/0.0` clears latitude, longitude, and altitude. `geoDataExif` is used only then. A real `geoData` wins over `geoDataExif`
-- [ ] `people` keeps non-empty names in order. Missing `people` yields an empty list
-- [ ] Empty `title`, `description`, and `url` are absent. A non-empty `url` is copied. No network API is called
-- [ ] An unknown JSON field is ignored
-- [ ] Ten unit tests pass: TD-11 through TD-18, empty `people`, and an extra field
-- [ ] Gate: `cargo test --manifest-path src-tauri/Cargo.toml` exits 0
-- [ ] Test count: 10 new tests in `parse`. No existing test deleted
+- [x] Bytes that are not JSON return `Err(())`. A bad field does not
+- [x] `taken_at_unix` comes only from `photoTakenTime.timestamp`. `creationTime.timestamp` goes to `creation_time_unix`
+- [x] `geoData` `0.0/0.0` clears latitude, longitude, and altitude. `geoDataExif` is used only then. A real `geoData` wins over `geoDataExif`
+- [x] `people` keeps non-empty names in order. Missing `people` yields an empty list
+- [x] Empty `title`, `description`, and `url` are absent. A non-empty `url` is copied. No network API is called
+- [x] An unknown JSON field is ignored
+- [x] Ten unit tests pass: TD-11 through TD-18, empty `people`, and an extra field
+- [x] Gate: `cargo test --manifest-path src-tauri/Cargo.toml` exits 0
+- [x] Test count: 10 new tests in `parse`. No existing test deleted
 
 **Tests**: unit
 **Gate**: quick
