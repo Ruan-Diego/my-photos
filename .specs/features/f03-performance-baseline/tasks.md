@@ -332,12 +332,12 @@ T6 ──┘         └─→ T9 [P] ──┴──→ T10
 
 **Done when**:
 
-- [ ] `f03-bench` requires `--root` and `--count`. Missing arguments print `usage` to stderr and exit 2, creating nothing
-- [ ] A validation error prints that `as_code()` to stderr and exits 1. `--count 0` does not create the root
-- [ ] `--count 1` with `--output` exits 0, writes pretty JSON to that file and stdout, and removes the root
-- [ ] One unit test covers missing arguments. Two integration tests cover the validation exit and the count-1 output file. They start the binary through `CARGO_BIN_EXE_f03_bench`
-- [ ] Gate: `cargo test --manifest-path src-tauri/Cargo.toml` exits 0
-- [ ] Test count: 3 new tests. No test deleted
+- [x] `f03-bench` requires `--root` and `--count`. Missing arguments print `usage` to stderr and exit 2, creating nothing
+- [x] A validation error prints that `as_code()` to stderr and exits 1. `--count 0` does not create the root
+- [x] `--count 1` with `--output` exits 0, writes pretty JSON to that file and stdout, and removes the root
+- [x] One unit test covers missing arguments. Two integration tests cover the validation exit and the count-1 output file. They start the binary through `CARGO_BIN_EXE_f03_bench`
+- [x] Gate: `cargo test --manifest-path src-tauri/Cargo.toml` exits 0
+- [x] Test count: 3 new tests. No test deleted
 
 **Tests**: integration
 **Gate**: full
