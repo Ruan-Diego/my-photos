@@ -1,0 +1,15 @@
+{
+  "itemCount": 150000,
+  "bytesPerItem": 4096,
+  "volumeClass": "ssd",
+  "volumeRoot": "C:\\",
+  "workerCount": 20,
+  "filesHashed": 150000,
+  "totalBytes": 614400000,
+  "failureCount": 0,
+  "failures": [],
+  "contentDigest": "dc1187c49a75d24a6b0127fe205ccc953f2a2309584d3db60a6b87f43a564b8d",
+  "walkElapsedMs": 4010,
+  "hashElapsedMs": 1527,
+  "ok": true
+}

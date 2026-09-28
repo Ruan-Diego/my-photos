@@ -9,7 +9,7 @@ Implement these tasks with the `tlc-spec-driven` skill: **activate it by name an
 ---
 
 **Design**: `.specs/features/f03-performance-baseline/design.md`
-**Status**: In progress
+**Status**: Done
 
 ---
 
@@ -361,12 +361,12 @@ T6 ──┘         └─→ T9 [P] ──┴──→ T10
 
 **Done when**:
 
-- [ ] For each of `hdd` and `ssd` that this machine can classify, two runs finish with `ok` true: `--count 50000` and `--count 150000`. Each root is an empty directory on that volume, not a volume root, and not a directory that already has files
-- [ ] Each report is saved as `.specs/features/f03-performance-baseline/baselines/{volumeClass}-{itemCount}.json` with `filesHashed` equal to the count, `bytesPerItem` 4096, and `failureCount` 0. The root is gone afterward
-- [ ] A class this machine does not have is stated as not measured in `baselines/README.md`. That absence does not fail the task
-- [ ] No path under the real library is used unless it is a fresh empty subdirectory the operator created for the run. The run does not delete anything outside the chosen root
-- [ ] Gate: `cargo test --manifest-path src-tauri/Cargo.toml` exits 0, and `npm run build` exits 0, and `node --experimental-strip-types --test src/health/view.test.ts` exits 0
-- [ ] Test count: 87 passing. That is the 54 tests already in the crate, plus 2 in `corpus` from T2, plus 6 from T4, plus 4 in `volume` from T3, plus 1 from T6, plus 5 in `hash` from T5, plus 7 in `bench` from T7, plus 5 from T8, plus 3 from T9. No test deleted
+- [x] For each of `hdd` and `ssd` that this machine can classify, two runs finish with `ok` true: `--count 50000` and `--count 150000`. Each root is an empty directory on that volume, not a volume root, and not a directory that already has files
+- [x] Each report is saved as `.specs/features/f03-performance-baseline/baselines/{volumeClass}-{itemCount}.json` with `filesHashed` equal to the count, `bytesPerItem` 4096, and `failureCount` 0. The root is gone afterward
+- [x] A class this machine does not have is stated as not measured in `baselines/README.md`. That absence does not fail the task
+- [x] No path under the real library is used unless it is a fresh empty subdirectory the operator created for the run. The run does not delete anything outside the chosen root
+- [x] Gate: `cargo test --manifest-path src-tauri/Cargo.toml` exits 0, and `npm run build` exits 0, and `node --experimental-strip-types --test src/health/view.test.ts` exits 0
+- [x] Test count: 87 passing. That is the 54 tests already in the crate, plus 2 in `corpus` from T2, plus 6 from T4, plus 4 in `volume` from T3, plus 1 from T6, plus 5 in `hash` from T5, plus 7 in `bench` from T7, plus 5 from T8, plus 3 from T9. No test deleted
 
 **Tests**: none
 **Gate**: build
