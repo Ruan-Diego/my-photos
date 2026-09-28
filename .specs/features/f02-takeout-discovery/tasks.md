@@ -177,14 +177,14 @@ T6 ──┴──→ T7
 
 **Done when**:
 
-- [ ] `(N)` matches only `\(([1-9][0-9]*)\)$` at the end of the stem. The marker is appended after truncation and may exceed 51 bytes
-- [ ] `camphoto_1271212614(1).jpg` matches `camphoto_1271212614.jpg.supplemental-metadata(1).json` as `Heuristic`
-- [ ] `foto-edited.jpg` is `Heuristic` on the JSON already held by `foto.jpg`. Its confidence is never `Exact`
-- [ ] Two non-edited media that select the same JSON become `None` with `Ambiguous`, and an edited file that only shared it becomes `None` without that reason
-- [ ] An edited file whose original is missing or `None` stays `None`
-- [ ] Four new unit tests pass, one per bullet above that names a file
-- [ ] Gate: `cargo test --manifest-path src-tauri/Cargo.toml` exits 0
-- [ ] Test count: 10 tests in `matching` (6 from T3 plus 4). No test deleted
+- [x] `(N)` matches only `\(([1-9][0-9]*)\)$` at the end of the stem. The marker is appended after truncation and may exceed 51 bytes
+- [x] `camphoto_1271212614(1).jpg` matches `camphoto_1271212614.jpg.supplemental-metadata(1).json` as `Heuristic`
+- [x] `foto-edited.jpg` is `Heuristic` on the JSON already held by `foto.jpg`. Its confidence is never `Exact`
+- [x] Two non-edited media that select the same JSON become `None` with `Ambiguous`, and an edited file that only shared it becomes `None` without that reason
+- [x] An edited file whose original is missing or `None` stays `None`
+- [x] Four new unit tests pass, one per bullet above that names a file
+- [x] Gate: `cargo test --manifest-path src-tauri/Cargo.toml` exits 0
+- [x] Test count: 10 tests in `matching` (6 from T3 plus 4). No test deleted
 
 **Tests**: unit
 **Gate**: quick
