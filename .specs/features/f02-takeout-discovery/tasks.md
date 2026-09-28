@@ -117,12 +117,12 @@ T6 ──┴──→ T7
 
 **Done when**:
 
-- [ ] Order is `archive_browser.html` → ignored, `metadata.json` → album, known extension → media, other `.json` → sidecar, anything else → ignored
-- [ ] Comparison is ASCII case-insensitive. Extension on the media role is lowercase without a dot
-- [ ] Six unit tests pass: one known image, one known video, the album name in different case, a media sidecar, `archive_browser.html`, `notas.txt`
-- [ ] One of those tests asserts every extension in the spec list is media
-- [ ] Gate: `cargo test --manifest-path src-tauri/Cargo.toml` exits 0
-- [ ] Test count: 6 new tests in `classify`. No existing test deleted
+- [x] Order is `archive_browser.html` → ignored, `metadata.json` → album, known extension → media, other `.json` → sidecar, anything else → ignored
+- [x] Comparison is ASCII case-insensitive. Extension on the media role is lowercase without a dot
+- [x] Six unit tests pass: one known image, one known video, the album name in different case, a media sidecar, `archive_browser.html`, `notas.txt`
+- [x] One of those tests asserts every extension in the spec list is media
+- [x] Gate: `cargo test --manifest-path src-tauri/Cargo.toml` exits 0
+- [x] Test count: 6 new tests in `classify`. No existing test deleted
 
 **Tests**: unit
 **Gate**: quick
