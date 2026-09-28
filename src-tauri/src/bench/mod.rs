@@ -309,7 +309,6 @@ mod tests {
     use std::path::{Path, PathBuf};
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    use super::model::VolumeClass;
     use super::{run_baseline, run_baseline_with, Hooks};
 
     const DIGEST_64: &str = "c067a4e6cde3d7306e1fef52a92ebee10c1e562368ad06488bb1398610067415";
@@ -354,11 +353,17 @@ mod tests {
         let scratch = Scratch::new("volume");
         let root = scratch.path.join("corpus");
         let report = run_baseline(&root, 64).expect("baseline");
-        assert!(report.worker_count >= 1);
-        assert!(matches!(
-            report.volume_class,
-            VolumeClass::Hdd | VolumeClass::Ssd | VolumeClass::Unknown
+        let expected_root = super::volume::volume_root_of(&root);
+        let expected_class = super::volume::classify_seek_penalty(super::volume::query_seek_penalty(
+            &expected_root,
         ));
+        let expected_workers = std::thread::available_parallelism()
+            .map(|count| count.get() as u32)
+            .unwrap_or(1)
+            .max(1);
+        assert_eq!(report.worker_count, expected_workers);
+        assert_eq!(report.volume_class, expected_class);
+        assert_eq!(report.volume_root, expected_root);
         assert!(report.volume_root.ends_with(":\\"), "{}", report.volume_root);
     }
 
