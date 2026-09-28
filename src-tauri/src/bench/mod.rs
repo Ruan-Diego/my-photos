@@ -4,6 +4,7 @@ mod model;
 mod volume;
 
 use std::fs::{self, File};
+use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;
@@ -16,26 +17,47 @@ const BYTES_PER_ITEM: u32 = 4096;
 const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x400;
 
 pub fn run_baseline(root: &Path, item_count: u32) -> Result<BaselineReport, BenchError> {
-    run_baseline_with(root, item_count, None)
+    run_baseline_with(root, item_count, Hooks::default())
 }
 
-// SPEC_DEVIATION: `before_walk` plants a reparse point after the corpus exists.
-// Reason: validate rejects a non-empty root, so the junction test cannot create the link earlier.
+pub(crate) type OpenForHash = fn(&Path) -> io::Result<Box<dyn Read + Send>>;
+
+#[derive(Clone, Copy)]
+pub(crate) struct Hooks {
+    pub open_for_hash: Option<OpenForHash>,
+    pub fail_setup_at: Option<u32>,
+    pub fail_cleanup: bool,
+    // SPEC_DEVIATION: plants a reparse point after the corpus exists.
+    // Reason: validate rejects a non-empty root, so the junction test cannot create the link earlier.
+    pub before_walk: Option<fn(&Path)>,
+}
+
+impl Default for Hooks {
+    fn default() -> Self {
+        Self {
+            open_for_hash: None,
+            fail_setup_at: None,
+            fail_cleanup: false,
+            before_walk: None,
+        }
+    }
+}
+
 pub(crate) fn run_baseline_with(
     root: &Path,
     item_count: u32,
-    before_walk: Option<fn(&Path)>,
+    hooks: Hooks,
 ) -> Result<BaselineReport, BenchError> {
     corpus::validate(root, item_count)?;
     let created_root = !root.exists();
     if created_root {
         fs::create_dir(root).map_err(|_| BenchError::SetupFailed)?;
     }
-    if let Err(error) = write_corpus(root, item_count) {
+    if let Err(error) = write_corpus(root, item_count, hooks.fail_setup_at) {
         let _ = discard_created(root, created_root);
         return Err(error);
     }
-    if let Some(hook) = before_walk {
+    if let Some(hook) = hooks.before_walk {
         hook(root);
     }
 
@@ -45,7 +67,7 @@ pub(crate) fn run_baseline_with(
 
     let worker_count = available_workers();
     let hash_started = Instant::now();
-    let hashed = hash_files(root, item_count, &files, worker_count);
+    let hashed = hash_files(root, item_count, &files, worker_count, hooks.open_for_hash);
     let hash_elapsed_ms = elapsed_ms(hash_started);
     let ok = hashed.failures.is_empty() && hashed.files_hashed == item_count;
 
@@ -66,17 +88,26 @@ pub(crate) fn run_baseline_with(
         ok,
     };
 
+    if hooks.fail_cleanup {
+        return Err(BenchError::CleanupFailed);
+    }
     remove_measured_root(root).map_err(|_| BenchError::CleanupFailed)?;
     Ok(report)
 }
 
-fn write_corpus(root: &Path, item_count: u32) -> Result<(), BenchError> {
+fn write_corpus(root: &Path, item_count: u32, fail_setup_at: Option<u32>) -> Result<(), BenchError> {
     for index in 0..item_count {
+        if fail_setup_at == Some(index) {
+            return Err(BenchError::SetupFailed);
+        }
         let path = corpus_file(root, index);
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent).map_err(|_| BenchError::SetupFailed)?;
         }
         fs::write(&path, corpus::file_bytes(index)).map_err(|_| BenchError::SetupFailed)?;
+    }
+    if fail_setup_at.is_some() {
+        return Err(BenchError::SetupFailed);
     }
     Ok(())
 }
@@ -166,7 +197,13 @@ struct Hashed {
     failures: Vec<HashFailure>,
 }
 
-fn hash_files(root: &Path, item_count: u32, files: &[PathBuf], worker_count: u32) -> Hashed {
+fn hash_files(
+    root: &Path,
+    item_count: u32,
+    files: &[PathBuf],
+    worker_count: u32,
+    open_for_hash: Option<OpenForHash>,
+) -> Hashed {
     let results = Mutex::new((0..files.len()).map(|_| None).collect::<Vec<_>>());
     let next = AtomicUsize::new(0);
     let threads = if files.is_empty() {
@@ -181,7 +218,7 @@ fn hash_files(root: &Path, item_count: u32, files: &[PathBuf], worker_count: u32
                 if index >= files.len() {
                     break;
                 }
-                let outcome = hash_file(root, item_count, &files[index]);
+                let outcome = hash_file(root, item_count, &files[index], open_for_hash);
                 results.lock().expect("hash results")[index] = Some(outcome);
             });
         }
@@ -214,8 +251,17 @@ struct HashOutcome {
     digest: Option<[u8; 32]>,
 }
 
-fn hash_file(root: &Path, item_count: u32, path: &Path) -> HashOutcome {
-    let digest = File::open(path).and_then(hash::hash_reader).ok();
+fn hash_file(
+    root: &Path,
+    item_count: u32,
+    path: &Path,
+    open_for_hash: Option<OpenForHash>,
+) -> HashOutcome {
+    let opened = match open_for_hash {
+        Some(open) => open(path),
+        None => File::open(path).map(|file| Box::new(file) as Box<dyn Read + Send>),
+    };
+    let digest = opened.and_then(hash::hash_reader).ok();
     HashOutcome {
         corpus_index: corpus_index(root, path, item_count),
         relative_path: relative_of(root, path),
@@ -258,12 +304,13 @@ fn elapsed_ms(start: Instant) -> u64 {
 
 #[cfg(test)]
 mod tests {
-    use std::fs;
+    use std::fs::{self, File};
+    use std::io::{self, Read};
     use std::path::{Path, PathBuf};
     use std::time::{SystemTime, UNIX_EPOCH};
 
     use super::model::VolumeClass;
-    use super::{run_baseline, run_baseline_with};
+    use super::{run_baseline, run_baseline_with, Hooks};
 
     const DIGEST_64: &str = "c067a4e6cde3d7306e1fef52a92ebee10c1e562368ad06488bb1398610067415";
 
@@ -330,7 +377,15 @@ mod tests {
     fn junction_pointing_outside_is_not_hashed_or_deleted() {
         let scratch = Scratch::new("junction");
         let root = scratch.path.join("corpus");
-        let report = run_baseline_with(&root, 64, Some(plant_junction)).expect("baseline");
+        let report = run_baseline_with(
+            &root,
+            64,
+            Hooks {
+                before_walk: Some(plant_junction),
+                ..Hooks::default()
+            },
+        )
+        .expect("baseline");
         assert_success(&report);
         let sentinel = scratch.path.join("outside").join("sentinel.bin");
         assert_eq!(fs::read(&sentinel).unwrap(), b"outside");
@@ -376,6 +431,103 @@ mod tests {
         ));
     }
 
+    #[test]
+    fn one_unreadable_file_stays_in_failures_and_the_root_is_removed() {
+        let scratch = Scratch::new("one-bad");
+        let root = scratch.path.join("corpus");
+        let report = run_baseline_with(
+            &root,
+            64,
+            Hooks {
+                open_for_hash: Some(open_except_first),
+                ..Hooks::default()
+            },
+        )
+        .expect("baseline");
+        assert!(!report.ok);
+        assert_eq!(report.files_hashed, 63);
+        assert_eq!(report.failure_count, 1);
+        assert_eq!(report.failures[0].reason, "unreadable");
+        assert_eq!(
+            report.failures[0].relative_path,
+            "f03/2000/01/item-0000000.bin"
+        );
+        assert!(!root.exists());
+    }
+
+    #[test]
+    fn every_unreadable_file_leaves_an_empty_digest() {
+        let scratch = Scratch::new("all-bad");
+        let root = scratch.path.join("corpus");
+        let report = run_baseline_with(
+            &root,
+            64,
+            Hooks {
+                open_for_hash: Some(open_nothing),
+                ..Hooks::default()
+            },
+        )
+        .expect("baseline");
+        assert!(!report.ok);
+        assert_eq!(report.files_hashed, 0);
+        assert_eq!(report.content_digest, "");
+        assert_eq!(report.failure_count, 64);
+        assert!(report.failures.iter().all(|failure| {
+            failure.reason == "unreadable" && failure.relative_path.contains('/')
+        }));
+        assert!(!root.exists());
+    }
+
+    #[test]
+    fn failed_setup_removes_what_the_call_created() {
+        let scratch = Scratch::new("setup");
+        let marker = scratch.path.join("marker.bin");
+        fs::write(&marker, b"parent").unwrap();
+        let root = scratch.path.join("corpus");
+        let error = run_baseline_with(
+            &root,
+            64,
+            Hooks {
+                fail_setup_at: Some(2),
+                ..Hooks::default()
+            },
+        )
+        .unwrap_err();
+        assert_eq!(error.as_code(), "setup_failed");
+        assert!(!root.exists());
+        assert_eq!(fs::read(&marker).unwrap(), b"parent");
+    }
+
+    #[test]
+    fn failed_cleanup_leaves_the_root() {
+        let scratch = Scratch::new("cleanup");
+        let root = scratch.path.join("corpus");
+        let error = run_baseline_with(
+            &root,
+            64,
+            Hooks {
+                fail_cleanup: true,
+                ..Hooks::default()
+            },
+        )
+        .unwrap_err();
+        assert_eq!(error.as_code(), "cleanup_failed");
+        assert!(root.join("f03").is_dir());
+        fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn non_empty_root_is_rejected_without_changing_the_marker() {
+        let scratch = Scratch::new("occupied");
+        let root = scratch.path.join("corpus");
+        fs::create_dir(&root).unwrap();
+        let marker = root.join("marker.bin");
+        fs::write(&marker, b"keep").unwrap();
+        let error = run_baseline(&root, 64).unwrap_err();
+        assert_eq!(error.as_code(), "root_not_empty");
+        assert_eq!(fs::read(&marker).unwrap(), b"keep");
+    }
+
     fn assert_success(report: &super::BaselineReport) {
         assert!(report.ok);
         assert_eq!(report.item_count, 64);
@@ -385,6 +537,17 @@ mod tests {
         assert_eq!(report.failure_count, 0);
         assert!(report.failures.is_empty());
         assert_eq!(report.content_digest, DIGEST_64);
+    }
+
+    fn open_except_first(path: &Path) -> io::Result<Box<dyn Read + Send>> {
+        if path.file_name().and_then(|name| name.to_str()) == Some("item-0000000.bin") {
+            return Err(io::Error::other("unreadable"));
+        }
+        Ok(Box::new(File::open(path)?))
+    }
+
+    fn open_nothing(_path: &Path) -> io::Result<Box<dyn Read + Send>> {
+        Err(io::Error::other("unreadable"))
     }
 
     fn plant_junction(root: &Path) {

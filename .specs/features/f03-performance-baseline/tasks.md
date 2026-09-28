@@ -301,14 +301,14 @@ T6 ──┘         └─→ T9 [P] ──┴──→ T10
 
 **Done when**:
 
-- [ ] An injected read error on one file leaves `ok` false, one `failures` item with `reason` `unreadable` and a `/` relative path, `filesHashed` 63, and the root removed
-- [ ] Every file failing the read leaves `filesHashed` 0, `contentDigest` empty, `ok` false, and the root removed
-- [ ] `fail_setup_at` returns `setup_failed`, removes what the call created, and leaves a marker in the parent unchanged
-- [ ] `fail_cleanup` returns `cleanup_failed` and leaves the root in place. The test removes that leftover itself
-- [ ] `run_baseline` on a non-empty directory returns `root_not_empty` and does not change the marker file
-- [ ] Five integration tests pass, one per bullet
-- [ ] Gate: `cargo test --manifest-path src-tauri/Cargo.toml` exits 0
-- [ ] Test count: 12 tests in `bench` (7 from T7 plus 5). No test deleted
+- [x] An injected read error on one file leaves `ok` false, one `failures` item with `reason` `unreadable` and a `/` relative path, `filesHashed` 63, and the root removed
+- [x] Every file failing the read leaves `filesHashed` 0, `contentDigest` empty, `ok` false, and the root removed
+- [x] `fail_setup_at` returns `setup_failed`, removes what the call created, and leaves a marker in the parent unchanged
+- [x] `fail_cleanup` returns `cleanup_failed` and leaves the root in place. The test removes that leftover itself
+- [x] `run_baseline` on a non-empty directory returns `root_not_empty` and does not change the marker file
+- [x] Five integration tests pass, one per bullet
+- [x] Gate: `cargo test --manifest-path src-tauri/Cargo.toml` exits 0
+- [x] Test count: 12 tests in `bench` (7 from T7 plus 5). No test deleted
 
 **Tests**: integration
 **Gate**: full
