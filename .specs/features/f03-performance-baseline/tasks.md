@@ -270,14 +270,14 @@ T6 ──┘         └─→ T9 [P] ──┴──→ T10
 
 **Done when**:
 
-- [ ] A run of 64 files returns `ok` true, `filesHashed` 64, `totalBytes` 262144, `bytesPerItem` 4096, the known `contentDigest`, and integer `walkElapsedMs` and `hashElapsedMs` measured apart from corpus creation. The root no longer exists, whether the caller created it empty or the function created it
-- [ ] A second run on a new empty root returns the same `contentDigest`. `workerCount` is at least 1. On Windows, `volumeClass` is `hdd`, `ssd`, or `unknown` and `volumeRoot` ends with `:\`
-- [ ] A marker file outside the root is unchanged. A directory junction inside the corpus pointing outside is not walked, the outside sentinel is not hashed, and that sentinel still exists after cleanup
-- [ ] Serialized JSON uses the camelCase names from T1
-- [ ] Nothing reads or writes `E:\` unless that path is the explicit root
-- [ ] Seven integration tests pass, one for each bullet of behavior above that names a distinct scenario (created root, pre-existing empty root, second run, volume and workers, outside marker, junction, JSON names)
-- [ ] Gate: `cargo test --manifest-path src-tauri/Cargo.toml` exits 0
-- [ ] Test count: 7 new tests in `bench`. No test deleted
+- [x] A run of 64 files returns `ok` true, `filesHashed` 64, `totalBytes` 262144, `bytesPerItem` 4096, the known `contentDigest`, and integer `walkElapsedMs` and `hashElapsedMs` measured apart from corpus creation. The root no longer exists, whether the caller created it empty or the function created it
+- [x] A second run on a new empty root returns the same `contentDigest`. `workerCount` is at least 1. On Windows, `volumeClass` is `hdd`, `ssd`, or `unknown` and `volumeRoot` ends with `:\`
+- [x] A marker file outside the root is unchanged. A directory junction inside the corpus pointing outside is not walked, the outside sentinel is not hashed, and that sentinel still exists after cleanup
+- [x] Serialized JSON uses the camelCase names from T1
+- [x] Nothing reads or writes `E:\` unless that path is the explicit root
+- [x] Seven integration tests pass, one for each bullet of behavior above that names a distinct scenario (created root, pre-existing empty root, second run, volume and workers, outside marker, junction, JSON names)
+- [x] Gate: `cargo test --manifest-path src-tauri/Cargo.toml` exits 0
+- [x] Test count: 7 new tests in `bench`. No test deleted
 
 **Tests**: integration
 **Gate**: full
