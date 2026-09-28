@@ -180,15 +180,15 @@ T6 ──┘         └─→ T9 [P] ──┴──→ T10
 
 **Done when**:
 
-- [ ] Count `0` and `150001` return `count_out_of_range`. Count `1` and `150000` are accepted and create no file
-- [ ] A relative path and a UNC path return `root_not_absolute`
-- [ ] A path with `..` returns `root_not_absolute`
-- [ ] A volume root returns `root_is_volume`
-- [ ] A missing parent returns `parent_missing` and creates nothing
-- [ ] A non-empty directory returns `root_not_empty` and the marker file inside it is unchanged. An absent root whose parent exists returns `Ok` and the root still does not exist
-- [ ] Six unit tests pass: count bounds, relative/UNC, `..`, volume root, missing parent, and the empty-or-absent directory pair
-- [ ] Gate: `cargo test --manifest-path src-tauri/Cargo.toml` exits 0
-- [ ] Test count: 8 tests in `corpus` (2 from T2 plus 6). No test deleted
+- [x] Count `0` and `150001` return `count_out_of_range`. Count `1` and `150000` are accepted and create no file
+- [x] A relative path and a UNC path return `root_not_absolute`
+- [x] A path with `..` returns `root_not_absolute`
+- [x] A volume root returns `root_is_volume`
+- [x] A missing parent returns `parent_missing` and creates nothing
+- [x] A non-empty directory returns `root_not_empty` and the marker file inside it is unchanged. An absent root whose parent exists returns `Ok` and the root still does not exist
+- [x] Six unit tests pass: count bounds, relative/UNC, `..`, volume root, missing parent, and the empty-or-absent directory pair
+- [x] Gate: `cargo test --manifest-path src-tauri/Cargo.toml` exits 0
+- [x] Test count: 8 tests in `corpus` (2 from T2 plus 6). No test deleted
 
 **Tests**: unit
 **Gate**: quick
