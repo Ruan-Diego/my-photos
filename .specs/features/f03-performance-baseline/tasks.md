@@ -152,11 +152,11 @@ T6 ──┘         └─→ T9 [P] ──┴──→ T10
 
 **Done when**:
 
-- [ ] `Some(true)` is `hdd`, `Some(false)` is `ssd`, and `None` is `unknown`
-- [ ] `volume_root_of` turns a drive path into an uppercase letter plus `:\`, including a lowercase drive letter. It does not call Windows
-- [ ] Four unit tests pass: one per `classify_seek_penalty` input, plus one for the volume-root formatting
-- [ ] Gate: `cargo test --manifest-path src-tauri/Cargo.toml` exits 0
-- [ ] Test count: 4 new tests in `volume`. No existing test deleted
+- [x] `Some(true)` is `hdd`, `Some(false)` is `ssd`, and `None` is `unknown`
+- [x] `volume_root_of` turns a drive path into an uppercase letter plus `:\`, including a lowercase drive letter. It does not call Windows
+- [x] Four unit tests pass: one per `classify_seek_penalty` input, plus one for the volume-root formatting
+- [x] Gate: `cargo test --manifest-path src-tauri/Cargo.toml` exits 0
+- [x] Test count: 4 new tests in `volume`. No existing test deleted
 
 **Tests**: unit
 **Gate**: quick
