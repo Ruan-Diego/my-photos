@@ -60,11 +60,11 @@
 
 ## Handoff
 
-- **Feature**: F01 Project Setup — `.specs/features/f01-project-setup/`
-- **Phase / Task**: Execute complete. Validation PASS (17/17).
-- **Completed**: T1–T6, fix of the health JSON, `src-tauri/src/db/`, and the motion dependency check
-- **In-progress**: none
-- **Next step**: Specify F02 (Takeout Discovery) or F04 (Database Schema). The media library folder is `E:\` (AD-007). F01 does not read it.
-- **Blockers**: none
-- **Uncommitted files**: PRD HTML (untracked, left out of commits)
+- **Feature**: F02 Takeout Discovery — concluída
+- **Phase / Task**: Validação independente — PASS em `.specs/features/f02-takeout-discovery/validation.md`
+- **Completed**: T1–T7 commitados (`66158ff`..`ee16cfb`). O teste do campo extra foi reforçado em `e6fd16c` depois que um mutante sobreviveu. Segunda verificação PASS (54 testes Rust, 8/8 mutantes mortos)
+- **In-progress**: nenhum
+- **Next step**: F03 Performance Baseline, ou F06 se a ordem do roadmap priorizar o uso deste matcher
+- **Blockers**: nenhum
+- **Uncommitted files**: PRD HTML continua de fora dos commits
 - **Branch**: main
