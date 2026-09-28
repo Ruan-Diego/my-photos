@@ -1,3 +1,4 @@
+pub mod bench;
 mod commands;
 mod db;
 mod takeout;
