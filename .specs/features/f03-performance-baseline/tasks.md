@@ -212,13 +212,13 @@ T6 ──┘         └─→ T9 [P] ──┴──→ T10
 
 **Done when**:
 
-- [ ] `Cargo.toml` depends on `sha2` version `0.11.0`
-- [ ] `hash_reader` feeds `Sha256` in chunks of at most 65536 bytes. An I/O error returns `Err`
-- [ ] Digest of `file_bytes(0)` is `d67c656e01756650d77717b0839985a056ec28ffe174601d690fc407a2ceffca`. Index 1 is `29fa02d3381a0b093ff2d6d783c1c78176fd1aafce643c8d205631dc85df5e95`. Index 63 is `b21fe85ea1fba0db5690a657db55547f0cf8cb4a9ea81ac332e67de8de84be06`
-- [ ] `content_digest` of indexes 0 through 63 is `c067a4e6cde3d7306e1fef52a92ebee10c1e562368ad06488bb1398610067415`. No successes yields an empty string. A reader that yields the bytes in pieces smaller than 4096 still matches index 0
-- [ ] Five unit tests pass, covering the three known file digests, the 64-file aggregate, the empty aggregate, the chunked reader, and a reader error
-- [ ] Gate: `cargo test --manifest-path src-tauri/Cargo.toml` exits 0
-- [ ] Test count: 5 new tests in `hash`. No existing test deleted
+- [x] `Cargo.toml` depends on `sha2` version `0.11.0`
+- [x] `hash_reader` feeds `Sha256` in chunks of at most 65536 bytes. An I/O error returns `Err`
+- [x] Digest of `file_bytes(0)` is `d67c656e01756650d77717b0839985a056ec28ffe174601d690fc407a2ceffca`. Index 1 is `29fa02d3381a0b093ff2d6d783c1c78176fd1aafce643c8d205631dc85df5e95`. Index 63 is `b21fe85ea1fba0db5690a657db55547f0cf8cb4a9ea81ac332e67de8de84be06`
+- [x] `content_digest` of indexes 0 through 63 is `c067a4e6cde3d7306e1fef52a92ebee10c1e562368ad06488bb1398610067415`. No successes yields an empty string. A reader that yields the bytes in pieces smaller than 4096 still matches index 0
+- [x] Five unit tests pass, covering the three known file digests, the 64-file aggregate, the empty aggregate, the chunked reader, and a reader error
+- [x] Gate: `cargo test --manifest-path src-tauri/Cargo.toml` exits 0
+- [x] Test count: 5 new tests in `hash`. No existing test deleted
 
 **Tests**: unit
 **Gate**: quick
