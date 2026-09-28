@@ -242,11 +242,11 @@ T6 ──┘         └─→ T9 [P] ──┴──→ T10
 
 **Done when**:
 
-- [ ] On Windows, `Cargo.toml` depends on `windows-sys` version `0.61.2` with features `Win32_Foundation`, `Win32_Storage_FileSystem`, `Win32_System_IO`, and `Win32_System_Ioctl`
-- [ ] The query opens `\\.\X:` and sends `StorageDeviceSeekPenaltyProperty`. `CreateFileW` or `DeviceIoControl` failing returns `None`. Non-Windows builds return `None` and do not link those APIs
-- [ ] One integration test calls `query_seek_penalty` for the volume of the temp directory and checks that `classify_seek_penalty` of that answer is `hdd`, `ssd`, or `unknown`
-- [ ] Gate: `cargo test --manifest-path src-tauri/Cargo.toml` exits 0
-- [ ] Test count: 5 tests in `volume` (4 from T3 plus 1). No test deleted
+- [x] On Windows, `Cargo.toml` depends on `windows-sys` version `0.61.2` with features `Win32_Foundation`, `Win32_Storage_FileSystem`, `Win32_System_IO`, and `Win32_System_Ioctl`
+- [x] The query opens `\\.\X:` and sends `StorageDeviceSeekPenaltyProperty`. `CreateFileW` or `DeviceIoControl` failing returns `None`. Non-Windows builds return `None` and do not link those APIs
+- [x] One integration test calls `query_seek_penalty` for the volume of the temp directory and checks that `classify_seek_penalty` of that answer is `hdd`, `ssd`, or `unknown`
+- [x] Gate: `cargo test --manifest-path src-tauri/Cargo.toml` exits 0
+- [x] Test count: 5 tests in `volume` (4 from T3 plus 1). No test deleted
 
 **Tests**: integration
 **Gate**: full
