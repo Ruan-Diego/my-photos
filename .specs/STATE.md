@@ -32,7 +32,7 @@
 - **Trade-off**: Não pode corrigir EXIF nos originais mesmo quando o JSON tem dados melhores
 - **Scope**: Todo o sistema — scanner, indexador, qualquer operação de I/O sobre a biblioteca
 - **Date**: 2026-09-27
-- **Status**: active
+- **Status**: superseded by AD-008 (2026-10-02)
 
 ### AD-005
 - **Decision**: Idioma padrão da UI: **pt-BR**, com arquitetura de i18n pronta para outros idiomas
@@ -59,16 +59,38 @@
 - **Status**: active
 
 
+### AD-008
+- **Decision**: O app **gerencia os arquivos** da biblioteca em `E:\`: mover foto entre pastas, renomear pastas, criar pastas, excluir fotos e pastas. Substitui o AD-004.
+- **Reason**: Definido pelo stakeholder. O acervo é organizado dentro do próprio app.
+- **Trade-off**: Perde a garantia "zero alterações em originais" do PRD. Toda escrita só acontece por ação explícita do usuário na UI; varredura, indexação, matcher e thumbnails continuam só leitura. Mover ou renomear uma mídia leva junto o JSON do Takeout (`.supplemental-metadata.json`) casado com ela, para data e local não se perderem.
+- **Scope**: Nova feature de operações de arquivo; F05/F10 (o índice precisa refletir as mudanças); F36 (a métrica de hash antes/depois passa a valer só para a indexação).
+- **Date**: 2026-10-02
+- **Status**: active
+
+### AD-009
+- **Decision**: Excluir pelo app move para uma **lixeira própria** dentro de `E:\` (pasta oculta), esvaziada depois de N dias. Nunca exclusão permanente direta.
+- **Reason**: Definido pelo stakeholder. A Lixeira do Windows nem sempre existe em discos USB.
+- **Trade-off**: Ocupa espaço até esvaziar. N e a tela de restaurar ainda não estão definidos. A pasta da lixeira fica fora da varredura.
+- **Scope**: Operações de arquivo; scanner (ignorar a pasta da lixeira).
+- **Date**: 2026-10-02
+- **Status**: active
+
+### AD-010
+- **Decision**: A raiz é sempre `E:\` (reafirma o AD-007) e a árvore é exibida **como está no disco**, sem fundir pastas. As partes de um mesmo export (`takeout-<stamp>-N-NNN`) são unidas só por baixo, para casar mídia e JSON. Arquivos não compatíveis (`.zip`, `.html`, etc.) são ignorados sem virar problema. Pastas ocultas de sistema (`$RECYCLE.BIN`, `System Volume Information`) são puladas.
+- **Reason**: Definido pelo stakeholder. No Takeout real, 169 de 4247 mídias têm o JSON em outra parte.
+- **Trade-off**: Um export diferente nunca empresta JSON a outro, mesmo com a mesma pasta lógica.
+- **Scope**: F02 (implementado em `2eb6812`), F05, F10, F15/F18 (navegação por pasta).
+- **Date**: 2026-10-02
+- **Status**: active
+
 ## Handoff
 
-- **Feature**: F03 Performance Baseline — concluída; Phase 0 ainda não fechada
-- **Phase / Task**: F03 validada (`.specs/features/f03-performance-baseline/validation.md`). Baselines refeitos em release com cache frio (`--cold`, commits `1435d5b`, `78ac57f`)
-- **Completed**: F01, F02, F03. Correção pós-F02: pasta ilegível, entrada sem stat e nome não UTF-8 viram `Problem` em vez de sumir (`d55ebbd`)
+- **Feature**: Phase 0 concluída (F01, F02, F03)
+- **Phase / Task**: critério de saída atingido no Takeout real em `E:\` — 4247/4247 mídias do Google Fotos casadas (100%), 5 JSONs órfãos sem mídia exportada
+- **Completed**: matcher aceita `supplemental-metadata` sem truncar (`0406130`) e casa entre partes do mesmo export (`2eb6812`); pastas ilegíveis viram `Problem` (`d55ebbd`); baselines release com cache frio (`1435d5b`, `78ac57f`). Survey só leitura: `TAKEOUT_ROOT=E:\ cargo test real_takeout_survey -- --ignored --nocapture`
 - **In-progress**: nenhum
-- **Next step**: validar o matcher no Takeout real em `E:` (critério de saída da Phase 0: >98% em fixtures reais). Depois, F04 Database Schema
-- **Blockers**:
-  - `E:` responde "erro fatal de hardware de dispositivo" ao listar a raiz (2026-10-02). Sem leitura do acervo real até o disco ou a conexão USB ser verificada
-  - `C:` com ~430 MB livres
-- **Open questions** (dependem do Takeout real): `metadados.json` e sufixo de editado localizados em pt-BR; truncagem de 51 em bytes vs caracteres com acentos; vídeo de Live Photo sem JSON; anomalia do baseline HDD (50k mais lento que 150k)
+- **Next step**: F04 Database Schema, já considerando AD-008/009/010 (caminho físico mutável, lixeira do app, operações de arquivo da F48)
+- **Blockers**: `C:` com ~430 MB livres. `E:` deu "erro fatal de hardware" uma vez em 2026-10-02 e voltou após reconexão — vigiar
+- **Open questions**: N dias da lixeira (AD-009); anomalia do baseline HDD (50k mais lento que 150k); 1885 mídias fora do Google Fotos dependem de EXIF/filesystem (F07/F09)
 - **Uncommitted files**: PRD HTML, `.specs/LESSONS.md`, `.specs/lessons.json`
 - **Branch**: main

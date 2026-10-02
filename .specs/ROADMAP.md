@@ -2,7 +2,7 @@
 
 > Biblioteca Local de Fotos e Vídeos para Exportações do Google Takeout
 >
-> Princípio inegociável: **não destrutividade** — a biblioteca original é sempre a fonte da verdade.
+> Princípio: **o disco é a fonte da verdade**. Leitura, indexação e thumbnails nunca escrevem na biblioteca; o app só altera arquivos por ação explícita do usuário (AD-008), e exclusão vai para a lixeira do app (AD-009).
 
 ## Diretriz de UI/UX (todas as telas)
 
@@ -82,7 +82,7 @@ Phase 5 ─ Pós-MVP (v1.1+)           Futuro
 | Feature ID | Nome | Descrição | RFs Relacionados | Prioridade |
 |------------|------|-----------|------------------|------------|
 | **F15** | App Shell & Navigation | Layout principal (sidebar + content area); navegação entre seções (Fotos, Álbuns, Pessoas, Locais, Favoritos, Config); tema pt-BR | — | P1 ⭐ |
-| **F16** | Onboarding Flow | Tela de primeiro uso: seleção de pasta, explicação de não destrutividade, início de indexação | RF-001, US-01 | P1 ⭐ |
+| **F16** | Onboarding Flow | Tela de primeiro uso: seleção de pasta, explicação de que só ações do usuário alteram arquivos, início de indexação | RF-001, US-01 | P1 ⭐ |
 | **F17** | Indexing Progress UI | Barra de progresso com contagem por tipo, percentual, ETA; uso parcial do app durante indexação | RF-008, RF-009, RF-014 | P1 ⭐ |
 | **F18** | Timeline View | Grade virtualizada (react-window/virtua) agrupada por ano/mês; scroll contínuo; lazy loading de thumbnails; skeleton placeholders | RF-016, RF-017, RF-018, RF-019, RF-020, RNF-001 | P1 ⭐ |
 | **F19** | Media Viewer | Visualizador fullscreen: zoom, ajuste à tela, tamanho original; navegação anterior/próxima; carregamento progressivo (thumbnail → original) | RF-021, RF-022, RF-024 | P1 ⭐ |
@@ -110,6 +110,7 @@ Phase 5 ─ Pós-MVP (v1.1+)           Futuro
 | **F29** | Duplicate Detection | Hash SHA-256 + hash perceptual; agrupamento informativo de duplicatas (sem exclusão automática) | RF-050, RF-051, RF-052 | P2 |
 | **F30** | Keyboard Shortcuts | Atalhos de teclado conforme seção 15.4 do PRD (setas, Esc, F, Ctrl+F, Espaço, Ctrl+scroll) | — | P2 |
 | **F31** | Settings UI | Gerenciar biblioteca/pastas, localização do banco/cache, preferências de indexação, tema, privacidade | RF-059, RF-060, RF-061 | P1 ⭐ |
+| **F48** | File Operations | Mover mídia entre pastas, renomear e criar pastas, excluir para a lixeira do app (AD-008, AD-009); o JSON do Takeout acompanha a mídia; índice atualizado na hora; restaurar da lixeira | — | P1 ⭐ |
 
 **Critério de saída da Phase 3:** Todas as user stories US-01 a US-10 do PRD atendidas; critérios de aceitação da seção 5 passando.
 
@@ -128,7 +129,7 @@ Phase 5 ─ Pós-MVP (v1.1+)           Futuro
 | **F36** | Security Hardening | Validação de entrada; parsing isolado; PRAGMA integrity_check; permissões mínimas; zero rede por padrão | RNF-005, RNF-007, RNF-008 | P1 ⭐ |
 | **F37** | Windows Packaging | Instalador Windows (MSI/NSIS via Tauri); auto-update; assinatura de código | RNF-018 | P1 ⭐ |
 
-**Critério de saída da Phase 4:** Build Windows assinado; todos os critérios de sucesso da seção 26 do PRD atendidos; zero alterações em arquivos originais verificável por hash.
+**Critério de saída da Phase 4:** Build Windows assinado; todos os critérios de sucesso da seção 26 do PRD atendidos; zero alterações em arquivos durante a indexação, verificável por hash.
 
 ---
 
@@ -220,7 +221,7 @@ F01 (Setup)
 | Mídias com `taken_at_source = takeout_json` | Maximizar | Query no banco após indexação real |
 | Mídias com JSON associado (exact/heuristic) | > 98% | Fixture de teste real |
 | Falhas que interrompem indexação completa | 0 | Teste de resiliência com fixtures corrompidas |
-| Alterações em arquivos originais | 0 | Hash antes/depois da indexação |
+| Alterações em arquivos durante a indexação | 0 | Hash antes/depois da indexação |
 | Timeline visível após abertura | < 2s | Benchmark com biblioteca indexada |
 | Scroll da timeline | ~60 fps | Profiling com 300k+ itens |
 | Busca/filtro | < 300ms | Benchmark com 500k itens + FTS5 |
