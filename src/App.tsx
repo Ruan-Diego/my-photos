@@ -48,7 +48,7 @@ function App() {
     <main>
       {screen.failure !== null ? <p>{screen.failure}</p> : null}
       {screen.ready !== null ? <h1>{screen.ready}</h1> : null}
-      {screen.sqlite !== null ? <p>{screen.sqlite}</p> : null}
+      {screen.schema !== null ? <p>{screen.schema}</p> : null}
       {screen.libraries !== null ? <p>{screen.libraries}</p> : null}
     </main>
   );
