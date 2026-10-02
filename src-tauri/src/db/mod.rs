@@ -410,6 +410,7 @@ pub(crate) mod tests {
         assert_eq!(pragma("foreign_keys"), "1");
         assert_eq!(pragma("journal_mode"), "wal");
         assert_eq!(pragma("synchronous"), "2");
+        assert_eq!(pragma("busy_timeout"), "5000");
     }
 
     fn plain_version(path: &Path) -> u32 {
@@ -509,6 +510,39 @@ pub(crate) mod tests {
         assert_eq!(plain_version(&backup), 1);
         assert!(has_table(&backup, "t"));
         assert!(!has_table(&backup, "u"));
+    }
+
+    #[test]
+    fn backup_holds_rows_that_were_still_in_the_wal() {
+        let scratch = Scratch::new("wal-backup");
+        let path = scratch.path.join("library.db");
+        // Kept open so closing it does not fold the WAL back into the main file.
+        let writer = open_with(&path, ONE).expect("v1");
+        writer.execute("INSERT INTO t VALUES ('in-wal')", []).unwrap();
+        let wal = PathBuf::from(format!("{}-wal", path.display()));
+        assert!(fs::metadata(&wal).unwrap().len() > 0, "row must sit in the WAL");
+
+        drop(open_with(&path, TWO).expect("v2"));
+        drop(writer);
+
+        let backup = scratch.path.join("library.db.bak-v1");
+        let value: String = rusqlite::Connection::open(&backup)
+            .unwrap()
+            .query_row("SELECT a FROM t", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(value, "in-wal");
+    }
+
+    #[test]
+    fn each_migration_commits_on_its_own() {
+        let scratch = Scratch::new("own-transaction");
+        let path = scratch.path.join("library.db");
+        // Fresh file: version 1 must stay committed when version 2 fails.
+        let error = open_with(&path, BROKEN_TWO).unwrap_err();
+        assert_eq!(error.as_code(), "migration_failed");
+        assert_eq!(plain_version(&path), 1);
+        assert!(has_table(&path, "t"));
+        assert!(!has_table(&path, "u"));
     }
 
     #[test]
