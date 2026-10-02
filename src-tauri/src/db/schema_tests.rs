@@ -75,6 +75,101 @@ fn v1_has_exactly_the_spec_tables_and_indexes() {
     );
 }
 
+fn pragma_names(connection: &Connection, pragma: &str, target: &str) -> Vec<String> {
+    let mut statement = connection
+        .prepare(&format!("SELECT name FROM pragma_{pragma}(?1)"))
+        .unwrap();
+    statement
+        .query_map([target], |row| row.get(0))
+        .unwrap()
+        .map(Result::unwrap)
+        .collect()
+}
+
+/// Column lists, in order, from the design's v1 DDL.
+const COLUMNS: &[(&str, &[&str])] = &[
+    ("libraries", &["id", "name", "root_path", "volume_id", "volume_label", "status", "created_at", "last_indexed_at"]),
+    ("folders", &["id", "library_id", "relative_path", "created_at"]),
+    (
+        "media_items",
+        &[
+            "id", "library_id", "relative_path", "filename", "extension", "media_type", "size_bytes",
+            "file_hash_sha256", "perceptual_hash", "width", "height", "orientation", "duration_ms",
+            "taken_at", "taken_at_source", "taken_at_timezone", "fs_created_at", "fs_modified_at",
+            "has_takeout_json", "json_relative_path", "json_match_confidence", "title", "description",
+            "is_favorite", "is_hidden", "indexing_status", "indexing_error", "created_at", "updated_at",
+        ],
+    ),
+    ("media_locations", &["media_id", "latitude", "longitude", "altitude", "source", "place_label"]),
+    ("people", &["id", "library_id", "name", "normalized_name"]),
+    ("media_people", &["media_id", "person_id"]),
+    (
+        "albums",
+        &["id", "library_id", "name", "source", "folder_relative_path", "description", "cover_media_id", "created_at"],
+    ),
+    ("media_albums", &["media_id", "album_id"]),
+    ("media_metadata_raw", &["media_id", "takeout_json", "exif_json"]),
+    ("duplicate_groups", &["id", "library_id", "match_type", "representative_media_id"]),
+    ("duplicate_group_members", &["group_id", "media_id"]),
+    ("user_notes", &["media_id", "note", "updated_at"]),
+    (
+        "trash_entries",
+        &[
+            "id", "library_id", "kind", "media_id", "original_relative_path", "trash_relative_path",
+            "json_original_relative_path", "json_trash_relative_path", "trashed_at", "purge_after",
+        ],
+    ),
+    (
+        "indexing_runs",
+        &["id", "library_id", "started_at", "finished_at", "run_type", "files_scanned", "files_indexed", "files_errored", "status"],
+    ),
+    ("indexing_errors", &["id", "run_id", "relative_path", "error_type", "message", "created_at"]),
+    ("app_settings", &["key", "value"]),
+];
+
+#[test]
+fn every_table_has_the_design_columns_in_order() {
+    let (_scratch, connection) = library();
+    for (table, columns) in COLUMNS {
+        // table_xinfo also lists the generated purge_after column.
+        assert_eq!(pragma_names(&connection, "table_xinfo", table), *columns, "{table}");
+    }
+}
+
+#[test]
+fn every_index_covers_the_design_columns() {
+    let (_scratch, connection) = library();
+    for (index, columns) in [
+        ("idx_media_taken_at", &["library_id", "taken_at"][..]),
+        ("idx_media_hash", &["file_hash_sha256"][..]),
+        ("idx_media_type", &["library_id", "media_type"][..]),
+        ("idx_trash_purge", &["purge_after"][..]),
+    ] {
+        assert_eq!(pragma_names(&connection, "index_info", index), columns, "{index}");
+    }
+}
+
+#[test]
+fn every_legal_media_domain_value_is_accepted() {
+    let (_scratch, connection) = library();
+    let id = insert_media(&connection, "a.jpg").unwrap();
+    for (column, values) in [
+        ("media_type", &["photo", "video"][..]),
+        ("json_match_confidence", &["exact", "heuristic", "none"][..]),
+        ("taken_at_source", &["takeout_json", "exif", "filesystem"][..]),
+        ("indexing_status", &["ok", "error", "orphan_json", "missing_file"][..]),
+    ] {
+        for value in values {
+            connection
+                .execute(
+                    &format!("UPDATE media_items SET {column} = ?1 WHERE id = ?2"),
+                    params![value, id],
+                )
+                .unwrap_or_else(|error| panic!("{column} = {value}: {error}"));
+        }
+    }
+}
+
 #[test]
 fn duplicate_paths_violate_unique_for_media_and_folders() {
     let (_scratch, connection) = library();
