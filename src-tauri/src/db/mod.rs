@@ -17,6 +17,8 @@ pub enum DbError {
 }
 
 impl DbError {
+    // Stable code for logs and tests; the UI shows message().
+    #[allow(dead_code)]
     pub fn as_code(self) -> &'static str {
         match self {
             Self::PathNotAbsolute => "path_not_absolute",
@@ -57,8 +59,17 @@ pub(crate) const MIGRATIONS: &[Migration] = &[Migration {
     sql: include_str!("migrations/0001_initial.sql"),
 }];
 
+// Read by F05 and later; today only the schema tests use it.
+#[allow(dead_code)]
 pub fn latest_version() -> u32 {
     latest_version_of(MIGRATIONS)
+}
+
+/// AD-007 and AD-011: the library is E:\ and its database lives inside it.
+pub const LIBRARY_DB_PATH: &str = r"E:\.myphotos\library.db";
+
+pub fn open_library() -> Result<Connection, DbError> {
+    open(Path::new(LIBRARY_DB_PATH))
 }
 
 pub fn open(path: &Path) -> Result<Connection, DbError> {
