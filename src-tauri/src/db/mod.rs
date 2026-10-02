@@ -143,6 +143,10 @@ fn backup_path(path: &Path, version: u32) -> PathBuf {
     path.with_file_name(name)
 }
 
+pub fn schema_version(connection: &Connection) -> Result<u32, DbError> {
+    user_version(connection)
+}
+
 fn user_version(connection: &Connection) -> Result<u32, DbError> {
     connection
         .pragma_query_value(None, "user_version", |row| row.get(0))
@@ -219,20 +223,14 @@ fn hide(folder: &Path) {
 #[cfg(not(windows))]
 fn hide(_folder: &Path) {}
 
-pub fn select_one() -> Result<i64, String> {
-    let connection = Connection::open_in_memory().map_err(|error| error.to_string())?;
-    connection
-        .query_row("SELECT 1", [], |row| row.get(0))
-        .map_err(|error| error.to_string())
-}
-
 #[cfg(test)]
 mod schema_tests;
 
 #[cfg(test)]
 pub(crate) mod tests {
-    use super::{latest_version_of, open_with, select_one, DbError, Migration};
-    use std::path::PathBuf;
+    use super::{latest_version_of, open_with, DbError, Migration};
+    use std::fs;
+    use std::path::{Path, PathBuf};
     use std::time::{SystemTime, UNIX_EPOCH};
 
     #[test]
@@ -546,43 +544,5 @@ pub(crate) mod tests {
             Migration { version: 2, sql: "" },
         ];
         assert_eq!(latest_version_of(&migrations), 2);
-    }
-    use std::env;
-    use std::fs;
-    use std::path::Path;
-
-    #[test]
-    fn select_one_returns_1() {
-        let directory = env::current_dir().expect("cwd");
-        let before = database_file_names(&directory);
-
-        assert_eq!(select_one().expect("SELECT 1"), 1);
-        assert_eq!(database_file_names(&directory), before);
-    }
-
-    #[test]
-    fn second_call_returns_1_without_creating_a_db_file() {
-        let directory = env::current_dir().expect("cwd");
-        let before = database_file_names(&directory);
-
-        assert_eq!(select_one().expect("first SELECT 1"), 1);
-        assert_eq!(select_one().expect("second SELECT 1"), 1);
-        assert_eq!(database_file_names(&directory), before);
-    }
-
-    fn database_file_names(directory: &Path) -> Vec<String> {
-        let mut names = fs::read_dir(directory)
-            .unwrap_or_else(|error| panic!("read {directory:?}: {error}"))
-            .map(|entry| {
-                entry
-                    .unwrap_or_else(|error| panic!("dir entry: {error}"))
-                    .file_name()
-                    .to_string_lossy()
-                    .into_owned()
-            })
-            .filter(|name| name.ends_with(".db"))
-            .collect::<Vec<_>>();
-        names.sort();
-        names
     }
 }
