@@ -58,13 +58,3 @@
 - **Date**: 2026-09-27
 - **Status**: active
 
-## Handoff
-
-- **Feature**: F02 Takeout Discovery — concluída
-- **Phase / Task**: Validação independente — PASS em `.specs/features/f02-takeout-discovery/validation.md`
-- **Completed**: T1–T7 commitados (`66158ff`..`ee16cfb`). O teste do campo extra foi reforçado em `e6fd16c` depois que um mutante sobreviveu. Segunda verificação PASS (54 testes Rust, 8/8 mutantes mortos)
-- **In-progress**: nenhum
-- **Next step**: F03 Performance Baseline, ou F06 se a ordem do roadmap priorizar o uso deste matcher
-- **Blockers**: nenhum
-- **Uncommitted files**: PRD HTML continua de fora dos commits
-- **Branch**: main
