@@ -83,6 +83,14 @@
 - **Date**: 2026-10-02
 - **Status**: active
 
+### AD-011
+- **Decision**: O banco SQLite fica **dentro do acervo**, em `E:\.myphotos\library.db` (pasta oculta). A lixeira do AD-009 fica em `E:\.myphotos\trash\`. A varredura ignora `E:\.myphotos`.
+- **Reason**: Definido pelo stakeholder. O acervo fica autocontido e vai junto com o HD; o `C:` tem pouco espaço.
+- **Trade-off**: Com o `E:` desconectado o app não mostra a biblioteca — o modo offline (F27, US-05) sai do MVP. Banco em disco USB exige `synchronous=FULL` e tolerância a desconexão. Thumbnails (F12) provavelmente seguem a mesma pasta.
+- **Scope**: F04, F05/F10 (ignorar `.myphotos`), F12, F27, F48.
+- **Date**: 2026-10-02
+- **Status**: active
+
 ## Handoff
 
 - **Feature**: Phase 0 concluída (F01, F02, F03)
