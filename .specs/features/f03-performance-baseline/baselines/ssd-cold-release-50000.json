@@ -1,0 +1,16 @@
+{
+  "itemCount": 50000,
+  "bytesPerItem": 4096,
+  "volumeClass": "ssd",
+  "volumeRoot": "C:\\",
+  "cacheMode": "cold",
+  "workerCount": 20,
+  "filesHashed": 50000,
+  "totalBytes": 204800000,
+  "failureCount": 0,
+  "failures": [],
+  "contentDigest": "6db1f652cf73fd227d46adbc481c2e546982c54e1504660094bfa21a5a9a9bc2",
+  "walkElapsedMs": 3888,
+  "hashElapsedMs": 2422,
+  "ok": true
+}
