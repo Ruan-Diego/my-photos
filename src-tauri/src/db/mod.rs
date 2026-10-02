@@ -65,7 +65,7 @@ pub(crate) fn open_with(path: &Path, migrations: &[Migration]) -> Result<Connect
         return Err(DbError::VolumeMissing);
     }
     ensure_parent(path)?;
-    let connection = Connection::open(path).map_err(|_| DbError::OpenFailed)?;
+    let mut connection = Connection::open(path).map_err(|_| DbError::OpenFailed)?;
     // Read before any write: journal_mode = WAL rewrites the header, and a file we
     // do not understand must stay byte-identical.
     let version = user_version(&connection)?;
@@ -73,7 +73,60 @@ pub(crate) fn open_with(path: &Path, migrations: &[Migration]) -> Result<Connect
         return Err(DbError::NewerThanApp);
     }
     configure(&connection)?;
+    migrate(&mut connection, path, version, migrations)?;
     Ok(connection)
+}
+
+fn migrate(
+    connection: &mut Connection,
+    path: &Path,
+    version: u32,
+    migrations: &[Migration],
+) -> Result<(), DbError> {
+    let mut pending: Vec<&Migration> = migrations
+        .iter()
+        .filter(|migration| migration.version > version)
+        .collect();
+    if pending.is_empty() {
+        return Ok(());
+    }
+    pending.sort_by_key(|migration| migration.version);
+    if version >= 1 {
+        back_up(connection, path, version)?;
+    }
+    for migration in pending {
+        // Dropping the transaction on any error rolls back the SQL and the version.
+        let transaction = connection
+            .transaction()
+            .map_err(|_| DbError::MigrationFailed)?;
+        transaction
+            .execute_batch(migration.sql)
+            .map_err(|_| DbError::MigrationFailed)?;
+        transaction
+            .pragma_update(None, "user_version", migration.version)
+            .map_err(|_| DbError::MigrationFailed)?;
+        transaction.commit().map_err(|_| DbError::MigrationFailed)?;
+    }
+    Ok(())
+}
+
+/// Copies the database to `<name>.bak-v<version>`, after folding the WAL into it so the
+/// copy holds every committed page.
+fn back_up(connection: &Connection, path: &Path, version: u32) -> Result<(), DbError> {
+    let busy: i64 = connection
+        .query_row("PRAGMA wal_checkpoint(TRUNCATE)", [], |row| row.get(0))
+        .map_err(|_| DbError::BackupFailed)?;
+    if busy != 0 {
+        return Err(DbError::BackupFailed);
+    }
+    fs::copy(path, backup_path(path, version)).map_err(|_| DbError::BackupFailed)?;
+    Ok(())
+}
+
+fn backup_path(path: &Path, version: u32) -> PathBuf {
+    let mut name = path.file_name().unwrap_or_default().to_os_string();
+    name.push(format!(".bak-v{version}"));
+    path.with_file_name(name)
 }
 
 fn user_version(connection: &Connection) -> Result<u32, DbError> {
@@ -331,6 +384,141 @@ mod tests {
         assert_eq!(pragma("foreign_keys"), "1");
         assert_eq!(pragma("journal_mode"), "wal");
         assert_eq!(pragma("synchronous"), "2");
+    }
+
+    fn plain_version(path: &Path) -> u32 {
+        rusqlite::Connection::open(path)
+            .unwrap()
+            .pragma_query_value(None, "user_version", |row| row.get(0))
+            .unwrap()
+    }
+
+    fn has_table(path: &Path, table: &str) -> bool {
+        rusqlite::Connection::open(path)
+            .unwrap()
+            .query_row(
+                "SELECT count(*) FROM sqlite_schema WHERE type = 'table' AND name = ?1",
+                [table],
+                |row| row.get::<_, i64>(0),
+            )
+            .unwrap()
+            == 1
+    }
+
+    fn schema_of(connection: &rusqlite::Connection) -> Vec<String> {
+        let mut statement = connection
+            .prepare("SELECT coalesce(sql, name) FROM sqlite_schema ORDER BY name")
+            .unwrap();
+        statement
+            .query_map([], |row| row.get(0))
+            .unwrap()
+            .map(Result::unwrap)
+            .collect()
+    }
+
+    fn backups_in(folder: &Path) -> Vec<String> {
+        fs::read_dir(folder)
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
+            .filter(|name| name.contains(".bak-v"))
+            .collect()
+    }
+
+    const TWO: &[Migration] = &[
+        Migration {
+            version: 1,
+            sql: "CREATE TABLE t (a);",
+        },
+        Migration {
+            version: 2,
+            sql: "CREATE TABLE u (b);",
+        },
+    ];
+
+    const BROKEN_TWO: &[Migration] = &[
+        Migration {
+            version: 1,
+            sql: "CREATE TABLE t (a);",
+        },
+        Migration {
+            version: 2,
+            sql: "CREATE TABLE u (b); INSERT INTO nope VALUES (1);",
+        },
+    ];
+
+    #[test]
+    fn new_file_reaches_the_latest_version_without_a_backup() {
+        let scratch = Scratch::new("new");
+        let path = scratch.path.join("library.db");
+        drop(open_with(&path, TWO).expect("open"));
+        assert_eq!(plain_version(&path), 2);
+        assert!(has_table(&path, "t") && has_table(&path, "u"));
+        assert!(backups_in(&scratch.path).is_empty());
+    }
+
+    #[test]
+    fn reopening_runs_nothing_and_keeps_the_schema() {
+        let scratch = Scratch::new("reopen");
+        let path = scratch.path.join("library.db");
+        let before = schema_of(&open_with(&path, TWO).expect("first"));
+        let again = open_with(&path, TWO).expect("second");
+        assert_eq!(schema_of(&again), before);
+        drop(again);
+        assert_eq!(plain_version(&path), 2);
+        assert!(backups_in(&scratch.path).is_empty());
+    }
+
+    #[test]
+    fn existing_database_is_copied_before_it_is_migrated() {
+        let scratch = Scratch::new("backup");
+        let path = scratch.path.join("library.db");
+        drop(open_with(&path, ONE).expect("v1"));
+        let backup = scratch.path.join("library.db.bak-v1");
+        fs::write(&backup, b"stale backup").unwrap();
+
+        drop(open_with(&path, TWO).expect("v2"));
+
+        assert_eq!(plain_version(&path), 2);
+        assert_eq!(backups_in(&scratch.path), vec!["library.db.bak-v1".to_string()]);
+        assert_eq!(plain_version(&backup), 1);
+        assert!(has_table(&backup, "t"));
+        assert!(!has_table(&backup, "u"));
+    }
+
+    #[test]
+    fn failed_migration_rolls_back_and_keeps_the_previous_version() {
+        let scratch = Scratch::new("broken");
+        let path = scratch.path.join("library.db");
+        drop(open_with(&path, ONE).expect("v1"));
+        let error = open_with(&path, BROKEN_TWO).unwrap_err();
+        assert_eq!(error.as_code(), "migration_failed");
+        assert_eq!(plain_version(&path), 1);
+        assert!(has_table(&path, "t"));
+        assert!(!has_table(&path, "u"));
+    }
+
+    #[test]
+    fn pending_migrations_run_in_ascending_version_order() {
+        let scratch = Scratch::new("order");
+        let path = scratch.path.join("library.db");
+        // Listed out of order; version 2 only works after version 1.
+        let unordered = [
+            Migration {
+                version: 2,
+                sql: "INSERT INTO t VALUES (2);",
+            },
+            Migration {
+                version: 1,
+                sql: "CREATE TABLE t (a);",
+            },
+        ];
+        let connection = open_with(&path, &unordered).expect("open");
+        let value: i64 = connection
+            .query_row("SELECT a FROM t", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(value, 2);
+        drop(connection);
+        assert_eq!(plain_version(&path), 2);
     }
 
     #[test]
