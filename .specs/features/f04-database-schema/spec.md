@@ -7,9 +7,9 @@ O matcher (F02) já encontra as 4.247 mídias do Google Fotos em `E:\`, mas o re
 ## Goals
 
 - [ ] O app abre (ou cria) o banco em `E:\.myphotos\library.db` ao iniciar, aplica as migrações pendentes e informa a versão do esquema na tela de saúde
-- [ ] O esquema v1 cobre todas as entidades do PRD 8.3 mais as decisões AD-008 a AD-011 (pastas, lixeira, identidade estável ao mover)
-- [ ] As migrações são versionadas, atômicas e nunca rodam num banco mais novo que o app
-- [ ] Nenhum teste lê ou escreve em `E:\`; o caminho do banco é um parâmetro
+- [x] O esquema v1 cobre todas as entidades do PRD 8.3 mais as decisões AD-008 a AD-011 (pastas, lixeira, identidade estável ao mover)
+- [x] As migrações são versionadas, atômicas e nunca rodam num banco mais novo que o app
+- [x] Nenhum teste lê ou escreve em `E:\`; o caminho do banco é um parâmetro
 
 ## Out of Scope
 
@@ -130,15 +130,15 @@ O matcher (F02) já encontra as 4.247 mídias do Google Fotos em `E:\`, mas o re
 
 | Requirement ID | Story | Phase | Status |
 | -------------- | ----- | ----- | ------ |
-| DB-01 | P1: Banco aberto e migrado — local, criação, disco ausente, PRAGMAs | - | Pending |
-| DB-02 | P1: Banco aberto e migrado — arquivo inválido ou mais novo intocado | - | Pending |
-| DB-03 | P1: Migrações seguras e idempotentes | - | Pending |
-| DB-04 | P1: Esquema v1 — tabelas, colunas, índices | - | Pending |
-| DB-05 | P1: Esquema v1 — restrições, identidade estável, cascatas | - | Pending |
-| DB-06 | P1: Esquema v1 — lixeira de 30 dias | - | Pending |
-| DB-07 | P1: Tela de saúde mostra a versão do esquema | - | Pending |
+| DB-01 | P1: Banco aberto e migrado — local, criação, disco ausente, PRAGMAs | T1–T8 | Verified |
+| DB-02 | P1: Banco aberto e migrado — arquivo inválido ou mais novo intocado | T1–T8 | Verified |
+| DB-03 | P1: Migrações seguras e idempotentes | T1–T8 | Verified |
+| DB-04 | P1: Esquema v1 — tabelas, colunas, índices | T1–T8 | Verified |
+| DB-05 | P1: Esquema v1 — restrições, identidade estável, cascatas | T1–T8 | Verified |
+| DB-06 | P1: Esquema v1 — lixeira de 30 dias | T1–T8 | Verified |
+| DB-07 | P1: Tela de saúde mostra a versão do esquema | T1–T8 | Verified |
 
-**Coverage:** 7 total, 0 mapped to tasks, 7 unmapped ⚠️
+**Coverage:** 7 total, 7 mapped to tasks, 0 unmapped. Verified in `validation.md` (PASS, iteration 2).
 
 ---
 
@@ -146,4 +146,4 @@ O matcher (F02) já encontra as 4.247 mídias do Google Fotos em `E:\`, mas o re
 
 - [ ] `npm run tauri dev` com o `E:` conectado cria `E:\.myphotos\library.db` e mostra `Banco: esquema v1`
 - [ ] Com o `E:` desconectado, mostra `Falha: disco E: não encontrado` e nada é criado em nenhum disco
-- [ ] Todos os critérios acima passam em `cargo test` usando só diretórios temporários
+- [x] Todos os critérios acima passam em `cargo test` usando só diretórios temporários

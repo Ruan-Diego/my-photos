@@ -9,7 +9,7 @@ Implement these tasks with the `tlc-spec-driven` skill: **activate it by name an
 ---
 
 **Design**: `.specs/features/f04-database-schema/design.md`
-**Status**: Approved
+**Status**: Done — T1–T8 + 2 test fixes; Verifier PASS (iteration 2)
 
 ---
 
