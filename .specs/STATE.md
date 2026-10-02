@@ -68,9 +68,9 @@
 - **Status**: active
 
 ### AD-009
-- **Decision**: Excluir pelo app move para uma **lixeira própria** dentro de `E:\` (pasta oculta), esvaziada depois de N dias. Nunca exclusão permanente direta.
+- **Decision**: Excluir pelo app move para uma **lixeira própria** dentro de `E:\` (pasta oculta), esvaziada depois de **30 dias**. Nunca exclusão permanente direta.
 - **Reason**: Definido pelo stakeholder. A Lixeira do Windows nem sempre existe em discos USB.
-- **Trade-off**: Ocupa espaço até esvaziar. N e a tela de restaurar ainda não estão definidos. A pasta da lixeira fica fora da varredura.
+- **Trade-off**: Ocupa espaço por até 30 dias. A tela de restaurar ainda não está definida. A pasta da lixeira fica fora da varredura.
 - **Scope**: Operações de arquivo; scanner (ignorar a pasta da lixeira).
 - **Date**: 2026-10-02
 - **Status**: active
@@ -91,6 +91,6 @@
 - **In-progress**: nenhum
 - **Next step**: F04 Database Schema, já considerando AD-008/009/010 (caminho físico mutável, lixeira do app, operações de arquivo da F48)
 - **Blockers**: `C:` com ~430 MB livres. `E:` deu "erro fatal de hardware" uma vez em 2026-10-02 e voltou após reconexão — vigiar
-- **Open questions**: N dias da lixeira (AD-009); anomalia do baseline HDD (50k mais lento que 150k); 1885 mídias fora do Google Fotos dependem de EXIF/filesystem (F07/F09)
+- **Open questions**: anomalia do baseline HDD (50k mais lento que 150k); 1885 mídias fora do Google Fotos dependem de EXIF/filesystem (F07/F09)
 - **Uncommitted files**: PRD HTML, `.specs/LESSONS.md`, `.specs/lessons.json`
 - **Branch**: main
