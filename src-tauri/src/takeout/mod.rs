@@ -37,15 +37,39 @@ pub(crate) fn discover_with(
     let mut problems: Vec<Problem> = Vec::new();
     read_tree(root, "", &mut files, &mut problems)?;
 
+    // Takeout splits one export into takeout-<stamp>-N-NNN folders, and a sidecar can land
+    // in a different part than its media. Match inside the logical folder (part suffix
+    // dropped) and keep reporting the physical paths.
+    let mut groups: BTreeMap<String, Vec<(String, String)>> = BTreeMap::new();
+    for (directory, names) in &files {
+        let entries = groups.entry(logical_dir(directory)).or_default();
+        for name in names {
+            entries.push((directory.clone(), name.clone()));
+        }
+    }
+
     let mut media = Vec::new();
     let mut albums = Vec::new();
 
-    for (directory, names) in &files {
-        let matches = match_directory(names);
+    for entries in groups.values() {
+        let names: Vec<String> = entries.iter().map(|(_, name)| name.clone()).collect();
+        // match_directory returns one item per media name, in input order.
+        let media_dirs = entries
+            .iter()
+            .filter(|(_, name)| matches!(classify(name), FileRole::Media { .. }))
+            .map(|(directory, _)| directory.as_str());
+        let json_dir = |json_name: &str| {
+            entries
+                .iter()
+                .find(|(_, name)| name.eq_ignore_ascii_case(json_name))
+                .map(|(directory, _)| directory.as_str())
+                .unwrap_or_default()
+        };
+        let matches = match_directory(&names);
         let mut consumed = Vec::new();
         let mut parsed: BTreeMap<String, Result<MediaMetadata, ProblemKind>> = BTreeMap::new();
 
-        for item in matches {
+        for (item, directory) in matches.into_iter().zip(media_dirs) {
             let relative_path = join_relative(directory, &item.media_name);
             let Some(json_name) = item.json_name else {
                 media.push(MediaHit {
@@ -58,7 +82,7 @@ pub(crate) fn discover_with(
                 continue;
             };
 
-            let json_relative = join_relative(directory, &json_name);
+            let json_relative = join_relative(json_dir(&json_name), &json_name);
             if !consumed
                 .iter()
                 .any(|used: &String| used.eq_ignore_ascii_case(&json_name))
@@ -94,7 +118,7 @@ pub(crate) fn discover_with(
             }
         }
 
-        for name in names {
+        for (directory, name) in entries {
             if classify(name) != FileRole::JsonSidecar {
                 continue;
             }
@@ -110,7 +134,7 @@ pub(crate) fn discover_with(
             });
         }
 
-        for name in names {
+        for (directory, name) in entries {
             if classify(name) != FileRole::AlbumMetadata {
                 continue;
             }
@@ -218,12 +242,58 @@ fn read_tree(
             continue;
         }
         if file_type.is_dir() {
+            if is_system_dir(&entry) {
+                continue;
+            }
             read_tree(&entry.path(), &join_relative(relative, &name), files, problems)?;
         } else if file_type.is_file() {
             files.entry(relative.to_string()).or_default().push(name);
         }
     }
     Ok(())
+}
+
+fn logical_dir(directory: &str) -> String {
+    directory
+        .split('/')
+        .map(|part| takeout_export(part).unwrap_or(part))
+        .collect::<Vec<_>>()
+        .join("/")
+}
+
+/// `takeout-20260921T183943Z-1-002` → `takeout-20260921T183943Z`.
+fn takeout_export(component: &str) -> Option<&str> {
+    let prefix = component.get(..8)?;
+    if !prefix.eq_ignore_ascii_case("takeout-") {
+        return None;
+    }
+    let mut pieces = component.rsplitn(3, '-');
+    let part = pieces.next()?;
+    let archive = pieces.next()?;
+    let base = pieces.next()?;
+    let digits = |text: &str| !text.is_empty() && text.bytes().all(|byte| byte.is_ascii_digit());
+    if base.len() <= 8 || !digits(part) || !digits(archive) {
+        return None;
+    }
+    Some(base)
+}
+
+/// `$RECYCLE.BIN` and `System Volume Information` are hidden system folders at a volume
+/// root; listing them fails and they never hold the library.
+fn is_system_dir(entry: &fs::DirEntry) -> bool {
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::MetadataExt;
+        const HIDDEN_AND_SYSTEM: u32 = 0x2 | 0x4;
+        entry
+            .metadata()
+            .is_ok_and(|meta| meta.file_attributes() & HIDDEN_AND_SYSTEM == HIDDEN_AND_SYSTEM)
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = entry;
+        false
+    }
 }
 
 fn join_relative(directory: &str, name: &str) -> String {
@@ -534,6 +604,77 @@ mod tests {
         assert_eq!(edited.confidence, Confidence::None);
         assert_eq!(edited.json_relative_path, None);
         assert_eq!(edited.reason, None);
+    }
+
+    #[test]
+    fn sidecar_in_another_part_of_the_same_export_matches_with_physical_paths() {
+        let temp = std::env::temp_dir().join(format!("my-photos-f02-parts-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&temp);
+        let folder = |part: &str| {
+            let path = temp.join(part).join("Takeout").join("Google Fotos").join("Fotos de 2025");
+            fs::create_dir_all(&path).expect("part folder");
+            path
+        };
+        let json = br#"{ "photoTakenTime": { "timestamp": "1660142220" } }"#;
+        fs::write(folder("takeout-20260921T183943Z-1-001").join("a.jpg"), b"a").expect("media");
+        fs::write(
+            folder("takeout-20260921T183943Z-1-002").join("a.jpg.supplemental-metadata.json"),
+            json,
+        )
+        .expect("sidecar");
+        // Another export never lends its sidecars.
+        fs::write(folder("takeout-20250101T000000Z-1-001").join("b.jpg"), b"b").expect("media");
+        fs::write(
+            folder("takeout-20260921T183943Z-1-001").join("b.jpg.supplemental-metadata.json"),
+            json,
+        )
+        .expect("sidecar");
+        fs::write(temp.join("drive-download.zip"), b"PK").expect("zip");
+
+        let report = discover(&temp);
+        fs::remove_dir_all(&temp).expect("cleanup");
+        let report = report.expect("directory");
+
+        let a = hit(
+            &report,
+            "takeout-20260921T183943Z-1-001/Takeout/Google Fotos/Fotos de 2025/a.jpg",
+        );
+        assert_eq!(a.confidence, Confidence::Heuristic);
+        assert_eq!(
+            a.json_relative_path.as_deref(),
+            Some("takeout-20260921T183943Z-1-002/Takeout/Google Fotos/Fotos de 2025/a.jpg.supplemental-metadata.json")
+        );
+        assert_eq!(a.metadata.as_ref().and_then(|item| item.taken_at_unix), Some(1660142220));
+
+        let b = hit(
+            &report,
+            "takeout-20250101T000000Z-1-001/Takeout/Google Fotos/Fotos de 2025/b.jpg",
+        );
+        assert_eq!(b.confidence, Confidence::None);
+        assert!(report.problems.iter().any(|problem| {
+            problem.kind == ProblemKind::OrphanJson
+                && problem.relative_path.ends_with("b.jpg.supplemental-metadata.json")
+        }));
+        assert!(report.media.iter().all(|item| !item.relative_path.ends_with(".zip")));
+        assert!(report.problems.iter().all(|problem| !problem.relative_path.ends_with(".zip")));
+    }
+
+    #[test]
+    fn takeout_part_suffix_is_dropped_only_from_part_folders() {
+        use super::{logical_dir, takeout_export};
+        assert_eq!(
+            takeout_export("takeout-20260921T183943Z-1-002"),
+            Some("takeout-20260921T183943Z")
+        );
+        assert_eq!(takeout_export("Takeout"), None);
+        assert_eq!(takeout_export("takeout-1-2"), None);
+        assert_eq!(takeout_export("takeout-x-a-001"), None);
+        assert_eq!(takeout_export("Photos-1-001"), None);
+        assert_eq!(
+            logical_dir("Ruan/takeout-20260921T183943Z-2-001/Takeout/Drive"),
+            "Ruan/takeout-20260921T183943Z/Takeout/Drive"
+        );
+        assert_eq!(logical_dir(""), "");
     }
 
     /// Read-only survey of a real Takeout. Run with
