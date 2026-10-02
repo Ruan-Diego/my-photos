@@ -9,15 +9,48 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;
 use std::thread;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
-pub use model::{BaselineReport, BenchError, HashFailure, VolumeClass};
+pub use model::{BaselineReport, BenchError, CacheMode, HashFailure, VolumeClass};
 
 const BYTES_PER_ITEM: u32 = 4096;
+const COLD_SETTLE: Duration = Duration::from_secs(30);
 const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x400;
 
 pub fn run_baseline(root: &Path, item_count: u32) -> Result<BaselineReport, BenchError> {
     run_baseline_with(root, item_count, Hooks::default())
+}
+
+/// Cold mode waits for the lazy writer to drain after the write phase, then reads every
+/// file with FILE_FLAG_NO_BUFFERING, so the hash phase hits the device instead of the file cache.
+/// Directory metadata may still be cached, so `walkElapsedMs` stays a warm-metadata figure.
+pub fn run_baseline_cold(root: &Path, item_count: u32) -> Result<BaselineReport, BenchError> {
+    run_baseline_with(
+        root,
+        item_count,
+        Hooks {
+            open_for_hash: Some(open_unbuffered),
+            cold: true,
+            ..Hooks::default()
+        },
+    )
+}
+
+#[cfg(windows)]
+fn open_unbuffered(path: &Path) -> io::Result<Box<dyn Read + Send>> {
+    use std::fs::OpenOptions;
+    use std::os::windows::fs::OpenOptionsExt;
+    const FILE_FLAG_NO_BUFFERING: u32 = 0x2000_0000;
+    let file = OpenOptions::new()
+        .read(true)
+        .custom_flags(FILE_FLAG_NO_BUFFERING)
+        .open(path)?;
+    Ok(Box::new(file))
+}
+
+#[cfg(not(windows))]
+fn open_unbuffered(path: &Path) -> io::Result<Box<dyn Read + Send>> {
+    Ok(Box::new(File::open(path)?))
 }
 
 pub(crate) type OpenForHash = fn(&Path) -> io::Result<Box<dyn Read + Send>>;
@@ -27,6 +60,7 @@ pub(crate) struct Hooks {
     pub open_for_hash: Option<OpenForHash>,
     pub fail_setup_at: Option<u32>,
     pub fail_cleanup: bool,
+    pub cold: bool,
     // SPEC_DEVIATION: plants a reparse point after the corpus exists.
     // Reason: validate rejects a non-empty root, so the junction test cannot create the link earlier.
     pub before_walk: Option<fn(&Path)>,
@@ -38,6 +72,7 @@ impl Default for Hooks {
             open_for_hash: None,
             fail_setup_at: None,
             fail_cleanup: false,
+            cold: false,
             before_walk: None,
         }
     }
@@ -56,6 +91,10 @@ pub(crate) fn run_baseline_with(
     if let Err(error) = write_corpus(root, item_count, hooks.fail_setup_at) {
         let _ = discard_created(root, created_root);
         return Err(error);
+    }
+    if hooks.cold {
+        // Per-file fsync takes hours on an HDD, so let the lazy writer drain instead.
+        thread::sleep(COLD_SETTLE);
     }
     if let Some(hook) = hooks.before_walk {
         hook(root);
@@ -77,6 +116,11 @@ pub(crate) fn run_baseline_with(
         bytes_per_item: BYTES_PER_ITEM,
         volume_class: volume::classify_seek_penalty(volume::query_seek_penalty(&volume_root)),
         volume_root,
+        cache_mode: if hooks.cold {
+            CacheMode::Cold
+        } else {
+            CacheMode::Warm
+        },
         worker_count,
         files_hashed: hashed.files_hashed,
         total_bytes: u64::from(hashed.files_hashed) * u64::from(BYTES_PER_ITEM),
@@ -95,7 +139,11 @@ pub(crate) fn run_baseline_with(
     Ok(report)
 }
 
-fn write_corpus(root: &Path, item_count: u32, fail_setup_at: Option<u32>) -> Result<(), BenchError> {
+fn write_corpus(
+    root: &Path,
+    item_count: u32,
+    fail_setup_at: Option<u32>,
+) -> Result<(), BenchError> {
     for index in 0..item_count {
         if fail_setup_at == Some(index) {
             return Err(BenchError::SetupFailed);

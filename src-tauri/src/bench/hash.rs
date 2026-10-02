@@ -4,11 +4,16 @@ use sha2::{Digest, Sha256};
 
 const CHUNK: usize = 65_536;
 
+// Sector-aligned so the same reader works with FILE_FLAG_NO_BUFFERING.
+#[repr(align(4096))]
+struct Aligned([u8; CHUNK]);
+
 pub(crate) fn hash_reader(mut reader: impl Read) -> io::Result<[u8; 32]> {
     let mut hasher = Sha256::new();
-    let mut buf = [0u8; CHUNK];
+    let mut aligned = Aligned([0u8; CHUNK]);
+    let buf = &mut aligned.0;
     loop {
-        let read = reader.read(&mut buf)?;
+        let read = reader.read(&mut buf[..])?;
         if read == 0 {
             break;
         }

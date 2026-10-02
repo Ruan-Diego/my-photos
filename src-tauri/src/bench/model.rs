@@ -8,6 +8,13 @@ pub enum VolumeClass {
     Unknown,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum CacheMode {
+    Warm,
+    Cold,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HashFailure {
@@ -22,6 +29,7 @@ pub struct BaselineReport {
     pub bytes_per_item: u32,
     pub volume_class: VolumeClass,
     pub volume_root: String,
+    pub cache_mode: CacheMode,
     pub worker_count: u32,
     pub files_hashed: u32,
     pub total_bytes: u64,

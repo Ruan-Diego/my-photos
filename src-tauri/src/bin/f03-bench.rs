@@ -12,7 +12,12 @@ fn main() -> ExitCode {
 
 fn run(args: Vec<String>) -> Result<(), u8> {
     let parsed = parse(&args)?;
-    let report = my_photos_lib::bench::run_baseline(&parsed.root, parsed.count).map_err(|error| {
+    let run = if parsed.cold {
+        my_photos_lib::bench::run_baseline_cold
+    } else {
+        my_photos_lib::bench::run_baseline
+    };
+    let report = run(&parsed.root, parsed.count).map_err(|error| {
         eprintln!("{}", error.as_code());
         1
     })?;
@@ -31,14 +36,21 @@ struct Parsed {
     root: PathBuf,
     count: u32,
     output: Option<PathBuf>,
+    cold: bool,
 }
 
 fn parse(args: &[String]) -> Result<Parsed, u8> {
     let mut root = None;
     let mut count = None;
     let mut output = None;
+    let mut cold = false;
     let mut index = 0;
     while index < args.len() {
+        if args[index] == "--cold" {
+            cold = true;
+            index += 1;
+            continue;
+        }
         let Some(value) = args.get(index + 1) else {
             usage();
             return Err(2);
@@ -61,7 +73,12 @@ fn parse(args: &[String]) -> Result<Parsed, u8> {
         index += 2;
     }
     match (root, count) {
-        (Some(root), Some(count)) => Ok(Parsed { root, count, output }),
+        (Some(root), Some(count)) => Ok(Parsed {
+            root,
+            count,
+            output,
+            cold,
+        }),
         _ => {
             usage();
             Err(2)
