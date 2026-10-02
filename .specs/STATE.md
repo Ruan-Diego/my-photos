@@ -58,3 +58,17 @@
 - **Date**: 2026-09-27
 - **Status**: active
 
+
+## Handoff
+
+- **Feature**: F03 Performance Baseline — concluída; Phase 0 ainda não fechada
+- **Phase / Task**: F03 validada (`.specs/features/f03-performance-baseline/validation.md`). Baselines refeitos em release com cache frio (`--cold`, commits `1435d5b`, `78ac57f`)
+- **Completed**: F01, F02, F03. Correção pós-F02: pasta ilegível, entrada sem stat e nome não UTF-8 viram `Problem` em vez de sumir (`d55ebbd`)
+- **In-progress**: nenhum
+- **Next step**: validar o matcher no Takeout real em `E:` (critério de saída da Phase 0: >98% em fixtures reais). Depois, F04 Database Schema
+- **Blockers**:
+  - `E:` responde "erro fatal de hardware de dispositivo" ao listar a raiz (2026-10-02). Sem leitura do acervo real até o disco ou a conexão USB ser verificada
+  - `C:` com ~430 MB livres
+- **Open questions** (dependem do Takeout real): `metadados.json` e sufixo de editado localizados em pt-BR; truncagem de 51 em bytes vs caracteres com acentos; vídeo de Live Photo sem JSON; anomalia do baseline HDD (50k mais lento que 150k)
+- **Uncommitted files**: PRD HTML, `.specs/LESSONS.md`, `.specs/lessons.json`
+- **Branch**: main
