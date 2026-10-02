@@ -78,9 +78,11 @@ fn resolve_steps_1_to_4(name: &str, extension: &str, sidecars: &[String]) -> Nam
         format!("{name}.supplemental-metadata.json"),
         format!("{stem}.supplemental-metadata.json"),
     ];
+    // Newer exports keep the full name past 51 characters, so try both spellings.
     let supplemental: Vec<String> = supplemental
         .iter()
-        .filter_map(|logical| truncate_sidecar_name(logical))
+        .flat_map(|logical| [Some(logical.clone()), truncate_sidecar_name(logical)])
+        .flatten()
         .collect();
     if let Some(matched) = step(&supplemental, sidecars, Confidence::Heuristic) {
         return matched_or_none(name, matched);
@@ -102,7 +104,13 @@ fn resolve_steps_1_to_4(name: &str, extension: &str, sidecars: &[String]) -> Nam
         ];
         let expected: Vec<String> = expected
             .iter()
-            .filter_map(|logical| append_marker(logical, &marker))
+            .flat_map(|logical| {
+                [
+                    append_marker_to(logical, &marker),
+                    append_marker(logical, &marker),
+                ]
+            })
+            .flatten()
             .collect();
         if let Some(matched) = step(&expected, sidecars, Confidence::Heuristic) {
             return matched_or_none(name, matched);
@@ -133,8 +141,11 @@ fn duplicate_marker(stem: &str) -> Option<(String, String)> {
 }
 
 fn append_marker(logical: &str, marker: &str) -> Option<String> {
-    let truncated = truncate_sidecar_name(logical)?;
-    let without_json = truncated.strip_suffix(".json")?;
+    append_marker_to(&truncate_sidecar_name(logical)?, marker)
+}
+
+fn append_marker_to(sidecar: &str, marker: &str) -> Option<String> {
+    let without_json = sidecar.strip_suffix(".json")?;
     Some(format!("{without_json}{marker}.json"))
 }
 
@@ -376,6 +387,24 @@ mod tests {
         let sidecar = truncate_sidecar_name(&logical).expect("truncated supplemental");
         assert!(logical.len() > 51);
         assert_ne!(sidecar, logical);
+        let matches = match_directory(&names(&[&media_name, &sidecar]));
+        let hit = find(&matches, &media_name);
+        assert_eq!(hit.confidence, Confidence::Heuristic);
+        assert_eq!(hit.json_name.as_deref(), Some(sidecar.as_str()));
+    }
+
+    #[test]
+    fn untruncated_long_supplemental_metadata_still_matches() {
+        let media_name = "IMG_20250928_160143_1.jpg";
+        let sidecar = format!("{media_name}.supplemental-metadata.json");
+        assert!(sidecar.len() > 51);
+        let matches = match_directory(&names(&[media_name, &sidecar]));
+        let hit = find(&matches, media_name);
+        assert_eq!(hit.confidence, Confidence::Heuristic);
+        assert_eq!(hit.json_name.as_deref(), Some(sidecar.as_str()));
+
+        let media_name = format!("{}(1).jpg", "q".repeat(40));
+        let sidecar = format!("{}.jpg.supplemental-metadata(1).json", "q".repeat(40));
         let matches = match_directory(&names(&[&media_name, &sidecar]));
         let hit = find(&matches, &media_name);
         assert_eq!(hit.confidence, Confidence::Heuristic);

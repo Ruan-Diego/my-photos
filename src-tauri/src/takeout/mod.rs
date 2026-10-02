@@ -536,6 +536,48 @@ mod tests {
         assert_eq!(edited.reason, None);
     }
 
+    /// Read-only survey of a real Takeout. Run with
+    /// `TAKEOUT_ROOT=<dir> cargo test real_takeout_survey -- --ignored --nocapture`.
+    #[test]
+    #[ignore]
+    fn real_takeout_survey() {
+        let root = PathBuf::from(std::env::var("TAKEOUT_ROOT").expect("TAKEOUT_ROOT"));
+        let report = discover(&root).expect("directory");
+        let total = report.media.len();
+        let count = |confidence: Confidence| {
+            report.media.iter().filter(|item| item.confidence == confidence).count()
+        };
+        let (exact, heuristic, none) = (
+            count(Confidence::Exact),
+            count(Confidence::Heuristic),
+            count(Confidence::None),
+        );
+        let ambiguous = report
+            .media
+            .iter()
+            .filter(|item| item.reason == Some(UnmatchedReason::Ambiguous))
+            .count();
+        println!("media={total} exact={exact} heuristic={heuristic} none={none} ambiguous={ambiguous}");
+        if total > 0 {
+            println!(
+                "matched={:.2}%",
+                100.0 * (exact + heuristic) as f64 / total as f64
+            );
+        }
+        println!("albums={}", report.albums.len());
+        let mut kinds: BTreeMap<String, usize> = BTreeMap::new();
+        for problem in &report.problems {
+            *kinds.entry(format!("{:?}", problem.kind)).or_default() += 1;
+        }
+        println!("problems={kinds:?}");
+        for item in report.media.iter().filter(|item| item.confidence == Confidence::None) {
+            println!("NONE {}", item.relative_path);
+        }
+        for problem in &report.problems {
+            println!("PROBLEM {:?} {}", problem.kind, problem.relative_path);
+        }
+    }
+
     #[test]
     fn unreadable_subdirectory_is_a_problem_and_keeps_the_neighbor() {
         let temp = std::env::temp_dir().join(format!("my-photos-f02-locked-{}", std::process::id()));
