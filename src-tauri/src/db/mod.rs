@@ -1,5 +1,6 @@
 use std::fs;
 use std::path::{Component, Path, PathBuf};
+use std::time::Duration;
 
 use rusqlite::Connection;
 
@@ -65,8 +66,42 @@ pub(crate) fn open_with(path: &Path, migrations: &[Migration]) -> Result<Connect
     }
     ensure_parent(path)?;
     let connection = Connection::open(path).map_err(|_| DbError::OpenFailed)?;
-    let _ = migrations;
+    // Read before any write: journal_mode = WAL rewrites the header, and a file we
+    // do not understand must stay byte-identical.
+    let version = user_version(&connection)?;
+    if version > latest_version_of(migrations) {
+        return Err(DbError::NewerThanApp);
+    }
+    configure(&connection)?;
     Ok(connection)
+}
+
+fn user_version(connection: &Connection) -> Result<u32, DbError> {
+    connection
+        .pragma_query_value(None, "user_version", |row| row.get(0))
+        .map_err(|error| match error.sqlite_error_code() {
+            Some(rusqlite::ErrorCode::NotADatabase) => DbError::NotSqlite,
+            _ => DbError::OpenFailed,
+        })
+}
+
+fn configure(connection: &Connection) -> Result<(), DbError> {
+    connection
+        .busy_timeout(Duration::from_millis(5000))
+        .map_err(|_| DbError::OpenFailed)?;
+    connection
+        .pragma_update(None, "foreign_keys", "ON")
+        .map_err(|_| DbError::OpenFailed)?;
+    let mode: String = connection
+        .pragma_update_and_check(None, "journal_mode", "WAL", |row| row.get(0))
+        .map_err(|_| DbError::OpenFailed)?;
+    if !mode.eq_ignore_ascii_case("wal") {
+        return Err(DbError::OpenFailed);
+    }
+    // FULL because the library disk is USB and can be unplugged mid-write (AD-011).
+    connection
+        .pragma_update(None, "synchronous", "FULL")
+        .map_err(|_| DbError::OpenFailed)
 }
 
 /// `E:\.myphotos\library.db` → `E:\`. Relative, drive-relative and UNC paths have none.
@@ -239,6 +274,63 @@ mod tests {
         drop(open_with(&path, NO_MIGRATIONS).expect("open"));
         assert!(!is_hidden(&folder));
         assert!(path.is_file());
+    }
+
+    const ONE: &[Migration] = &[Migration {
+        version: 1,
+        sql: "CREATE TABLE t (a);",
+    }];
+
+    fn sidecars_absent(path: &Path) -> bool {
+        let wal = PathBuf::from(format!("{}-wal", path.display()));
+        let shm = PathBuf::from(format!("{}-shm", path.display()));
+        !wal.exists() && !shm.exists()
+    }
+
+    #[test]
+    fn file_that_is_not_sqlite_is_rejected_and_left_identical() {
+        let scratch = Scratch::new("garbage");
+        let path = scratch.path.join("library.db");
+        let bytes = b"isto nao e um banco sqlite, e tem mais de cem bytes para cobrir o cabecalho inteiro do formato".repeat(2);
+        fs::write(&path, &bytes).unwrap();
+        let error = open_with(&path, ONE).unwrap_err();
+        assert_eq!(error.as_code(), "db_not_sqlite");
+        assert_eq!(fs::read(&path).unwrap(), bytes);
+        assert!(sidecars_absent(&path));
+    }
+
+    #[test]
+    fn database_newer_than_the_app_is_rejected_and_left_identical() {
+        let scratch = Scratch::new("newer");
+        let path = scratch.path.join("library.db");
+        {
+            let connection = rusqlite::Connection::open(&path).unwrap();
+            connection.execute_batch("CREATE TABLE x (a); PRAGMA user_version = 99;").unwrap();
+        }
+        let bytes = fs::read(&path).unwrap();
+        let error = open_with(&path, ONE).unwrap_err();
+        assert_eq!(error.as_code(), "db_newer_than_app");
+        assert_eq!(fs::read(&path).unwrap(), bytes);
+        assert!(sidecars_absent(&path));
+    }
+
+    #[test]
+    fn opened_connection_has_the_spec_pragmas() {
+        let scratch = Scratch::new("pragmas");
+        let connection = open_with(&scratch.path.join("library.db"), ONE).expect("open");
+        let pragma = |name: &str| -> String {
+            connection
+                .pragma_query_value(None, name, |row| row.get::<_, rusqlite::types::Value>(0))
+                .map(|value| match value {
+                    rusqlite::types::Value::Integer(number) => number.to_string(),
+                    rusqlite::types::Value::Text(text) => text,
+                    other => format!("{other:?}"),
+                })
+                .unwrap()
+        };
+        assert_eq!(pragma("foreign_keys"), "1");
+        assert_eq!(pragma("journal_mode"), "wal");
+        assert_eq!(pragma("synchronous"), "2");
     }
 
     #[test]
