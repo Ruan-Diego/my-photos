@@ -34,11 +34,11 @@ pub(crate) fn discover_with(
     }
 
     let mut files = BTreeMap::new();
-    read_tree(root, "", &mut files)?;
+    let mut problems: Vec<Problem> = Vec::new();
+    read_tree(root, "", &mut files, &mut problems)?;
 
     let mut media = Vec::new();
     let mut albums = Vec::new();
-    let mut problems: Vec<Problem> = Vec::new();
 
     for (directory, names) in &files {
         let matches = match_directory(names);
@@ -168,31 +168,57 @@ fn read_tree(
     directory: &Path,
     relative: &str,
     files: &mut BTreeMap<String, Vec<String>>,
+    problems: &mut Vec<Problem>,
 ) -> Result<(), String> {
     let entries = match fs::read_dir(directory) {
         Ok(entries) => entries,
         Err(error) if relative.is_empty() => return Err(error.to_string()),
-        Err(_) => return Ok(()),
+        Err(_) => {
+            problems.push(Problem {
+                relative_path: relative.to_string(),
+                kind: ProblemKind::UnreadableDirectory,
+            });
+            return Ok(());
+        }
     };
     for entry in entries {
         let entry = match entry {
             Ok(entry) => entry,
             Err(error) if relative.is_empty() => return Err(error.to_string()),
-            Err(_) => continue,
+            Err(_) => {
+                problems.push(Problem {
+                    relative_path: relative.to_string(),
+                    kind: ProblemKind::UnreadableDirectory,
+                });
+                continue;
+            }
+        };
+        let name = match entry.file_name().into_string() {
+            Ok(name) => name,
+            Err(raw) => {
+                problems.push(Problem {
+                    relative_path: join_relative(relative, &raw.to_string_lossy()),
+                    kind: ProblemKind::InvalidName,
+                });
+                continue;
+            }
         };
         let file_type = match entry.file_type() {
             Ok(file_type) => file_type,
             Err(error) if relative.is_empty() => return Err(error.to_string()),
-            Err(_) => continue,
+            Err(_) => {
+                problems.push(Problem {
+                    relative_path: join_relative(relative, &name),
+                    kind: ProblemKind::Unreadable,
+                });
+                continue;
+            }
         };
         if file_type.is_symlink() {
             continue;
         }
-        let Ok(name) = entry.file_name().into_string() else {
-            continue;
-        };
         if file_type.is_dir() {
-            read_tree(&entry.path(), &join_relative(relative, &name), files)?;
+            read_tree(&entry.path(), &join_relative(relative, &name), files, problems)?;
         } else if file_type.is_file() {
             files.entry(relative.to_string()).or_default().push(name);
         }
@@ -508,6 +534,38 @@ mod tests {
         assert_eq!(edited.confidence, Confidence::None);
         assert_eq!(edited.json_relative_path, None);
         assert_eq!(edited.reason, None);
+    }
+
+    #[test]
+    fn unreadable_subdirectory_is_a_problem_and_keeps_the_neighbor() {
+        let temp = std::env::temp_dir().join(format!("my-photos-f02-locked-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&temp);
+        let locked = temp.join("locked");
+        fs::create_dir_all(&locked).expect("locked");
+        fs::write(locked.join("foto.jpg"), b"x").expect("hidden media");
+        fs::write(temp.join("outra.jpg"), b"y").expect("neighbor");
+        // Dropping every inherited ACE blocks the process whatever SID it runs as.
+        // The owner keeps WRITE_DAC, so /reset restores the inherited ACL.
+        let acl = |args: &[&str]| {
+            let output = std::process::Command::new("icacls")
+                .arg(&locked)
+                .args(args)
+                .output()
+                .expect("icacls");
+            assert!(output.status.success(), "icacls {args:?}");
+        };
+        acl(&["/inheritance:r"]);
+
+        let report = discover(&temp);
+        acl(&["/reset"]);
+        fs::remove_dir_all(&temp).expect("cleanup");
+
+        let report = report.expect("directory");
+        assert!(report.problems.iter().any(|problem| {
+            problem.relative_path == "locked" && problem.kind == ProblemKind::UnreadableDirectory
+        }));
+        assert_eq!(hit(&report, "outra.jpg").confidence, Confidence::None);
+        assert!(report.media.iter().all(|item| item.relative_path != "locked/foto.jpg"));
     }
 
     fn tree_bytes(root: &Path) -> BTreeMap<String, (u64, Vec<u8>)> {

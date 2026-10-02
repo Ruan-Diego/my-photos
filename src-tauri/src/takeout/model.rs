@@ -53,6 +53,8 @@ pub enum ProblemKind {
     InvalidJson,
     Unreadable,
     OrphanJson,
+    UnreadableDirectory,
+    InvalidName,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
