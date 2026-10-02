@@ -51,6 +51,20 @@ pub(crate) struct Migration {
     pub sql: &'static str,
 }
 
+/// Every published migration, in version order. Never edit one that shipped; add N+1.
+pub(crate) const MIGRATIONS: &[Migration] = &[Migration {
+    version: 1,
+    sql: include_str!("migrations/0001_initial.sql"),
+}];
+
+pub fn latest_version() -> u32 {
+    latest_version_of(MIGRATIONS)
+}
+
+pub fn open(path: &Path) -> Result<Connection, DbError> {
+    open_with(path, MIGRATIONS)
+}
+
 pub(crate) fn latest_version_of(migrations: &[Migration]) -> u32 {
     migrations
         .iter()
@@ -213,7 +227,10 @@ pub fn select_one() -> Result<i64, String> {
 }
 
 #[cfg(test)]
-mod tests {
+mod schema_tests;
+
+#[cfg(test)]
+pub(crate) mod tests {
     use super::{latest_version_of, open_with, select_one, DbError, Migration};
     use std::path::PathBuf;
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -246,7 +263,7 @@ mod tests {
 
     const NO_MIGRATIONS: &[Migration] = &[];
 
-    pub(super) struct Scratch {
+    pub(crate) struct Scratch {
         pub path: PathBuf,
     }
 
