@@ -93,12 +93,12 @@
 
 ## Handoff
 
-- **Feature**: Phase 0 concluída (F01, F02, F03)
-- **Phase / Task**: critério de saída atingido no Takeout real em `E:\` — 4247/4247 mídias do Google Fotos casadas (100%), 5 JSONs órfãos sem mídia exportada
-- **Completed**: matcher aceita `supplemental-metadata` sem truncar (`0406130`) e casa entre partes do mesmo export (`2eb6812`); pastas ilegíveis viram `Problem` (`d55ebbd`); baselines release com cache frio (`1435d5b`, `78ac57f`). Survey só leitura: `TAKEOUT_ROOT=E:\ cargo test real_takeout_survey -- --ignored --nocapture`
+- **Feature**: F04 Database Schema — concluída (Verifier PASS na iteração 2: 20/20 ACs, 27/27 mutantes mortos)
+- **Phase / Task**: Phase 1 iniciada. F04 entregue: `E:\.myphotos\library.db` (oculto) criado pelo app em 2026-10-02, esquema v1 com 16 tabelas, migrações com `.bak-vN`
+- **Completed**: F01–F04. Commits da F04 `dbc1ab5`..`2f7fa3e`, relatório em `.specs/features/f04-database-schema/validation.md`. Correção de build `17d90eb`: `default-run` no Cargo — `tauri dev` estava quebrado desde a F03
 - **In-progress**: nenhum
-- **Next step**: F04 Database Schema, já considerando AD-008/009/010 (caminho físico mutável, lixeira do app, operações de arquivo da F48)
+- **Next step**: F05 File Scanner — varrer `E:\` ignorando `.myphotos`, gravar `folders`/`media_items`, hash SHA-256; usar o matcher da F02
 - **Blockers**: `C:` com ~430 MB livres. `E:` deu "erro fatal de hardware" uma vez em 2026-10-02 e voltou após reconexão — vigiar
-- **Open questions**: anomalia do baseline HDD (50k mais lento que 150k); 1885 mídias fora do Google Fotos dependem de EXIF/filesystem (F07/F09)
+- **Open questions**: anomalia do baseline HDD (50k mais lento que 150k); 1885 mídias fora do Google Fotos dependem de EXIF/filesystem (F07/F09); 6 lições candidatas da F04 em `validation.md` aguardam Python para `lessons.py`; recuperação do WAL sem teste automático (comportamento padrão do SQLite)
 - **Uncommitted files**: PRD HTML, `.specs/LESSONS.md`, `.specs/lessons.json`
 - **Branch**: main
