@@ -572,6 +572,7 @@ mod tests {
         );
         assert!(discover(&root.join("nested").join("foto.jpg")).is_err());
         assert!(discover(&fixture("missing-root")).is_err());
+        #[cfg(windows)]
         assert_symlink_is_not_followed();
     }
 
@@ -779,6 +780,7 @@ mod tests {
         found
     }
 
+    #[cfg(windows)]
     fn assert_symlink_is_not_followed() {
         let temp = std::env::temp_dir().join(format!("my-photos-f02-{}", std::process::id()));
         let _ = fs::remove_dir_all(&temp);
