@@ -138,15 +138,15 @@ A F04 entregou o banco `E:\.myphotos\library.db` com o esquema v1 vazio. O F02 s
 
 | Requirement ID | Story | Phase | Status |
 | -------------- | ----- | ----- | ------ |
-| SCAN-01 | P1: Primeira varredura — validação da raiz, biblioteca, execução | Design | Pending |
-| SCAN-02 | P1: Primeira varredura — pastas, mídias, hash, o que é pulado | Design | Pending |
-| SCAN-03 | P1: Primeira varredura — só leitura na biblioteca | Design | Pending |
-| SCAN-04 | P1: Varreduras incrementais | Design | Pending |
-| SCAN-05 | P1: Falhas por item | Design | Pending |
-| SCAN-06 | P1: Disco some no meio | Design | Pending |
-| SCAN-07 | Ferramenta `f05-scan` para validação local no `E:` | Design | Pending |
+| SCAN-01 | P1: Primeira varredura — validação da raiz, biblioteca, execução | T1–T6 | Verified |
+| SCAN-02 | P1: Primeira varredura — pastas, mídias, hash, o que é pulado | T1–T6 | Verified |
+| SCAN-03 | P1: Primeira varredura — só leitura na biblioteca | T1–T6 | Verified |
+| SCAN-04 | P1: Varreduras incrementais | T1–T6 | Verified |
+| SCAN-05 | P1: Falhas por item | T1–T6 | Verified |
+| SCAN-06 | P1: Disco some no meio | T1–T6 | Verified |
+| SCAN-07 | Ferramenta `f05-scan` para validação local no `E:` | T6 | Built — validação local pendente |
 
-**Coverage:** 7 total, 0 mapped to tasks, 7 unmapped.
+**Coverage:** 7 total, 7 mapped to tasks, 0 unmapped. SCAN-01..06 verified in `validation.md` (PASS, iteration 3); SCAN-07 needs the real `E:`.
 
 ---
 

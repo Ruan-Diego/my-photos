@@ -7,7 +7,9 @@
 **Verifier**: independent sub-agent (author ≠ verifier)
 **Environment**: Linux cloud container, no `E:`. `cargo test --lib scan::` → 34 passed. Windows-only tests did not run.
 
-**Final verdict (iteration 2)**: ❌ FAIL, narrowly. Every iteration-1 gap is closed, and all 43 non-equivalent mutants are killed (46 total, 3 equivalent). One remaining spec deviation is in the new case-twin edge case: the contents of a skipped twin *folder* are still indexed. See [Iteration 2](#iteration-2-re-verification).
+**Final verdict (iteration 3)**: ✅ PASS. B1 is fixed: case twins are now dropped in `walk::visit` before the walk goes into them. Every AC and edge case has a test that discriminates. 37 of 44 mutants are killed; the 4 survivors are equivalent or harmless and none breaks the spec. Outside the automated gate: the Windows-CI-only tests and the manual `E:` run (SCAN-07). See [Iteration 3](#iteration-3-re-verification).
+
+**Iteration 2 verdict**: ❌ FAIL, narrowly. Every iteration-1 gap is closed, and all 43 non-equivalent mutants are killed (46 total, 3 equivalent). One remaining spec deviation is in the new case-twin edge case: the contents of a skipped twin *folder* are still indexed. See [Iteration 2](#iteration-2-re-verification).
 
 **Iteration 1 verdict**: ❌ FAIL
 
@@ -305,3 +307,75 @@ B1 is not a surviving mutant. It is behaviour that the current tests do not exer
 ### Summary (iteration 2)
 
 **Overall**: ❌ FAIL, on one narrow item. Every iteration-1 AC gap and surviving mutant is closed. The spec-anchored check is clean for SCAN-01..06. The sensor has 0 non-equivalent survivors in 46 mutants. The one remaining item is **B1**: a skipped case-twin folder's contents are still indexed, against the new edge case "o outro SHALL ser pulado" and the design "Pastas puladas e seu conteúdo nunca entram". Either fix it in `walk.rs` (detect twins per directory before descending) or reword the edge case; then extend `tests.rs:1109` with non-empty twin folders. With that resolved, the verdict would be PASS, pending only the manual `E:` run and Windows CI.
+
+---
+
+## Iteration 3 (re-verification)
+
+**Diff range**: `379462a..4a74a39` (`4a74a39`). The case-twin check moved from reconciliation (`mod.rs`, removed) to `walk::visit` (`walk.rs:147`, `walk.rs:157-163`). The twin test now uses non-empty twin folders. `design.md` describes the new rule.
+**Gate**: `cargo test --lib scan::` → **41 passed**.
+
+### B1 (case-twin folder contents), re-checked
+
+`walk.rs:147` builds a fresh `seen` set for each directory. At `walk.rs:160`, `!seen.insert(name.to_ascii_lowercase())` runs on the sorted entries before `match entry.kind`. Every later twin gets `invalid_name` and `continue`, so a twin folder is never added to `found.folders` and never visited. Nothing inside it reaches `found.files`, `found.errors` or `found.protected`. The ASCII-only fold matches `COLLATE NOCASE`, as design §Risks says. The reconciliation dedup is gone. Nothing is lost by that: within one directory the walk now yields unique keys, and across directories the paths differ in their parent.
+
+| Edge case | Evidence (`src-tauri/src/scan/tests.rs`) | Result |
+| --------- | ---------------------------------------- | ------ |
+| Twins in a case-sensitive folder: first in order recorded, the other skipped with `invalid_name`, run `completed` | Disk: `A.jpg`, `a.jpg`, `Pasta/x.jpg`, `pasta/x.jpg`, `pasta/only.jpg`, `pasta/sub/`. `:1118` run `completed`; `:1119` media exactly `["A.jpg","Pasta/x.jpg"]` (`pasta/only.jpg` is **not** indexed); `:1123` folders exactly `["Pasta"]` (`pasta/sub` absent); `:1127` errors exactly `["invalid_name a.jpg","invalid_name pasta"]` (no row for the twin's contents); `:1131` `(media, folders, hashed) == (2,1,2)`; `:1134-1135` second run `completed`, `unchanged == 2` | ✅ PASS. This repeats my iteration-2 probe as a permanent test |
+
+Nothing else changed: `mod.rs` went back byte-for-byte to its `0338c74` reconciliation code (`git show HEAD -- src-tauri/src/scan/mod.rs`), and the R2 code in `walk.rs` is untouched.
+
+### Mutation log (iteration 3)
+
+I re-ran the full set. The 8 iteration-2 mutants of the removed reconciliation code (N01–N06, N09, N10) no longer apply; W1–W5 and W7 replace them. Each mutant was applied alone, `cargo test --lib scan::` was run, and the file was restored with `git checkout -- <file>`. Afterwards `git status --short` showed only `validation.md` modified.
+
+| ID | Mutation | Result | Killed by |
+| -- | -------- | ------ | --------- |
+| M01–M28, M31, M32, M34–M36 (33 mutants) | as in iterations 1–2 | ✅ Killed | as before |
+| N07, N08 | R2: always / never report an unreadable entry | ✅ Killed | `invalid_names_and_unreadable_entries_become_errors` |
+| W1 | `walk.rs:160` twin check removed | ✅ Killed | `names_that_differ_only_in_case_keep_the_first_and_report_the_rest` |
+| W2 | twin key case-sensitive (`name.clone()`) | ✅ Killed | same |
+| W3 | twin skipped without an `invalid_name` error | ✅ Killed | same |
+| W4 | twin reported but still walked (no `continue`) | ✅ Killed | same |
+| W5 | last twin wins (entries sorted in reverse) | ✅ Killed | same + walk test |
+| M29 | drop symlink guard | ⚪ Survived, equivalent | a link is neither `is_dir` nor `is_file` |
+| M30 | modify branch does not reset status `ok` | ⚪ Survived, near-equivalent | a successful hash sets `ok` |
+| M33 | queue not sorted | ⚪ Survived, equivalent | the walk already sorts |
+| W7 | twin fold uses Unicode `to_lowercase()` instead of ASCII | ⚪ Survived, low | see O2 |
+
+**Totals**: 44 mutants. **40 killed**, 4 survived. None of the survivors breaks the spec.
+
+### Observations (not blocking)
+
+- **O2 (W7)**: no test pins the ASCII-only fold. With a Unicode fold, `É.jpg` and `é.jpg` in a case-sensitive folder would be treated as twins and one dropped. With the ASCII fold, both are indexed, and SQLite `NOCASE` also treats them as distinct, so nothing fails. Design §Risks explicitly chooses ASCII folding to match `NOCASE`. NTFS itself does not allow these two names side by side. Optional: add a test with a non-ASCII pair.
+- **O3**: the twin check runs before media classification. So twin *non-media* files (`a.json` + `A.json`), or a link next to a folder of the same name, also produce `invalid_name`. In that one case-sensitive-only situation this conflicts with SCAN-02 AC5 ("não-mídia … nem em `indexing_errors`"). Also, if a link sorts first, the real folder is the one dropped. The new edge-case text ("dois nomes que diferem só na caixa … o outro SHALL ser pulado com `invalid_name`") does not limit itself to media, so the code follows the more specific rule. This cannot happen on NTFS. Optional: report the error only for media names and folders, and skip `Skip` entries before the twin check.
+- O1 (a row `id` can follow a twin), R3 and R4 stay as previously recorded.
+
+### Not run (iteration 3)
+
+| Item | Reason |
+| ---- | ------ |
+| `hidden_system_folders_are_skipped_and_hidden_only_folders_are_not`, `junctions_are_not_followed` | Not run (Windows CI); reviewed by reading |
+| `f05-scan` on the real `E:` (SCAN-07) | No `E:`; manual |
+| Full `cargo test` | 42 pre-existing Windows-only failures outside F05 |
+
+### Requirement status (final)
+
+| Requirement | Iteration 1 | Iteration 2 | Iteration 3 |
+| ----------- | ----------- | ----------- | ----------- |
+| SCAN-01 | ⚠️ | ✅ | ✅ Verified |
+| SCAN-02 | ❌ | ✅ / ❌ B1 | ✅ Verified (AC6 hidden+system and junctions on Windows CI only) |
+| SCAN-03 | ✅ | ✅ | ✅ Verified |
+| SCAN-04 | ❌ | ✅ | ✅ Verified |
+| SCAN-05 | ✅ | ✅ | ✅ Verified |
+| SCAN-06 | ❌ | ✅ | ✅ Verified |
+| SCAN-07 | ⏸ | ⏸ | ⏸ Builds; manual run on `E:` pending |
+
+### Summary (final)
+
+**Overall**: ✅ PASS.
+**Spec-anchored check**: every SCAN-01..06 AC and all 7 edge cases (including the two added in iteration 2) have tests that pin the spec's outcome.
+**Sensor**: iteration 3, 40/44 killed; the 4 survivors are equivalent or harmless (M29, M30, M33, W7).
+**Gate**: `cargo test --lib scan::` 41 passed.
+**Fix→re-verify iterations used**: 3.
+**Outside the automated gate**: the Windows-only walk tests (CI) and the manual `f05-scan` run on `E:` (SCAN-07 / Success Criteria).

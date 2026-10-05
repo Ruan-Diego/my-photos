@@ -155,12 +155,15 @@ fn visit(
         };
         let path = join(relative, &name);
         // A case-sensitive folder can hold `A` and `a`, but the database compares paths
-        // NOCASE (NTFS semantics). The first in order wins; the twin and everything in
-        // it is skipped.
-        if !seen.insert(name.to_ascii_lowercase()) {
-            found.errors.push((path, "invalid_name"));
-            continue;
-        }
+        // NOCASE (NTFS semantics). Among the folders and media that would be recorded, the
+        // first in order wins; the twin and everything in it is skipped.
+        let mut is_twin = |path: &str| {
+            let twin = !seen.insert(name.to_ascii_lowercase());
+            if twin {
+                found.errors.push((path.to_string(), "invalid_name"));
+            }
+            twin
+        };
         match entry.kind {
             EntryKind::Skip => {}
             EntryKind::Unreadable => {
@@ -174,6 +177,9 @@ fn visit(
                 if relative.is_empty() && name.eq_ignore_ascii_case(APP_FOLDER) {
                     continue;
                 }
+                if is_twin(&path) {
+                    continue;
+                }
                 found.folders.push(path.clone());
                 visit(root, dir.join(&name), &path, fs, found)?;
             }
@@ -181,6 +187,9 @@ fn visit(
                 let FileRole::Media { extension } = classify(&name) else {
                     continue;
                 };
+                if is_twin(&path) {
+                    continue;
+                }
                 let media_type = if VIDEO_EXTENSIONS.contains(&extension.as_str()) {
                     "video"
                 } else {

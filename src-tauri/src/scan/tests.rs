@@ -1113,6 +1113,11 @@ fn names_that_differ_only_in_case_keep_the_first_and_report_the_rest() {
     library.write("Pasta/x.jpg", b"x");
     library.write("pasta/x.jpg", b"y");
     library.write("pasta/only.jpg", b"o");
+    // Not recorded, so never twins of anything (SCAN-02 AC5), and a link named like a
+    // real folder does not shadow it.
+    library.write("a.json", b"{}");
+    library.write("A.json", b"{}");
+    std::os::unix::fs::symlink(library.root.join("Pasta"), library.root.join("PASTA")).unwrap();
     fs::create_dir_all(library.root.join("pasta/sub")).unwrap();
     let summary = library.scan(T1);
     assert_eq!(library.run(summary.run_id).1, "completed");

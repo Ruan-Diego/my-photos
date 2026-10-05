@@ -93,12 +93,12 @@
 
 ## Handoff
 
-- **Feature**: F04 Database Schema — concluída (Verifier PASS na iteração 2: 20/20 ACs, 27/27 mutantes mortos)
-- **Phase / Task**: Phase 1 iniciada. F04 entregue: `E:\.myphotos\library.db` (oculto) criado pelo app em 2026-10-02, esquema v1 com 16 tabelas, migrações com `.bak-vN`
-- **Completed**: F01–F04. Commits da F04 `dbc1ab5`..`2f7fa3e`, relatório em `.specs/features/f04-database-schema/validation.md`. Correção de build `17d90eb`: `default-run` no Cargo — `tauri dev` estava quebrado desde a F03
+- **Feature**: F05 File Scanner — concluída na nuvem (Verifier PASS na iteração 3: SCAN-01..06, 40/44 mutantes mortos, os 4 sobreviventes sem efeito visível no spec). Falta a validação local SCAN-07 no `E:`
+- **Phase / Task**: Phase 1. F05 entregue em `src-tauri/src/scan/` (walk → reconcile → hash em lotes de 100) + binário `f05-scan`
+- **Completed**: F01–F05. Antes da F05: o app agora faz `wal_checkpoint(TRUNCATE)` e fecha o banco no `RunEvent::Exit` (`library.db` deixava os dados no `-wal`). CI (`windows-latest`) estava vermelha desde a F02 por `takeout::tests::unreadable_subdirectory_is_a_problem_and_keeps_the_neighbor` (runner elevado listava a pasta); corrigido com ACE de negação explícita — primeira CI verde no run 4. Relatório em `.specs/features/f05-file-scanner/validation.md`
 - **In-progress**: nenhum
-- **Next step**: F05 File Scanner — varrer `E:\` ignorando `.myphotos`, gravar `folders`/`media_items`, hash SHA-256; usar o matcher da F02
-- **Blockers**: `C:` com ~430 MB livres. `E:` deu "erro fatal de hardware" uma vez em 2026-10-02 e voltou após reconexão — vigiar
-- **Open questions**: anomalia do baseline HDD (50k mais lento que 150k); 1885 mídias fora do Google Fotos dependem de EXIF/filesystem (F07/F09); 6 lições candidatas da F04 em `validation.md` aguardam Python para `lessons.py`; recuperação do WAL sem teste automático (comportamento padrão do SQLite)
-- **Uncommitted files**: PRD HTML, `.specs/LESSONS.md`, `.specs/lessons.json`
-- **Branch**: main
+- **Next step**: validar no `E:` (fechar o app antes): `cargo run --release --manifest-path src-tauri/Cargo.toml --bin f05-scan` duas vezes. 1ª: `new` ≈ total de mídias, `errors` 0 ou poucos. 2ª: `unchanged` = `media`, `hashed` 0, rápida. Conferir que `E:\.myphotos\library.db` cresceu após fechar o app. Depois: F06 Takeout JSON Parser (ou F07)
+- **Blockers**: `C:` com ~430 MB livres (o build `--release` ocupa espaço em `src-tauri/target`). `E:` deu "erro fatal de hardware" uma vez em 2026-10-02 — vigiar
+- **Open questions**: os defaults da F05 (spec, tabela de premissas, "Confirmed? n") foram escolhidos sem confirmação ponto a ponto — revisar antes da F10; mídia movida fora do app vira nova + `missing_file` (reconhecer por hash fica para F10/F48); anomalia do baseline HDD; 1885 mídias fora do Google Fotos dependem de EXIF/filesystem (F07/F09); lições candidatas da F04 aguardam Python
+- **Uncommitted files**: PRD HTML, `.specs/LESSONS.md`, `.specs/lessons.json` (só na máquina local)
+- **Branch**: `main-klpj09` (nuvem) — ainda não mesclada em `main`
