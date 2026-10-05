@@ -7,7 +7,7 @@ The `tlc-spec-driven` skill was not available in the cloud session that executed
 ---
 
 **Design**: `.specs/features/f05-file-scanner/design.md`
-**Status**: In progress
+**Status**: Done — T1–T6 + Verifier iteration 1–2 fixes
 
 ---
 
@@ -40,14 +40,14 @@ The `tlc-spec-driven` skill was not available in the cloud session that executed
 
 ## Task Breakdown
 
-### T1: ISO-8601 UTC formatting [ ]
+### T1: ISO-8601 UTC formatting [x]
 
 **What**: `iso_utc(SystemTime) -> Option<String>` with milliseconds and `Z`.
 **Where**: `src-tauri/src/scan/time.rs`
 **Requirement**: SCAN-02 (dates)
 **Done when**: epoch, 2024-02-29, millisecond truncation and pre-1970 tests pass.
 
-### T2: Walk and `FileSystem` [ ]
+### T2: Walk and `FileSystem` [x]
 
 **What**: `FileSystem` trait, `RealFs`, `walk(root, fs) -> Result<Walk, WalkAbort>`; skips `.myphotos` at the root, `Skip` entries and non-media files; records `unreadable_directory` and `invalid_name`; detects a vanished root. Makes `takeout::classify` and `is_system_dir` `pub(crate)`.
 **Where**: `src-tauri/src/scan/walk.rs`, `src-tauri/src/takeout/`
@@ -55,7 +55,7 @@ The `tlc-spec-driven` skill was not available in the cloud session that executed
 **Requirement**: SCAN-02, SCAN-05, SCAN-06
 **Done when**: walk tests over a temp tree pass.
 
-### T3: Errors, root validation, library and run rows [ ]
+### T3: Errors, root validation, library and run rows [x]
 
 **What**: `ScanError`; `scan_with` validates the root before any write, ensures the `libraries` row, inserts the `indexing_runs` row (`full`/`incremental`).
 **Where**: `src-tauri/src/scan/mod.rs`
@@ -63,7 +63,7 @@ The `tlc-spec-driven` skill was not available in the cloud session that executed
 **Requirement**: SCAN-01
 **Done when**: invalid-root tests show no rows in any table; first run is `full`, second is `incremental`.
 
-### T4: Reconcile [ ]
+### T4: Reconcile [x]
 
 **What**: One transaction applying the reconciliation table from the design (folders and media).
 **Where**: `src-tauri/src/scan/mod.rs`
@@ -71,7 +71,7 @@ The `tlc-spec-driven` skill was not available in the cloud session that executed
 **Requirement**: SCAN-02, SCAN-04, SCAN-05 (unreadable dir protection)
 **Done when**: new / unchanged / modified / missing / restored / case-only tests pass.
 
-### T5: Hash phase and summary [ ]
+### T5: Hash phase and summary [x]
 
 **What**: Hash queue in path order, batches of 100, error rows, root-vanished abort, run finalisation and `ScanSummary`. `bench::hash::to_hex` becomes `pub(crate)`.
 **Where**: `src-tauri/src/scan/mod.rs`
@@ -79,7 +79,7 @@ The `tlc-spec-driven` skill was not available in the cloud session that executed
 **Requirement**: SCAN-02, SCAN-04, SCAN-05, SCAN-06
 **Done when**: known-hash, zero-byte, unreadable-file, retry, no-read-on-second-run, root-vanishes and read-only snapshot tests pass.
 
-### T6: `f05-scan` binary [ ]
+### T6: `f05-scan` binary [x]
 
 **What**: `scan_default_library()` and the CLI.
 **Where**: `src-tauri/src/scan/mod.rs`, `src-tauri/src/bin/f05-scan.rs`
