@@ -1,6 +1,7 @@
 pub mod bench;
 mod commands;
 mod db;
+pub mod scan;
 mod takeout;
 
 use std::sync::Mutex;

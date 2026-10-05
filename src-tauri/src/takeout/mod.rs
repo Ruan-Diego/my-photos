@@ -10,7 +10,7 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use classify::{classify, FileRole};
+pub(crate) use classify::{classify, FileRole};
 use matching::match_directory;
 use parse::{parse_album_json, parse_media_json};
 
@@ -280,7 +280,7 @@ fn takeout_export(component: &str) -> Option<&str> {
 
 /// `$RECYCLE.BIN` and `System Volume Information` are hidden system folders at a volume
 /// root; listing them fails and they never hold the library.
-fn is_system_dir(entry: &fs::DirEntry) -> bool {
+pub(crate) fn is_system_dir(entry: &fs::DirEntry) -> bool {
     #[cfg(windows)]
     {
         use std::os::windows::fs::MetadataExt;
