@@ -728,8 +728,9 @@ mod tests {
         fs::create_dir_all(&locked).expect("locked");
         fs::write(locked.join("foto.jpg"), b"x").expect("hidden media");
         fs::write(temp.join("outra.jpg"), b"y").expect("neighbor");
-        // Dropping every inherited ACE blocks the process whatever SID it runs as.
-        // The owner keeps WRITE_DAC, so /reset restores the inherited ACL.
+        // Dropping every inherited ACE is not enough for an elevated process (the CI runner
+        // still lists the folder), so also deny listing to Everyone; a deny ACE binds
+        // administrators too. The owner keeps WRITE_DAC, so /reset restores the inherited ACL.
         let acl = |args: &[&str]| {
             let output = std::process::Command::new("icacls")
                 .arg(&locked)
@@ -739,6 +740,7 @@ mod tests {
             assert!(output.status.success(), "icacls {args:?}");
         };
         acl(&["/inheritance:r"]);
+        acl(&["/deny", "*S-1-1-0:(RD)"]);
 
         let report = discover(&temp);
         acl(&["/reset"]);
