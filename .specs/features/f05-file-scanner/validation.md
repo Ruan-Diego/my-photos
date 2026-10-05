@@ -7,7 +7,9 @@
 **Verifier**: independent sub-agent (author ≠ verifier)
 **Environment**: Linux cloud container, no `E:`. `cargo test --lib scan::` → 34 passed. Windows-only tests did not run.
 
-**Verdict**: ❌ FAIL
+**Final verdict (iteration 2)**: ❌ FAIL, narrowly. Every iteration-1 gap is closed, and all 43 non-equivalent mutants are killed (46 total, 3 equivalent). One remaining spec deviation is in the new case-twin edge case: the contents of a skipped twin *folder* are still indexed. See [Iteration 2](#iteration-2-re-verification).
+
+**Iteration 1 verdict**: ❌ FAIL
 
 The code does what the spec and design say when you read it. I found no bug that breaks an AC on NTFS. The FAIL is about the tests:
 
@@ -188,3 +190,118 @@ Each mutant was applied alone to `src-tauri/src/scan/mod.rs` or `walk.rs`. Then 
 | SCAN-07 | ⏸ Builds; manual run on `E:` pending |
 
 **Overall**: ❌ FAIL. The code matches the spec when read. Tests are missing for SCAN-02 AC6 (hidden+system) and 7 spec-visible mutants survive.
+
+---
+
+## Iteration 2 (re-verification)
+
+**Diff range**: `0338c74..379462a` (`f82ad7f` touches only a `takeout` test; `379462a` holds the F05 fixes, new tests, and spec/design updates)
+**Gate**: `cargo test --lib scan::` → **41 passed** (34 before + 7 new). The Windows-only tests did not run here (see Not Run).
+
+### Iteration-1 items, re-checked
+
+| Item | Fix | Evidence (`file:line` + assertion) | Result |
+| ---- | --- | ---------------------------------- | ------ |
+| G1, SCAN-02 AC6: hidden+system skip | New Windows test | `walk.rs:330` `hidden_system_folders_are_skipped_and_hidden_only_folders_are_not`. It runs `attrib +h +s sistema` and `attrib +h oculta`, then `walk.rs:346` `assert_eq!(found.folders, ["oculta"])` and `:348` the only file is `oculta/b.jpg`. Both sides are covered: hidden+system is skipped, hidden-only is kept. Attributes are cleared before the asserts, so `Scratch` cleanup still works | ✅ PASS by reading. **Not run (Windows CI)** |
+| M07, SCAN-04 AC3: size-only change | New test | `tests.rs:975` proves the mtime text is identical before the scan; `:979` only `a.jpg` is opened; `:981-984` same id, size 5, new hash, `modified == 1` | ✅ PASS (M07 killed) |
+| M08, SCAN-04 AC3 / SCAN-06: hash cleared on modify | New test | `tests.rs:1004` `RootMissing`; `:1009-1011` new size with hash `None`; `:1016-1017` the next run rereads and stores the new SHA | ✅ PASS (M08 killed) |
+| M13/M14: 100-file commit batches | New test | `tests.rs:1049` a second connection sees `[(1,0),(50,0),(100,0),(101,100),(150,100)]`; `:1061` all 150 at the end | ✅ PASS (both killed) |
+| M19, SCAN-02 AC3: folder case rename | New test | `tests.rs:1081` `(after_id, path) == (id, "viagem")` | ✅ PASS (killed) |
+| M31, SCAN-04 AC4: protection boundary | New test | `tests.rs:1098-1100` `trancada/a.jpg` stays `ok`, sibling `trancada2/b.jpg` → `missing_file`, `missing == 1`; `:1101` folder `trancada2/sub` deleted | ✅ PASS (killed) |
+| M36: library name | Spec reworded (`name` = `root_path` without its trailing separator); tests added | `tests.rs:294` and `:962` `assert_eq!(name, root without trailing separator)` | ✅ PASS (killed). The spec now states the rule, not only the `E:` example |
+| R1: case twins abort every scan | `mod.rs:282-286`, `mod.rs:343-352`: first in order wins, the rest become `invalid_name`, counts reduced | `tests.rs:1109` (Linux): run `completed` (`:1116`), media `["A.jpg"]`, folders `["Pasta"]`, errors `["invalid_name pasta","invalid_name a.jpg"]`, `(media, folders) == (1,1)`, second run `completed` | ⚠️ Mostly fixed, but see **B1** below |
+| R2: unreadable non-media entry produced an error | `walk.rs:158-162`: always protected, error only for media names | `walk.rs:433`, `:440` `protected == ["locked.jpg","locked.json"]`, and the error list still holds only `locked.jpg` | ✅ PASS (N07, N08 killed) |
+| R3, R4 | Left as design-accepted | — | Accepted (unchanged, informational) |
+
+All other ACs and edge cases from the iteration-1 tables still hold. Their tests are unchanged, the gate is green, and every original mutant except the 3 equivalent ones is killed.
+
+### New edge cases (spec lines added in `379462a`)
+
+| Edge case | Evidence | Result |
+| --------- | -------- | ------ |
+| Case twins: first in order recorded; the other skipped with `invalid_name`; run `completed` | `tests.rs:1109-1132` (files, and **empty** folders) | ❌ **B1**. Holds for files. For folders, the twin folder's *contents* are still indexed, so the folder is not "pulado" (details below) |
+| Unreadable metadata → protected; `unreadable` only for media names | `walk.rs:433-440` | ✅ PASS |
+
+### B1: a skipped case-twin folder still has its contents indexed
+
+**Where**: `src-tauri/src/scan/mod.rs:282-286`. The twin check runs in reconcile, after the walk (`walk.rs:161-170`) has already descended into the twin folder and added its files to `found.files`.
+
+**Probe** (a test added to `tests.rs` temporarily, run, then removed with `git checkout`). Disk: `Pasta/x.jpg`, `pasta/x.jpg`, `pasta/only.jpg` (Linux, case-sensitive):
+
+```
+media   = ["Pasta/x.jpg <sha>", "pasta/only.jpg <sha>"]
+folders = ["Pasta"]
+errors  = ["invalid_name pasta", "invalid_name pasta/x.jpg"]
+summary = { folders: 1, media: 2, new: 2, hashed: 2, errors: 2, … }
+```
+
+**Spec**: the new edge case says "o outro SHALL ser pulado com `invalid_name`". The design says "Pastas puladas e seu conteúdo nunca entram". Here the skipped folder's `only.jpg` is inserted and hashed under `pasta/…`, and `pasta/x.jpg` gets a second `invalid_name` row. The DB then holds a media path whose folder row exists only in the other case. The only test, `tests.rs:1109`, uses empty twin folders, so it cannot see this.
+
+**Impact**: low. It needs a case-sensitive directory on the library disk, and nothing crashes or is lost. But it goes against the edge case that was added in this iteration.
+
+**Fix options**:
+- (a) Detect twins in `walk::visit` per directory, before descending, so that a skipped folder is never visited (matches the spec and design text).
+- (b) Reword the spec/design: only the twin *entry name* is reported, and its contents are merged under the first spelling.
+
+Either way, add a twin folder with non-empty, distinct contents to `tests.rs:1109`.
+
+### Other observations (not blocking)
+
+- **O1**: with twins, the row `id` can follow the other file. Example: run 1 sees only `a.jpg`. Later `A.jpg` appears beside it. `A.jpg` sorts first, so it takes over `a.jpg`'s row (case rename, plus modify if size or mtime differ), and `a.jpg` becomes `invalid_name`. The spec rule "o primeiro em ordem" allows this. Noted only because favourites follow the `id`.
+
+### Mutation log (iteration 2)
+
+All 36 iteration-1 mutants were re-applied. M26's pattern was adapted to the new code. 10 new mutants target the new code. Each was applied alone, `cargo test --lib scan::` was run, and the file was restored with `git checkout -- <file>`. Afterwards `git status --short` showed no source changes.
+
+| ID | Mutation | Result | Killed by |
+| -- | -------- | ------ | --------- |
+| M01–M06, M09–M12, M15–M18, M20–M28, M32, M34, M35 | (as in iteration 1) | ✅ Killed | as before, plus new tests |
+| M07 | compare mtime only | ✅ Killed | `size_change_with_the_same_date_is_a_modification` |
+| M08 | modify keeps old hash | ✅ Killed | `modified_media_loses_its_old_hash_until_it_is_read_again` |
+| M13 | `HASH_BATCH = 1` | ✅ Killed | `hashes_are_committed_every_hundred_files` |
+| M14 | `HASH_BATCH = usize::MAX` | ✅ Killed | same |
+| M19 | skip folder case-rename UPDATE | ✅ Killed | `folder_case_rename_updates_the_path_and_keeps_the_id` |
+| M31 | `is_protected` without `/` boundary | ✅ Killed | `protection_stops_at_the_folder_boundary` |
+| M36 | library name not trimmed | ✅ Killed | `library_name_drops_the_trailing_separator` |
+| M29 | drop symlink guard | ⚪ Survived, equivalent | (a link is neither `is_dir` nor `is_file`) |
+| M30 | modify branch does not reset status `ok` | ⚪ Survived, near-equivalent | (a successful hash sets `ok`) |
+| M33 | queue not sorted | ⚪ Survived, equivalent | (walk already sorted) |
+| N01 | `mod.rs:343` media twin check removed | ✅ Killed | `names_that_differ_only_in_case…` |
+| N02 | `mod.rs:282` folder twin check removed | ✅ Killed | same |
+| N03 | media twin: `summary.media` not decremented | ✅ Killed | same |
+| N04 | folder twin: `summary.folders` not decremented | ✅ Killed | same |
+| N05 | media twin: no `invalid_name` row | ✅ Killed | same |
+| N06 | folder twin: no `invalid_name` row | ✅ Killed | same |
+| N07 | `walk.rs:160` unreadable entry always reported (R2 reverted) | ✅ Killed | `invalid_names_and_unreadable_entries_become_errors` |
+| N08 | unreadable media entry never reported | ✅ Killed | same |
+| N09 | twin set keyed on the raw path (case-sensitive) | ✅ Killed | `names_that_differ_only_in_case…` |
+| N10 | last twin wins (files iterated in reverse) | ✅ Killed | same |
+
+**Totals**: 46 mutants. **43 killed**, 3 equivalent or near-equivalent, **0 spec-visible survivors**.
+
+B1 is not a surviving mutant. It is behaviour that the current tests do not exercise, and I found it by a direct probe.
+
+### Not run (iteration 2)
+
+| Item | Reason |
+| ---- | ------ |
+| `walk::tests::hidden_system_folders_are_skipped_and_hidden_only_folders_are_not` (`walk.rs:328`) | Not run (Windows CI); reviewed by reading |
+| `walk::tests::junctions_are_not_followed` | Not run (Windows CI) |
+| `f05-scan` on the real `E:` (SCAN-07) | No `E:`; manual |
+| Full `cargo test` | 42 pre-existing Windows-only failures outside F05 |
+
+### Requirement status (iteration 2)
+
+| Requirement | Iteration 1 | Iteration 2 |
+| ----------- | ----------- | ----------- |
+| SCAN-01 | ⚠️ (M36) | ✅ Verified |
+| SCAN-02 | ❌ (G1, M19) | ✅ Verified (AC6 hidden+system on Windows CI only). Case-twin edge case: ❌ B1 |
+| SCAN-03 | ✅ | ✅ Verified |
+| SCAN-04 | ❌ (M07, M08, M31) | ✅ Verified |
+| SCAN-05 | ✅ | ✅ Verified |
+| SCAN-06 | ❌ (M08, M13/M14) | ✅ Verified |
+| SCAN-07 | ⏸ | ⏸ Builds; manual run on `E:` pending |
+
+### Summary (iteration 2)
+
+**Overall**: ❌ FAIL, on one narrow item. Every iteration-1 AC gap and surviving mutant is closed. The spec-anchored check is clean for SCAN-01..06. The sensor has 0 non-equivalent survivors in 46 mutants. The one remaining item is **B1**: a skipped case-twin folder's contents are still indexed, against the new edge case "o outro SHALL ser pulado" and the design "Pastas puladas e seu conteúdo nunca entram". Either fix it in `walk.rs` (detect twins per directory before descending) or reword the edge case; then extend `tests.rs:1109` with non-empty twin folders. With that resolved, the verdict would be PASS, pending only the manual `E:` run and Windows CI.

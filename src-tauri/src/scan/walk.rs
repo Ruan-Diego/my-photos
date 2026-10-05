@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::fs::{self, File};
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
@@ -143,6 +144,7 @@ fn visit(
         }
     };
     entries.sort_by(|a, b| a.name.cmp(&b.name));
+    let mut seen = HashSet::new();
     for entry in entries {
         let name = match entry.name {
             Ok(name) => name,
@@ -152,6 +154,13 @@ fn visit(
             }
         };
         let path = join(relative, &name);
+        // A case-sensitive folder can hold `A` and `a`, but the database compares paths
+        // NOCASE (NTFS semantics). The first in order wins; the twin and everything in
+        // it is skipped.
+        if !seen.insert(name.to_ascii_lowercase()) {
+            found.errors.push((path, "invalid_name"));
+            continue;
+        }
         match entry.kind {
             EntryKind::Skip => {}
             EntryKind::Unreadable => {

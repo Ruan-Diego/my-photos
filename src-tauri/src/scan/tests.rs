@@ -1110,13 +1110,15 @@ fn names_that_differ_only_in_case_keep_the_first_and_report_the_rest() {
     let mut library = Library::new("case-twins");
     library.write("A.jpg", b"a");
     library.write("a.jpg", b"b");
-    fs::create_dir_all(library.root.join("Pasta")).unwrap();
-    fs::create_dir_all(library.root.join("pasta")).unwrap();
+    library.write("Pasta/x.jpg", b"x");
+    library.write("pasta/x.jpg", b"y");
+    library.write("pasta/only.jpg", b"o");
+    fs::create_dir_all(library.root.join("pasta/sub")).unwrap();
     let summary = library.scan(T1);
     assert_eq!(library.run(summary.run_id).1, "completed");
     assert_eq!(
-        library.strings("SELECT relative_path FROM media_items"),
-        ["A.jpg"]
+        library.strings("SELECT relative_path FROM media_items ORDER BY relative_path"),
+        ["A.jpg", "Pasta/x.jpg"]
     );
     assert_eq!(
         library.strings("SELECT relative_path FROM folders"),
@@ -1124,10 +1126,11 @@ fn names_that_differ_only_in_case_keep_the_first_and_report_the_rest() {
     );
     assert_eq!(
         library.errors(summary.run_id),
-        ["invalid_name pasta", "invalid_name a.jpg"]
+        ["invalid_name a.jpg", "invalid_name pasta"]
     );
-    assert_eq!((summary.media, summary.folders), (1, 1));
+    assert_eq!((summary.media, summary.folders, summary.hashed), (2, 1, 2));
     // A second run is not blocked either.
     let second = library.scan(T2);
     assert_eq!(library.run(second.run_id).1, "completed");
+    assert_eq!(second.unchanged, 2);
 }
