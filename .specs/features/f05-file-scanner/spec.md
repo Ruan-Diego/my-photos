@@ -33,7 +33,7 @@ A F04 entregou o banco `E:\.myphotos\library.db` com o esquema v1 vazio. O F02 s
 | Assumption / decision | Chosen default | Rationale | Confirmed? |
 | --------------------- | -------------- | --------- | ---------- |
 | Raiz da biblioteca | `E:\` (constante `LIBRARY_ROOT`); a função recebe a raiz como parâmetro | AD-007, AD-010 | y (AD) |
-| Biblioteca no banco | Uma linha em `libraries` por `root_path`; criada na primeira varredura com `name = 'E:'`, `status = 'active'` | O esquema exige `library_id`; uma biblioteca no MVP | n — default |
+| Biblioteca no banco | Uma linha em `libraries` por `root_path`; criada na primeira varredura com `name` = `root_path` sem a barra final (`E:` para `E:\`), `status = 'active'` | O esquema exige `library_id`; uma biblioteca no MVP | n — default |
 | O que é mídia | Mesma lista de extensões do F02 (`takeout::classify`), sem diferenciar caixa. `mp4 mov mkv avi 3gp webm m4v` são `video`; o resto da lista é `photo` | Uma só fonte da verdade para "o que é mídia" | n — default |
 | Outros arquivos (`.json`, `.zip`, `.html`, …) | Ignorados, sem linha e sem erro | AD-010 | y (AD) |
 | Pastas puladas | `.myphotos` na raiz (qualquer caixa), pastas com atributos oculto **e** sistema (`$RECYCLE.BIN`, `System Volume Information`) em qualquer nível, links simbólicos e junções (nem seguidos nem gravados) | AD-010, AD-011; mesmo critério do F02 | y (AD) |
@@ -128,6 +128,8 @@ A F04 entregou o banco `E:\.myphotos\library.db` com o esquema v1 vazio. O F02 s
 - WHEN a raiz está vazia THEN a varredura SHALL terminar `completed` com zero pastas e zero mídias
 - WHEN uma mídia tem 0 bytes THEN SHALL ter linha com `size_bytes = 0` e o SHA-256 da entrada vazia (`e3b0c442…b855`)
 - WHEN `.myphotos` existe numa subpasta (não na raiz) THEN SHALL ser varrida como qualquer pasta
+- WHEN uma pasta case-sensitive tem dois nomes que diferem só na caixa (`A.jpg` e `a.jpg`, ou duas pastas) THEN o primeiro em ordem SHALL ser gravado, o outro SHALL ser pulado com `invalid_name` em `indexing_errors`, e a varredura SHALL terminar `completed` (Verifier iteração 1, R1)
+- WHEN um item listado não tem metadados legíveis THEN o caminho SHALL ser protegido como uma pasta ilegível; SHALL gerar `unreadable` em `indexing_errors` só se o nome tiver extensão de mídia (Verifier iteração 1, R2)
 - WHEN o mesmo arquivo é lido e o banco já tem a linha com outro caminho só na caixa (`A.JPG` vs `a.jpg`) THEN a coluna `COLLATE NOCASE` trata como o mesmo caminho e SHALL atualizar a linha existente (NTFS não diferencia caixa)
 
 ---

@@ -155,8 +155,11 @@ fn visit(
         match entry.kind {
             EntryKind::Skip => {}
             EntryKind::Unreadable => {
+                // Protect whatever it was; report it only if it looks like media (SCAN-02 AC5).
                 found.protected.push(path.clone());
-                found.errors.push((path, "unreadable"));
+                if matches!(classify(&name), FileRole::Media { .. }) {
+                    found.errors.push((path, "unreadable"));
+                }
             }
             EntryKind::Dir => {
                 if relative.is_empty() && name.eq_ignore_ascii_case(APP_FOLDER) {
@@ -324,6 +327,29 @@ mod tests {
 
     #[cfg(windows)]
     #[test]
+    fn hidden_system_folders_are_skipped_and_hidden_only_folders_are_not() {
+        let scratch = Scratch::new("walk-system");
+        write(&scratch.path, "sistema/a.jpg", b"a");
+        write(&scratch.path, "oculta/b.jpg", b"b");
+        let attrib = |args: &[&str], dir: &str| {
+            let status = std::process::Command::new("attrib")
+                .args(args)
+                .arg(scratch.path.join(dir))
+                .status()
+                .unwrap();
+            assert!(status.success());
+        };
+        attrib(&["+h", "+s"], "sistema");
+        attrib(&["+h"], "oculta");
+        let found = walk(&scratch.path, &RealFs).unwrap();
+        attrib(&["-h", "-s"], "sistema");
+        assert_eq!(found.folders, ["oculta"]);
+        assert_eq!(found.files.len(), 1);
+        assert_eq!(found.files[0].relative_path, "oculta/b.jpg");
+    }
+
+    #[cfg(windows)]
+    #[test]
     fn junctions_are_not_followed() {
         let scratch = Scratch::new("walk-junction");
         write(&scratch.path, "outside/secret.jpg", b"s");
@@ -404,13 +430,14 @@ mod tests {
                 entry(Err("bad\u{fffd}.jpg".to_string()), EntryKind::File),
                 entry(Ok("locked.jpg".to_string()), EntryKind::Unreadable),
                 entry(Ok("$RECYCLE.BIN".to_string()), EntryKind::Skip),
+                entry(Ok("locked.json".to_string()), EntryKind::Unreadable),
             ],
             vanish: None,
         };
         let found = walk(&scratch.path, &fs).unwrap();
         assert!(found.files.is_empty());
         assert!(found.folders.is_empty());
-        assert_eq!(found.protected, ["locked.jpg"]);
+        assert_eq!(found.protected, ["locked.jpg", "locked.json"]);
         assert_eq!(
             found.errors,
             [

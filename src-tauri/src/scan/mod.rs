@@ -7,7 +7,7 @@ mod walk;
 #[cfg(test)]
 mod tests;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::time::SystemTime;
 
@@ -248,7 +248,7 @@ fn reconcile(
     summary: &mut ScanSummary,
 ) -> Result<Queue, ScanError> {
     let transaction = connection.transaction()?;
-    reconcile_folders(&transaction, library_id, found, now)?;
+    reconcile_folders(&transaction, library_id, found, now, summary)?;
     let queue = reconcile_media(&transaction, library_id, found, now, summary)?;
     for (relative_path, error_type) in &found.errors {
         insert_error(&transaction, summary, relative_path, error_type, now)?;
@@ -262,6 +262,7 @@ fn reconcile_folders(
     library_id: i64,
     found: &Walk,
     now: &str,
+    summary: &mut ScanSummary,
 ) -> Result<(), ScanError> {
     let mut known: HashMap<String, (i64, String)> = HashMap::new();
     {
@@ -275,7 +276,14 @@ fn reconcile_folders(
             known.insert(key(&path), (id, path));
         }
     }
+    let mut seen = HashSet::new();
     for folder in &found.folders {
+        // A case-sensitive folder can hold `A` and `a`; the NOCASE column keeps the first.
+        if !seen.insert(key(folder)) {
+            insert_error(transaction, summary, folder, "invalid_name", now)?;
+            summary.folders -= 1;
+            continue;
+        }
         match known.remove(&key(folder)) {
             Some((id, path)) if &path != folder => {
                 transaction.execute(
@@ -330,7 +338,19 @@ fn reconcile_media(
     }
 
     let mut queue = Queue::new();
+    let mut seen = HashSet::new();
     for file in &found.files {
+        if !seen.insert(key(&file.relative_path)) {
+            insert_error(
+                transaction,
+                summary,
+                &file.relative_path,
+                "invalid_name",
+                now,
+            )?;
+            summary.media -= 1;
+            continue;
+        }
         match known.remove(&key(&file.relative_path)) {
             None => {
                 transaction.execute(

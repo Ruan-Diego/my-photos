@@ -91,6 +91,8 @@ flowchart TD
 | não | sim, status ≠ `missing_file`, fora de pasta ilegível | status `missing_file`, `updated_at` | `missing` |
 | não | sim, dentro de pasta ilegível | nada | — |
 
+Nomes que colidem só na caixa (pasta case-sensitive): o primeiro em ordem vale; os outros viram `invalid_name` e não contam em `folders`/`media`.
+
 Pastas: INSERT das novas; DELETE das que não estão no disco e não estão dentro de pasta ilegível. Pastas puladas e seu conteúdo nunca entram.
 
 ### Fila de hash

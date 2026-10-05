@@ -281,14 +281,17 @@ fn first_run_creates_the_library_and_a_completed_full_run() {
     library.write("a.jpg", b"hello");
     let summary = library.scan(T1);
     let root_path = library.root.to_string_lossy().into_owned();
-    let (stored_root, last_indexed, status): (String, Option<String>, String) = library
-        .connection
-        .query_row(
-            "SELECT root_path, last_indexed_at, status FROM libraries",
-            [],
-            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
-        )
-        .unwrap();
+    let (stored_root, last_indexed, status, name): (String, Option<String>, String, String) =
+        library
+            .connection
+            .query_row(
+                "SELECT root_path, last_indexed_at, status, name FROM libraries",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+            )
+            .unwrap();
+    // `E:\` is named `E:`; any root is named after itself without the trailing separator.
+    assert_eq!(name, root_path.trim_end_matches(['\\', '/']));
     assert_eq!(library.count("libraries"), 1);
     assert_eq!(stored_root, root_path);
     assert_eq!(last_indexed.as_deref(), Some(T1));
@@ -936,4 +939,195 @@ fn root_vanishing_while_listing_marks_nothing_missing() {
     let statuses = library.strings("SELECT status FROM indexing_runs ORDER BY id");
     assert_eq!(statuses, ["completed", "failed"]);
     fs::rename(&away, &root).unwrap();
+}
+
+// ---------------------------------------------------------------- Verifier iteration 1
+
+#[test]
+fn library_name_drops_the_trailing_separator() {
+    let mut library = Library::new("name");
+    let root = PathBuf::from(format!(
+        "{}{}",
+        library.root.display(),
+        std::path::MAIN_SEPARATOR
+    ));
+    scan_with(&mut library.connection, &root, &RealFs, T1).unwrap();
+    let (name, root_path): (String, String) = library
+        .connection
+        .query_row("SELECT name, root_path FROM libraries", [], |row| {
+            Ok((row.get(0)?, row.get(1)?))
+        })
+        .unwrap();
+    assert!(root_path.ends_with(std::path::MAIN_SEPARATOR));
+    assert_eq!(name, library.root.to_string_lossy());
+}
+
+#[test]
+fn size_change_with_the_same_date_is_a_modification() {
+    let mut library = Library::new("size-only");
+    library.write("a.jpg", b"x");
+    library.scan(T1);
+    let before = library.media("a.jpg");
+    let path = library.root.join("a.jpg");
+    let time = modified(&path);
+    fs::write(&path, b"hello").unwrap();
+    set_modified(&path, time);
+    assert_eq!(super::time::iso_utc(modified(&path)), before.modified);
+
+    let probe = Probe::default();
+    let summary = library.scan_using(&probe, T2).unwrap();
+    assert_eq!(*probe.opened.borrow(), ["a.jpg"]);
+    let after = library.media("a.jpg");
+    assert_eq!(after.id, before.id);
+    assert_eq!(after.size, Some(5));
+    assert_eq!(after.hash.as_deref(), Some(HELLO_SHA256));
+    assert_eq!(summary.modified, 1);
+}
+
+#[test]
+fn modified_media_loses_its_old_hash_until_it_is_read_again() {
+    let mut library = Library::new("modify-vanish");
+    library.write("a.jpg", b"x");
+    library.scan(T1);
+    let old_hash = library.media("a.jpg").hash;
+    library.write("a.jpg", b"hello");
+    let root = library.root.clone();
+    let away = library.scratch.path.join("away");
+    let (root_hook, away_hook) = (root.clone(), away.clone());
+    let probe = Probe {
+        on_open: Some(Box::new(move |_| {
+            fs::rename(&root_hook, &away_hook).unwrap();
+            true
+        })),
+        ..Probe::default()
+    };
+    assert_eq!(
+        library.scan_using(&probe, T2).unwrap_err(),
+        ScanError::RootMissing
+    );
+    let pending = library.media("a.jpg");
+    assert_eq!(pending.size, Some(5));
+    assert_eq!(pending.hash, None);
+    assert_ne!(pending.hash, old_hash);
+
+    fs::rename(&away, &root).unwrap();
+    let probe = Probe::default();
+    library.scan_using(&probe, T3).unwrap();
+    assert_eq!(*probe.opened.borrow(), ["a.jpg"]);
+    assert_eq!(library.media("a.jpg").hash.as_deref(), Some(HELLO_SHA256));
+}
+
+#[test]
+fn hashes_are_committed_every_hundred_files() {
+    let mut library = Library::new("batches");
+    for index in 0..150 {
+        library.write(&format!("f{index:03}.jpg"), b"x");
+    }
+    let db_path = library.scratch.path.join("library.db");
+    let seen = std::rc::Rc::new(RefCell::new(Vec::new()));
+    let seen_hook = seen.clone();
+    let probe = Probe {
+        on_open: Some(Box::new(move |count| {
+            if [1, 50, 100, 101, 150].contains(&count) {
+                let reader = Connection::open(&db_path).unwrap();
+                let hashed: i64 = reader
+                    .query_row(
+                        "SELECT count(*) FROM media_items WHERE file_hash_sha256 IS NOT NULL",
+                        [],
+                        |row| row.get(0),
+                    )
+                    .unwrap();
+                seen_hook.borrow_mut().push((count, hashed));
+            }
+            false
+        })),
+        ..Probe::default()
+    };
+    library.scan_using(&probe, T1).unwrap();
+    // Seen by another connection just before file N is read: nothing until the first 100
+    // are committed, then exactly 100 until the end.
+    assert_eq!(
+        *seen.borrow(),
+        [(1, 0), (50, 0), (100, 0), (101, 100), (150, 100)]
+    );
+    let hashed: i64 = library
+        .connection
+        .query_row(
+            "SELECT count(*) FROM media_items WHERE file_hash_sha256 IS NOT NULL",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(hashed, 150);
+}
+
+#[test]
+fn folder_case_rename_updates_the_path_and_keeps_the_id() {
+    let mut library = Library::new("folder-case");
+    fs::create_dir_all(library.root.join("Viagem")).unwrap();
+    library.scan(T1);
+    let id: i64 = library
+        .connection
+        .query_row("SELECT id FROM folders", [], |r| r.get(0))
+        .unwrap();
+    fs::rename(library.root.join("Viagem"), library.root.join("viagem")).unwrap();
+    library.scan(T2);
+    let (after_id, path): (i64, String) = library
+        .connection
+        .query_row("SELECT id, relative_path FROM folders", [], |r| {
+            Ok((r.get(0)?, r.get(1)?))
+        })
+        .unwrap();
+    assert_eq!((after_id, path.as_str()), (id, "viagem"));
+}
+
+#[test]
+fn protection_stops_at_the_folder_boundary() {
+    let mut library = Library::new("sibling");
+    library.write("trancada/a.jpg", b"a");
+    library.write("trancada2/b.jpg", b"b");
+    fs::create_dir_all(library.root.join("trancada2/sub")).unwrap();
+    library.scan(T1);
+    fs::remove_file(library.root.join("trancada2/b.jpg")).unwrap();
+    fs::remove_dir_all(library.root.join("trancada2/sub")).unwrap();
+    let probe = Probe {
+        fail_list: vec!["trancada"],
+        ..Probe::default()
+    };
+    let summary = library.scan_using(&probe, T2).unwrap();
+    assert_eq!(library.media("trancada/a.jpg").status, "ok");
+    assert_eq!(library.media("trancada2/b.jpg").status, "missing_file");
+    assert_eq!(summary.missing, 1);
+    assert_eq!(
+        library.strings("SELECT relative_path FROM folders ORDER BY relative_path"),
+        ["trancada", "trancada2"]
+    );
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn names_that_differ_only_in_case_keep_the_first_and_report_the_rest() {
+    let mut library = Library::new("case-twins");
+    library.write("A.jpg", b"a");
+    library.write("a.jpg", b"b");
+    fs::create_dir_all(library.root.join("Pasta")).unwrap();
+    fs::create_dir_all(library.root.join("pasta")).unwrap();
+    let summary = library.scan(T1);
+    assert_eq!(library.run(summary.run_id).1, "completed");
+    assert_eq!(
+        library.strings("SELECT relative_path FROM media_items"),
+        ["A.jpg"]
+    );
+    assert_eq!(
+        library.strings("SELECT relative_path FROM folders"),
+        ["Pasta"]
+    );
+    assert_eq!(
+        library.errors(summary.run_id),
+        ["invalid_name pasta", "invalid_name a.jpg"]
+    );
+    assert_eq!((summary.media, summary.folders), (1, 1));
+    // A second run is not blocked either.
+    let second = library.scan(T2);
+    assert_eq!(library.run(second.run_id).1, "completed");
 }
