@@ -614,19 +614,10 @@ fn unreadable_folder_keeps_the_status_of_its_media() {
     let mut connection = open_in_memory();
     scan(&mut connection, &root).expect("scan");
     let locked = root.join("locked");
-    // Same ACL trick as the F02 test: drop every inherited ACE, then /reset restores it.
-    let acl = |args: &[&str]| {
-        let output = std::process::Command::new("icacls")
-            .arg(&locked)
-            .args(args)
-            .output()
-            .expect("icacls");
-        assert!(output.status.success(), "icacls {args:?}");
-    };
-    acl(&["/inheritance:r"]);
+    let lock = crate::db::tests::lock_dir(&locked);
 
     let result = scan(&mut connection, &root);
-    acl(&["/reset"]);
+    drop(lock);
 
     let summary = result.expect("scan");
     assert_eq!(summary.missing, 0);
