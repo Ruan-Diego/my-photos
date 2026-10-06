@@ -77,6 +77,51 @@ fn jpeg(exif_tiff: Option<&[u8]>, size: Option<(u16, u16)>) -> Vec<u8> {
     bytes
 }
 
+/// ISO-BMFF box: big-endian size, type, payload.
+fn bmff(kind: &[u8; 4], payload: &[u8]) -> Vec<u8> {
+    let mut out = ((8 + payload.len()) as u32).to_be_bytes().to_vec();
+    out.extend_from_slice(kind);
+    out.extend_from_slice(payload);
+    out
+}
+
+/// A HEIF stored as `width`x`height` with a 90° `irot`, no EXIF.
+fn heif_rotated(width: u32, height: u32) -> Vec<u8> {
+    let mut ispe = vec![0, 0, 0, 0];
+    ispe.extend_from_slice(&width.to_be_bytes());
+    ispe.extend_from_slice(&height.to_be_bytes());
+    let mut ipco = bmff(b"ispe", &ispe);
+    ipco.extend_from_slice(&bmff(b"irot", &[1]));
+    let iprp = bmff(b"iprp", &bmff(b"ipco", &ipco));
+    let mut meta = vec![0, 0, 0, 0];
+    meta.extend_from_slice(&iprp);
+    let mut bytes = bmff(b"ftyp", b"heic\0\0\0\0mif1heic");
+    bytes.extend_from_slice(&bmff(b"meta", &meta));
+    bytes
+}
+
+/// VP8X WebP with the canvas size and an optional EXIF chunk.
+fn webp(exif_tiff: Option<&[u8]>, width: u32, height: u32) -> Vec<u8> {
+    let mut chunks = b"VP8X".to_vec();
+    chunks.extend_from_slice(&10u32.to_le_bytes());
+    chunks.extend_from_slice(&[if exif_tiff.is_some() { 0x08 } else { 0 }, 0, 0, 0]);
+    chunks.extend_from_slice(&(width - 1).to_le_bytes()[..3]);
+    chunks.extend_from_slice(&(height - 1).to_le_bytes()[..3]);
+    if let Some(tiff) = exif_tiff {
+        chunks.extend_from_slice(b"EXIF");
+        chunks.extend_from_slice(&(tiff.len() as u32).to_le_bytes());
+        chunks.extend_from_slice(tiff);
+        if tiff.len() % 2 == 1 {
+            chunks.push(0);
+        }
+    }
+    let mut bytes = b"RIFF".to_vec();
+    bytes.extend_from_slice(&((4 + chunks.len()) as u32).to_le_bytes());
+    bytes.extend_from_slice(b"WEBP");
+    bytes.extend_from_slice(&chunks);
+    bytes
+}
+
 fn crc32(bytes: &[u8]) -> u32 {
     let mut crc = 0xFFFF_FFFFu32;
     for &byte in bytes {
@@ -476,28 +521,25 @@ fn exif04_header_size_wins_over_exif_dimensions() {
     let from_png = photos.read("b.png", &png(Some(&exif), 4032, 3024));
     assert_eq!((from_png.width, from_png.height), (Some(4032), Some(3024)));
     assert!(from_png.raw_json.is_some());
-}
-
-#[test]
-fn exif04_raw_and_unreadable_headers_use_exif_dimensions() {
-    let photos = Photos::new("size-exif");
-    let exif = tiff(&pixel_dimensions(6000, 4000));
-    for name in ["a.dng", "b.CR2", "c.nef", "d.arw"] {
-        // A JPEG-shaped file with a 640x480 header: RAW must ignore the header.
-        let metadata = photos.read(name, &jpeg(Some(&exif), Some((640, 480))));
+    // Chosen by content: upper-case, .jpeg, and a JPEG under a RAW name all use the header.
+    for name in ["C.JPG", "d.jpeg", "e.dng"] {
+        let metadata = photos.read(name, &jpeg(Some(&exif), Some((4032, 3024))));
         assert_eq!(
             (metadata.width, metadata.height),
-            (Some(6000), Some(4000)),
+            (Some(4032), Some(3024)),
             "{name}"
         );
     }
-    let no_header = photos.read("e.jpg", &jpeg(Some(&exif), None));
+    let from_webp = photos.read("f.webp", &webp(Some(&exif), 4032, 3024));
     assert_eq!(
-        (no_header.width, no_header.height),
-        (Some(6000), Some(4000))
+        (from_webp.width, from_webp.height),
+        (Some(4032), Some(3024))
     );
-    let nothing = photos.read("f.jpg", &jpeg(Some(&tiff(&[ascii(Tag::Make, "X")])), None));
-    assert_eq!((nothing.width, nothing.height), (None, None));
+    assert!(from_webp
+        .raw_json
+        .as_deref()
+        .unwrap()
+        .contains("PixelXDimension"));
 }
 
 #[test]
@@ -620,31 +662,17 @@ fn exif06_reading_never_changes_the_file() {
 // ---------------------------------------------------------------- Verifier iteration 1
 
 #[test]
-fn exif04_heif_size_comes_from_exif_not_the_header() {
-    // A HEIC's own header may carry a rotation that imagesize applies; the stored size is
-    // the EXIF one. A JPEG-shaped body with a 640x480 header proves the header is not used.
-    let photos = Photos::new("size-heif");
-    let exif = tiff(&pixel_dimensions(4032, 3024));
-    for name in ["a.heic", "b.HEIF"] {
-        let metadata = photos.read(name, &jpeg(Some(&exif), Some((640, 480))));
-        assert_eq!(
-            (metadata.width, metadata.height),
-            (Some(4032), Some(3024)),
-            "{name}"
-        );
-    }
-}
-
-#[test]
 fn exif04_zero_sizes_are_absent() {
     let photos = Photos::new("size-zero");
     let header = photos.read("a.png", &png(None, 0, 16));
     assert_eq!((header.width, header.height), (None, None));
-    let exif = photos.read(
-        "b.dng",
-        &jpeg(Some(&tiff(&pixel_dimensions(0, 3024))), None),
-    );
-    assert_eq!((exif.width, exif.height), (None, None));
+    for (width, height) in [(0, 3024), (4032, 0)] {
+        let exif = photos.read(
+            "b.jpg",
+            &jpeg(Some(&tiff(&pixel_dimensions(width, height))), None),
+        );
+        assert_eq!((exif.width, exif.height), (None, None), "{width}x{height}");
+    }
 }
 
 #[test]
@@ -752,5 +780,50 @@ fn exif02_gps_offset_rounds_to_the_nearest_quarter_hour() {
     assert_eq!(
         metadata.taken_at.as_deref(),
         Some("2022-08-10T14:33:10.000Z")
+    );
+}
+
+#[test]
+fn exif04_tiff_and_raw_content_use_exif_pixel_dimensions() {
+    let photos = Photos::new("size-tiff");
+    let mut fields = pixel_dimensions(6000, 4000);
+    fields.push(short(Tag::ImageWidth, 160));
+    fields.push(short(Tag::ImageLength, 120));
+    let raw = tiff(&fields);
+    for name in ["a.CR2", "b.nef", "c.arw", "d.dng", "e.tif", "f.jpg"] {
+        let path = photos.write(name, &raw);
+        // The header (first IFD) says 160x120: that is the preview, not the photo.
+        let header = imagesize::size(&path).unwrap();
+        assert_eq!((header.width, header.height), (160, 120));
+        let metadata = read_embedded(&path).unwrap();
+        assert_eq!(
+            (metadata.width, metadata.height),
+            (Some(6000), Some(4000)),
+            "{name}"
+        );
+    }
+    let no_pixels = photos.read(
+        "g.dng",
+        &tiff(&[short(Tag::ImageWidth, 160), short(Tag::ImageLength, 120)]),
+    );
+    assert_eq!((no_pixels.width, no_pixels.height), (None, None));
+}
+
+#[test]
+fn exif04_heif_header_is_never_used_whatever_the_name() {
+    let photos = Photos::new("size-heif");
+    for name in ["a.heic", "b.HEIF", "c.jpg"] {
+        let path = photos.write(name, &heif_rotated(4032, 3024));
+        // imagesize applies irot and would report the photo turned.
+        let header = imagesize::size(&path).unwrap();
+        assert_eq!((header.width, header.height), (3024, 4032));
+        let metadata = read_embedded(&path).unwrap();
+        assert_eq!((metadata.width, metadata.height), (None, None), "{name}");
+    }
+    // A JPEG body under a HEIC name is a JPEG.
+    let jpeg_named_heic = photos.read("d.heic", &jpeg(None, Some((640, 480))));
+    assert_eq!(
+        (jpeg_named_heic.width, jpeg_named_heic.height),
+        (Some(640), Some(480))
     );
 }

@@ -9,20 +9,19 @@ mod date;
 mod tests;
 
 use std::fs::File;
-use std::io::BufReader;
+use std::io::{BufReader, Read};
 use std::path::Path;
 
 use exif::{Exif, In, Reader, Tag, Value};
+use imagesize::ImageType;
 
 use date::{
     gps_offset, gps_utc_seconds, offset_text, parse_exif_datetime, parse_offset, parse_subsec,
     to_utc,
 };
 
-/// Formats whose header `imagesize` reads as stored. HEIF is not here: `imagesize`
-/// applies the HEIF rotation (`irot`), so iPhone photos would come back turned; RAW is not
-/// here because its first IFD is usually the preview. Both use the EXIF pixel dimensions.
-const HEADER_SIZE_EXTENSIONS: &[&str] = &["jpg", "jpeg", "png", "gif", "webp"];
+/// Bytes enough for `imagesize::image_type` to recognise any supported format.
+const SNIFF_BYTES: u64 = 256;
 
 /// Longest text kept per tag in `raw_json`, in characters.
 const RAW_VALUE_CHARS: usize = 1024;
@@ -83,15 +82,7 @@ pub fn read_embedded(path: &Path) -> Result<EmbeddedMetadata, EmbeddedError> {
     let (exif, corrupt) = read_exif(file)?;
     metadata.exif_corrupt = corrupt;
 
-    let header_size = path
-        .extension()
-        .and_then(|extension| extension.to_str())
-        .is_some_and(|extension| {
-            HEADER_SIZE_EXTENSIONS
-                .iter()
-                .any(|known| known.eq_ignore_ascii_case(extension))
-        });
-    if header_size {
+    if header_size_is_stored_size(path) {
         if let Ok(size) = imagesize::size(path) {
             if let (Some(width), Some(height)) = (positive(size.width), positive(size.height)) {
                 metadata.width = Some(width);
@@ -131,6 +122,22 @@ fn read_exif(file: File) -> Result<(Option<Exif>, bool), EmbeddedError> {
             }
             Err(_) => (None, true),
         },
+    )
+}
+
+/// Decided by content, not by name: only JPEG, PNG, GIF and WebP headers hold the size as
+/// stored. HEIF headers are skipped because `imagesize` applies their `irot` rotation
+/// (iPhone photos would come back turned), and TIFF/RAW because the first IFD is usually
+/// the preview; both use the EXIF pixel dimensions instead.
+fn header_size_is_stored_size(path: &Path) -> bool {
+    let mut head = Vec::new();
+    let read = File::open(path).and_then(|file| file.take(SNIFF_BYTES).read_to_end(&mut head));
+    if read.is_err() {
+        return false;
+    }
+    matches!(
+        imagesize::image_type(&head),
+        Ok(ImageType::Jpeg | ImageType::Png | ImageType::Gif | ImageType::Webp)
     )
 }
 

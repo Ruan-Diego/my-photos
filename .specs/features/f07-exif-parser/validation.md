@@ -266,3 +266,89 @@ Recommended, not blocking: R1 (`Exif\0\0`-prefixed WebP), R2 (whole-file reads f
 | EXIF-06 | ✅ Verified |
 
 **Overall**: ❌ FAIL. The date, offset, GPS and dimension logic is careful, and 51 of 62 mutants are killed. Two defects remain: HEIC dimensions rotated by `irot` (B1), and mid-read I/O errors reported as corrupt EXIF (B2). Seven spec-visible mutants survive. All of them can be fixed with small, local changes (see above).
+
+---
+
+## Iteration 2 (re-verification)
+
+**Diff range**: `0975d0c..c544197` (`c544197`). It changes `photo_meta/mod.rs` (header sizes now come from an extension allowlist `HEADER_SIZE_EXTENSIONS = jpg jpeg png gif webp`; `read_exif` returns `Err(Unreadable)` for `exif::Error::Io` other than `UnexpectedEof`; sizes must be > 0 and come as a pair; `#![allow(dead_code)]`), adds 9 tests to `tests.rs` and two bad offsets in `date.rs`, rewrites the leap-year test with `is_multiple_of` (same logic), and edits `spec.md` and `design.md`.
+**Gate**: `cargo test --lib -- photo_meta:: time::` → **42 passed, 0 failed** (33 before, plus 9). `scan::` + `takeout::` → 107 passed, 1 failed (the known icacls test), the same as before. `cargo clippy --lib --tests`: no warnings in `photo_meta` (the 7 remaining are in `bench::`/`db::`). Note: `is_multiple_of` on unsigned integers needs Rust ≥ 1.87. The local toolchain is 1.97, and `Cargo.toml` sets no `rust-version`.
+
+### Iteration-1 defects
+
+| # | Fix | Evidence | Result |
+| - | --- | -------- | ------ |
+| B1 HEIC sizes rotated | `.heic`/`.heif` are no longer in the header allowlist, so their size comes from EXIF `PixelX/YDimension` (`mod.rs:22-25`, `:86-101`) | The same hand-built HEIF as before (`ispe 4032×3024`, `irot 1`) saved as `a.heic` → `(None, None)` (no EXIF, so no size; no rotated size). The new test `exif04_heif_size_comes_from_exif_not_the_header` (`tests.rs:623`) uses a JPEG body named `.heic`/`.HEIF`: EXIF `4032×3024` beats the 640×480 header. N03 (adding `heic` to the allowlist) is killed | ✅ Fixed for HEIF files with a HEIF extension. **Residual**: the choice is made by extension, while `imagesize` detects the format by content. A HEIF saved as `.jpg` still comes back rotated (probe: `b.jpg` with the HEIF bytes → `(3024, 4032)`). See R8 |
+| B2 disk error → corrupt | `mod.rs:111-134`: `Error::Io(e)` with `e.kind() != UnexpectedEof` → `Err(Unreadable)` | `exif05_a_disk_error_after_opening_is_unreadable` (`tests.rs:651`): `read_embedded(<directory>)` → `Err(Unreadable)`. N01 (arm disabled) is killed. `exif05_truncated_photo_is_flagged_corrupt` (`:659`): JPEG without EOI → `exif_corrupt`, `raw_json None` | ✅ Fixed. Note: the `UnexpectedEof` guard can never trigger. kamadak's JPEG/PNG/WebP/HEIF readers already turn `UnexpectedEof` into `InvalidFormat("Broken … file")` (`jpeg.rs:56`, `png.rs:43`, `webp.rs:43`, `isobmff.rs:51`), and the TIFF path uses `read_to_end`, which never returns it. So N02 (guard removed) is equivalent. Truncated files stay `exif_corrupt` because of the `InvalidFormat` mapping, not because of the guard |
+| R4 zero sizes | `positive()` for the header, `> 0` filters for EXIF; the header pair must be complete | `exif04_zero_sizes_are_absent` (`:639`): PNG 0×16 → `(None, None)`; DNG with EXIF `0×3024` → `(None, None)`. N04, N05, N07 killed | ✅ Mostly pinned. N06 (Y filter only) survives, see below |
+
+### Iteration-1 survivors
+
+| Mutant | New test (`tests.rs`) | Result |
+| ------ | --------------------- | ------ |
+| M02 partial EXIF discarded | `:669` `exif05_partly_readable_exif_keeps_what_was_read`: the `Make` value points out of the block → `exif_corrupt`, `taken_at_local` set, `raw_json` contains `Modelo Bom` and not `Fabricante` | ✅ Killed (also M04) |
+| M15 lat +90 rejected | `:699` `edge_north_pole_and_antimeridian_west_are_valid`: `(90 N, 180 W)` → `(90.0, -180.0)` | ✅ Killed |
+| M31 lon −180 rejected | same | ✅ Killed |
+| M25 IFD1 fields in `raw_json` | `:714` `exif05_raw_json_ignores_thumbnail_fields`: IFD1 `Make "Miniatura"` and `Software "SoMiniatura"` are absent; IFD0 `Make "Principal"` is present | ✅ Killed |
+| M37 −14:30 accepted | `:735` `exif02_gps_offset_beyond_minus_fourteen_hours_is_unknown`: local 00:05 vs UTC 14:35 → `(None, None)` | ✅ Killed |
+| D12 floor | `:745` `exif02_gps_offset_rounds_to_the_nearest_quarter_hour`: +2:58 → `+03:00`, UTC `14:33:10.000Z`. Also D21 (`ceil`) killed | ✅ Killed |
+| D11 offset separator | `date.rs:268-269` `+03-00`, `+03.00` rejected | ✅ Killed |
+
+### Full mutation set, re-run
+
+All 62 iteration-1 mutants were re-applied with the same script. M05, M06 and D05 were re-targeted at the new code: `if header_size`, `known.eq_ignore_ascii_case`, `is_multiple_of`. I added 11 mutants for the new code (N01–N10, D21). Each was applied alone and checked as applied, the gate was run, and the file was restored with `git checkout -- <file>`.
+
+| ID | Mutation | Result | Note |
+| -- | -------- | ------ | ---- |
+| M01–M05, M08–M29, M31, M32, M34, M35, M37, D01–D21, T01–T05 | (as in iteration 1; M02, M15, M25, M31, M37, D11, D12 now killed) | ✅ Killed | |
+| M07, M30, M33, M36 | (as in iteration 1) | ⚪ Survived, equivalent/benign | Unchanged reasoning |
+| **M06** | header extension match case-sensitive (`*known == extension`) | ❌ **Survived** | Killed in iteration 1 by `b.CR2`, but RAW is no longer in the matched list. Every header test uses lower case (`.jpg`, `.png`, `.gif`). Cameras write `IMG_0001.JPG`. With the mutant, such a file takes EXIF `PixelX/Y` over its header. EXIF-04 AC4. The code is correct (probe: `C.JPG` → 4032); only the test is missing |
+| N01 | `Io` → `Unreadable` arm disabled | ✅ Killed | `exif05_a_disk_error…` |
+| N02 | `UnexpectedEof` guard removed | ⚪ Survived, equivalent | No container reader can return `Io(UnexpectedEof)` (see B2 above) |
+| N03 | `heic`, `heif` added to the header list | ✅ Killed | `exif04_heif_size…` |
+| N04 | header zero filter removed | ✅ Killed | `exif04_zero_sizes…` |
+| N05 | EXIF X > 0 filter removed | ✅ Killed | `exif04_zero_sizes…` |
+| **N06** | EXIF Y > 0 filter removed | ❌ **Survived** | The test only has X = 0. With `PixelX 4032, PixelY 0` the mutant gives `(4032, 0)`. Spec Assumptions: "Largura e altura vêm juntas e maiores que 0" |
+| N07 | header sizes set one by one (no pair rule) | ✅ Killed | `exif04_zero_sizes…` |
+| **N08** | `webp` removed from the header list | ❌ **Survived** | No WebP test. The spec says `imagesize` reads the WebP header. A WebP would fall back to EXIF or no size. Probe from iteration 1 shows the code reads VP8X correctly |
+| **N09** | `jpeg` removed from the header list | ❌ **Survived** | No `.jpeg` test. EXIF-04 AC4 covers JPEG by format, not by one spelling |
+| N10 | `tif`, `tiff` added to the header list | ⚪ Survived, not spec-visible | The spec does not say how non-RAW TIFF gets its size (see R9) |
+
+**Totals**: 73 mutants (62 re-run + 11 new). **63 killed**. **10 survived**: 6 equivalent or benign (M07, M30, M33, M36, N02, N10) and **4 spec-visible (M06, N06, N08, N09)**. All 4 are in the extension allowlist and size-pair code that iteration 2 added, and each is test-only to close.
+
+### New residual risks and doc consistency
+
+| # | Severity | Where | Finding |
+| - | -------- | ----- | ------- |
+| R8 | Low–Medium | `mod.rs:86-101` | The format is chosen by **extension**, while `imagesize` and kamadak detect it by **content**. A HEIF with a `.jpg`/`.jpeg` name (renamed or mislabelled exports) still gets the `irot`-rotated size (probe: `(3024, 4032)`). Content-based fix: skip the header when `imagesize::image_type(path)` is `ImageType::Heif(_)` (and when the content is TIFF), whatever the extension. That also makes M06/N09 moot |
+| R9 | Low (spec gap) | `spec.md` Assumptions "Dimensões"; `mod.rs:25` | Non-RAW TIFF (`.tif`/`.tiff`), which the Goals list, is in neither branch. With no `PixelXDimension` (normal for plain TIFF) its size is absent, even though IFD0 `ImageWidth`/`ImageLength` are right there (probe: `e.tif` with 800×600 in IFD0 → `(None, None)`, `raw_json` shows `ImageWidth "800 pixels"`). Either add `tif`/`tiff` to the header list (`imagesize` reads IFD0) or state in the spec that TIFF sizes come only from EXIF |
+| R10 | Info | `design.md:16`, `:76`, `:96` | Not updated for iteration 2. The flowchart still says "dimensões: imagesize (não-RAW)". The component note still says "RAW = extensão `dng cr2 nef arw`", but the code now uses a header allowlist. The error table has no "erro de disco durante a leitura → `Err(Unreadable)`" row. `spec.md` is consistent: Assumptions "Dimensões" and "Arquivo ilegível", EXIF-04 AC5 and EXIF-05 AC3 all match the code |
+
+The spec edits are consistent with the code, with one exception: "Para HEIC/HEIF … `PixelXDimension`" is enforced by extension only (R8).
+
+Afterwards `git status --short` showed only this report modified. (The iteration-1 report was committed by the author in `c544197`.)
+
+### Required to reach PASS
+
+Test-only, one assertion each:
+
+1. **M06 / N09.** In `exif04_header_size_wins_over_exif_dimensions`, add `C.JPG` and `d.jpeg` (EXIF 100×50, header 4032×3024 → 4032×3024).
+2. **N08.** Add a WebP VP8X fixture (header 4032×3024, an `EXIF` chunk with `PixelX/Y` 100×50) → 4032×3024. The iteration-1 probe has a ready builder.
+3. **N06.** In `exif04_zero_sizes_are_absent`, add EXIF `4032×0` → `(None, None)`.
+
+Recommended, not blocking: R8 (choose the size source by content), R9 (state how TIFF gets its size), R10 (update design.md).
+
+### Requirement status (iteration 2)
+
+| Requirement | Iteration 1 | Iteration 2 |
+| ----------- | ----------- | ----------- |
+| EXIF-01 | ✅ | ✅ Verified |
+| EXIF-02 | ❌ | ✅ Verified (M37, D11, D12 killed) |
+| EXIF-03 | ⚠️ | ✅ Verified (M15, M31 killed) |
+| EXIF-04 | ❌ (B1) | ⚠️ B1 fixed for `.heic/.heif`. Header allowlist not pinned for `.JPG`, `.jpeg`, `.webp` (M06, N09, N08); EXIF Y = 0 not pinned (N06). R8 residual |
+| EXIF-05 | ❌ (B2, M02, M25) | ✅ Verified (B2 fixed; M02, M25, N01 killed) |
+| EXIF-06 | ✅ | ✅ Verified |
+
+### Summary (iteration 2)
+
+**Overall**: ❌ FAIL, narrowly. B1 and B2 are fixed and verified with probes and new tests. All 7 iteration-1 spec-visible survivors are killed. 63 of 73 mutants are killed, and the 6 other survivors are equivalent. The FAIL rests on 4 spec-visible survivors in the new header allowlist code: `.JPG` upper case (M06), `.jpeg` (N09), `.webp` (N08), and EXIF height 0 alone (N06). No production bug is open. All four close with test-only additions. R8 (a HEIF with a `.jpg` name) is a residual risk I recommend fixing by choosing the size source by content.

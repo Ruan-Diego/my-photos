@@ -13,7 +13,7 @@ Uma função de leitura por foto, sem estado. O arquivo é aberto só para leitu
 flowchart TD
     A["read_embedded(path)"] --> O{abre?}
     O -->|não| U[Err unreadable]
-    O -->|sim| D["dimensões: imagesize (não-RAW)"]
+    O -->|sim| D["dimensões: imagesize só se o conteúdo é JPEG/PNG/GIF/WebP"]
     O --> X["kamadak-exif: Reader::read_from_container"]
     X -->|NotFound| N[sem EXIF]
     X -->|PartialResult| P[campos lidos + exif_corrupt]
@@ -73,7 +73,7 @@ pub enum EmbeddedError { Unreadable }     // as_code(): "unreadable"
 pub fn read_embedded(path: &Path) -> Result<EmbeddedMetadata, EmbeddedError>
 ```
 
-- RAW = extensão `dng cr2 nef arw` (sem diferenciar caixa).
+- O formato é decidido pelo **conteúdo** (`imagesize::image_type` nos primeiros 256 bytes), não pelo nome: JPEG, PNG, GIF e WebP usam o cabeçalho; HEIF, TIFF e RAW (que é TIFF) usam `PixelXDimension`/`PixelYDimension`. Um HEIC salvo como `.jpg` não volta girado (Verifier F07, iteração 2).
 
 ### Data e fuso (`date.rs`)
 
@@ -98,6 +98,7 @@ pub fn read_embedded(path: &Path) -> Result<EmbeddedMetadata, EmbeddedError>
 | EXIF lixo | `Ok`, `exif_corrupt` | F10 pode registrar `corrupt_media` |
 | EXIF parcial | Campos lidos valem, `exif_corrupt` | Dados possíveis aproveitados |
 | Cabeçalho ilegível | Dimensões do EXIF ou ausentes | Grade usa proporção padrão |
+| Erro de disco durante a leitura | `Err(Unreadable)` (`exif::Error::Io`); arquivo truncado continua `exif_corrupt` | F10 registra `unreadable`, não `corrupt_media` |
 
 ---
 
@@ -108,5 +109,5 @@ pub fn read_embedded(path: &Path) -> Result<EmbeddedMetadata, EmbeddedError>
 | HEIC real não testado (gerar HEIC no teste é inviável) | Coberto pelo crate; tamanho de HEIF vem do EXIF (o `imagesize` aplica `irot`); validar na varredura real (F10) |
 | WebP cujo chunk EXIF começa com `Exif\0\0` (alguns gravadores) | O crate o vê como EXIF corrompido: `exif_corrupt` e sem campos. Registrado; medir na varredura real antes de contornar |
 | Leitura completa: TIFF/RAW é lido inteiro e JPEG sem EXIF é percorrido até o fim (comportamento do crate) | O F05 já lê cada arquivo inteiro para o hash; custo de I/O igual. Otimização (ler junto com o hash) fica para F10/F32 |
-| `imagesize` em RAW devolver a miniatura | RAW nunca usa `imagesize` |
+| `imagesize` em RAW/TIFF devolver a miniatura | Conteúdo TIFF nunca usa o cabeçalho; TIFF comum sem `PixelX/YDimension` fica sem tamanho (F12 preenche ao decodificar) |
 | GPS com hora de fix antiga desvia o fuso | Arredondamento a 15 min absorve até ±7 min; acima disso o fuso pode errar e fica registrado como derivado do GPS (a fonte é reportável depois) |

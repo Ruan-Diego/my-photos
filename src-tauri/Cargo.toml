@@ -4,6 +4,8 @@ version = "0.1.0"
 description = "A Tauri App"
 authors = ["you"]
 edition = "2021"
+# u32::is_multiple_of (photo_meta::date) is stable since 1.87.
+rust-version = "1.87"
 # Two binaries since F03 (f03-bench); `tauri dev` runs the app.
 default-run = "my-photos"
 
