@@ -1,7 +1,6 @@
 //! F05: walk the library, record folders and media, hash what is new or changed.
 //! Reads the library only; every write goes to the database (AD-008, AD-011).
 
-mod time;
 mod walk;
 
 #[cfg(test)]
@@ -16,7 +15,7 @@ use serde::Serialize;
 
 use crate::bench::hash::{hash_reader, to_hex};
 use crate::db;
-use time::iso_utc;
+use crate::time::iso_utc;
 use walk::{absolute, walk, FileFact, Walk};
 pub(crate) use walk::{FileSystem, RealFs};
 

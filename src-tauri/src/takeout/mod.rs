@@ -7,7 +7,8 @@ mod model;
 mod parse;
 
 use std::collections::BTreeMap;
-use std::fs;
+use std::fs::{self, File};
+use std::io::Read;
 use std::path::{Path, PathBuf};
 
 pub(crate) use classify::{classify, FileRole};
@@ -16,12 +17,26 @@ use parse::{parse_album_json, parse_media_json};
 
 #[allow(unused_imports)]
 pub use model::{
-    AlbumHit, AlbumMetadata, Confidence, DiscoveryReport, MediaHit, MediaMetadata, Problem,
-    ProblemKind, UnmatchedReason,
+    normalized_person_name, AlbumHit, AlbumMetadata, Confidence, DiscoveryReport, LocationSource,
+    MediaHit, MediaMetadata, Problem, ProblemKind, UnmatchedReason,
 };
+pub use parse::MAX_SIDECAR_BYTES;
 
 pub fn discover(root: &Path) -> Result<DiscoveryReport, String> {
-    discover_with(root, |path| fs::read(path).map_err(|error| error.to_string()))
+    discover_with(root, |path| {
+        read_json_capped(File::open(path).map_err(|error| error.to_string())?)
+    })
+}
+
+/// F06: reads at most `MAX_SIDECAR_BYTES + 1` bytes. A longer sidecar comes back one byte
+/// over the cap so the parser rejects it as `invalid_json` without loading all of it.
+pub(crate) fn read_json_capped(reader: impl Read) -> Result<Vec<u8>, String> {
+    let mut bytes = Vec::new();
+    reader
+        .take(MAX_SIDECAR_BYTES as u64 + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|error| error.to_string())?;
+    Ok(bytes)
 }
 
 pub(crate) fn discover_with(
@@ -318,7 +333,7 @@ mod tests {
     use std::fs;
     use std::path::{Path, PathBuf};
 
-    use super::{discover, discover_with};
+    use super::{discover, discover_with, read_json_capped, MAX_SIDECAR_BYTES};
     use crate::takeout::model::{Confidence, ProblemKind, UnmatchedReason};
 
     fn fixture(name: &str) -> PathBuf {
@@ -796,5 +811,80 @@ mod tests {
         assert!(report.problems.is_empty());
         fs::remove_dir_all(&temp).expect("cleanup");
     }
-}
 
+    // ------------------------------------------------------------ F06
+
+    /// Endless `{"pad":"aaaa…` that counts what was read.
+    struct Endless<'a> {
+        served: &'a std::cell::Cell<u64>,
+        prefix: &'static [u8],
+    }
+
+    impl std::io::Read for Endless<'_> {
+        fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+            let at = self.served.get() as usize;
+            for (offset, byte) in buf.iter_mut().enumerate() {
+                *byte = *self.prefix.get(at + offset).unwrap_or(&b'a');
+            }
+            self.served.set(self.served.get() + buf.len() as u64);
+            Ok(buf.len())
+        }
+    }
+
+    #[test]
+    fn json05_capped_reader_stops_one_byte_past_the_cap() {
+        let served = std::cell::Cell::new(0);
+        let bytes = read_json_capped(Endless {
+            served: &served,
+            prefix: b"{\"pad\":\"",
+        })
+        .unwrap();
+        assert_eq!(bytes.len(), MAX_SIDECAR_BYTES + 1);
+        assert_eq!(served.get(), MAX_SIDECAR_BYTES as u64 + 1);
+        assert!(super::parse_media_json(&bytes).is_err());
+        assert_eq!(read_json_capped(&b"{}"[..]).unwrap(), b"{}");
+    }
+
+    #[test]
+    fn json06_oversize_and_non_object_sidecars_are_invalid_and_neighbours_match() {
+        let temp = std::env::temp_dir().join(format!("my-photos-f06-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&temp);
+        fs::create_dir_all(&temp).unwrap();
+        for name in ["grande.jpg", "lista.jpg", "vizinha.jpg"] {
+            fs::write(temp.join(name), b"").unwrap();
+        }
+        let mut big = b"{\"pad\":\"".to_vec();
+        big.resize(MAX_SIDECAR_BYTES, b'a');
+        big.extend_from_slice(b"\"}");
+        fs::write(temp.join("grande.jpg.json"), &big).unwrap();
+        fs::write(temp.join("lista.jpg.json"), b"[]").unwrap();
+        fs::write(
+            temp.join("vizinha.jpg.json"),
+            b"\xEF\xBB\xBF{\"photoTakenTime\":{\"timestamp\":\"1660142220\"}}",
+        )
+        .unwrap();
+
+        let report = discover(&temp).expect("directory");
+        fs::remove_dir_all(&temp).unwrap();
+
+        let invalid: Vec<_> = report
+            .problems
+            .iter()
+            .filter(|problem| problem.kind == ProblemKind::InvalidJson)
+            .map(|problem| problem.relative_path.as_str())
+            .collect();
+        assert_eq!(invalid, ["grande.jpg.json", "lista.jpg.json"]);
+        assert_eq!(report.problems.len(), 2);
+        for name in ["grande.jpg", "lista.jpg"] {
+            let item = hit(&report, name);
+            assert_eq!(item.confidence, Confidence::None);
+            assert!(item.metadata.is_none());
+        }
+        let neighbour = hit(&report, "vizinha.jpg");
+        assert_eq!(neighbour.confidence, Confidence::Exact);
+        assert_eq!(
+            neighbour.metadata.as_ref().and_then(|m| m.taken_at.as_deref()),
+            Some("2022-08-10T14:37:00.000Z")
+        );
+    }
+}

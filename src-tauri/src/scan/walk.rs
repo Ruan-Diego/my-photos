@@ -4,8 +4,8 @@ use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
-use super::time::iso_utc;
 use crate::takeout::{classify, is_system_dir, FileRole};
+use crate::time::iso_utc;
 
 const VIDEO_EXTENSIONS: &[&str] = &["mp4", "mov", "mkv", "avi", "3gp", "webm", "m4v"];
 

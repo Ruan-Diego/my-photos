@@ -370,7 +370,7 @@ fn media_rows_carry_file_facts_and_the_sha256() {
         (T1, T1)
     );
     let expected_modified =
-        super::time::iso_utc(modified(&library.root.join("2020").join("IMG_1.JPG"))).unwrap();
+        crate::time::iso_utc(modified(&library.root.join("2020").join("IMG_1.JPG"))).unwrap();
     assert_eq!(photo.modified.as_deref(), Some(expected_modified.as_str()));
     let text = photo.modified.unwrap();
     assert_eq!(text.len(), "2026-10-02T12:00:00.123Z".len());
@@ -972,7 +972,7 @@ fn size_change_with_the_same_date_is_a_modification() {
     let time = modified(&path);
     fs::write(&path, b"hello").unwrap();
     set_modified(&path, time);
-    assert_eq!(super::time::iso_utc(modified(&path)), before.modified);
+    assert_eq!(crate::time::iso_utc(modified(&path)), before.modified);
 
     let probe = Probe::default();
     let summary = library.scan_using(&probe, T2).unwrap();
