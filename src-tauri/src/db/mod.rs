@@ -234,6 +234,15 @@ fn hide(folder: &Path) {
 #[cfg(not(windows))]
 fn hide(_folder: &Path) {}
 
+/// A migrated in-memory database for tests of the features that write to it (F05+).
+#[cfg(test)]
+pub(crate) fn open_in_memory() -> Connection {
+    let mut connection = Connection::open_in_memory().unwrap();
+    connection.pragma_update(None, "foreign_keys", "ON").unwrap();
+    migrate(&mut connection, Path::new(""), 0, MIGRATIONS).unwrap();
+    connection
+}
+
 #[cfg(test)]
 mod schema_tests;
 

@@ -37,7 +37,7 @@ pub(crate) fn content_digest(digests_in_order: &[Option<[u8; 32]>]) -> String {
     to_hex(&hasher.finalize())
 }
 
-fn to_hex(bytes: &[u8]) -> String {
+pub(crate) fn to_hex(bytes: &[u8]) -> String {
     const HEX: &[u8; 16] = b"0123456789abcdef";
     let mut out = String::with_capacity(bytes.len() * 2);
     for byte in bytes {
