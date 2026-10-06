@@ -201,3 +201,65 @@ All test-only. No production change is needed unless the author prefers one.
 | JSON-06 | ⚠️ Report outcome verified; capped reader wiring not pinned (M20) |
 
 **Overall**: ❌ FAIL. No real bug was found: the implementation matches the spec, and F02 behaviour holds, changed only where F06 says so. But 4 spec-visible mutants survive (M07, M20, M27, M28). Four small tests would close them.
+
+---
+
+## Iteration 2 (re-verification)
+
+**Diff range**: `0ae4438..c04906c` (`c04906c`). Tests were added in `parse.rs` and `mod.rs`. `discover` now passes a named `read_sidecar` (`mod.rs:25-32`). No other production change: I read `git show c04906c -- src-tauri/src`, and the only non-test hunk is the extraction of `read_sidecar`, which has the same body as the old closure.
+**Gate**: `cargo test --lib -- takeout:: time:: scan::` → **111 passed, 1 failed, 1 ignored** (108 before, plus 3 new tests). The failure is still only the icacls test (`unreadable_subdirectory_is_a_problem_and_keeps_the_neighbor`).
+
+### Iteration-1 survivors, re-checked
+
+| Mutant | New test (`file:line` + assertion) | Result |
+| ------ | ---------------------------------- | ------ |
+| M07 one zero coordinate invalid | `parse.rs:578` `json02_one_zero_coordinate_is_a_real_place_and_zero_altitude_is_kept`: `(0.0, 10.0)` and `(10.0, 0.0)` → source `GeoData`, lat/lon kept | ✅ Killed |
+| M28 altitude `0.0` dropped | same test, `parse.rs:585` `altitude == Some(0.0)` | ✅ Killed |
+| M27 BOM stripped before the cap | `parse.rs:590` `json05_the_bom_counts_toward_the_size_cap`: BOM + JSON = exactly 1 048 576 → `Ok` (length asserted); 1 048 577 → `Err` (`:600`); BOM + 1 MiB → `Err` (`:601`) | ✅ Killed |
+| M20b `read_sidecar` body → `fs::read` | `mod.rs:895` `json05_discover_reads_a_huge_sidecar_only_up_to_the_cap`: sparse 64 MiB file, `read_sidecar(..).len() == MAX + 1` (`:905`); missing file → `Err` (`:903`) | ✅ Killed |
+| M20c `read_sidecar` with an uncapped `read_to_end` | same | ✅ Killed |
+| **M20a** `discover` bypasses `read_sidecar` (`discover_with(root, \|p\| fs::read(p)…)` at `mod.rs:26`) | — | ❌ **Survived** |
+
+### M20a is visible in the report
+
+The new test calls `read_sidecar` directly, so it proves the helper is capped but not that `discover` uses it. Whether a bypass matters to the spec, rather than only to memory use, was settled by a probe. I appended a temporary test, ran it, and removed it with `git checkout`. The probe ran `discover` on a temp dir holding `a.jpg` and an `a.jpg.json` sparse to 1 TiB (`set_len(1 << 40)` → `Ok` on this ext4/overlay disk):
+
+| Code | `report.problems` |
+| ---- | ----------------- |
+| HEAD (`read_sidecar`) | `[a.jpg.json: InvalidJson]` |
+| M20a (`fs::read`) | `[a.jpg.json: Unreadable]`. `fs::read` pre-allocates the file length and fails with out-of-memory |
+
+JSON-05 AC5 / JSON-06 say a sidecar over the cap SHALL be `invalid_json` in the `discover` report. So M20a changes spec-visible output, and no test catches it. This is the original M20 finding, moved from the closure to the call site.
+
+**Fix (test only).** Add a `discover`-level variant of the probe: `a.jpg` plus `a.jpg.json` sparse to 1 TiB. Assert that the problem kind is `InvalidJson` and that `a.jpg` has `Confidence::None`. Mark it `#[cfg(unix)]`, or skip when `set_len` fails: on NTFS a non-sparse `set_len` reserves real clusters. The 64 MiB `read_sidecar` test can stay as it is.
+
+### Full mutation set, re-run
+
+All 32 iteration-1 mutants were re-applied with the same patterns, plus M20a/M20b/M20c in place of M20. Each was applied alone and checked as applied. `cargo test --lib -- takeout:: time:: scan::` was then run, and the file was restored with `git checkout -- <file>`. A mutant is killed only if there are more than 1 failure. Afterwards `git status --short` showed only this report.
+
+| IDs | Result |
+| --- | ------ |
+| M01–M19, M21–M32 except M20 (31 mutants, incl. M07, M27, M28) | ✅ All killed. Killing tests as in iteration 1; M01 and M02 are now also killed by `json05_the_bom_counts…`, and M18 and M19 also by `json05_discover_reads…` |
+| M20b, M20c | ✅ Killed |
+| **M20a** | ❌ Survived (report-visible, see above) |
+
+**Totals**: 34 mutants. **33 killed**, **1 spec-visible survivor (M20a)**.
+
+### Regressions
+
+None. The `scan::` (37), `time::` (5) and `takeout::` TD tests are unchanged and green. The 3 new tests pass. The production diff is only the `read_sidecar` extraction, so the behaviour is identical.
+
+### Requirement status (iteration 2)
+
+| Requirement | Iteration 1 | Iteration 2 |
+| ----------- | ----------- | ----------- |
+| JSON-01 | ✅ | ✅ Verified |
+| JSON-02 | ❌ (M07, M28) | ✅ Verified |
+| JSON-03 | ✅ | ✅ Verified |
+| JSON-04 | ✅ | ✅ Verified |
+| JSON-05 | ⚠️ (M27, M20) | ✅ Verified (`parse_*` cap, BOM counting, and the `read_sidecar` bound all pinned) |
+| JSON-06 | ⚠️ (M20) | ❌ Needs one test: `discover` wiring of the capped reader (M20a) |
+
+### Summary (iteration 2)
+
+**Overall**: ❌ FAIL, on one narrow item. M07, M27 and M28 are killed, and M20 is killed where it now lives (inside `read_sidecar`). But replacing `read_sidecar` at the `discover` call site still survives, and it changes the report for a huge sidecar from `invalid_json` to `unreadable`. One `discover`-level test with a 1 TiB sparse sidecar (Unix only) closes it. No implementation bug was found. With that test added, the verdict would be PASS.

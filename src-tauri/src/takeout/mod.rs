@@ -904,4 +904,29 @@ mod tests {
         fs::remove_dir_all(&temp).unwrap();
         assert_eq!(bytes.len(), MAX_SIDECAR_BYTES + 1);
     }
+
+    /// An uncapped `fs::read` cannot even allocate 1 TiB, so it would report `unreadable`
+    /// instead of `invalid_json`. Unix only: Windows reserves real space for `set_len`.
+    #[cfg(unix)]
+    #[test]
+    fn json06_discover_reports_a_terabyte_sidecar_as_invalid_json() {
+        let temp = std::env::temp_dir().join(format!("my-photos-f06-tib-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&temp);
+        fs::create_dir_all(&temp).unwrap();
+        fs::write(temp.join("a.jpg"), b"").unwrap();
+        let sparse = fs::File::create(temp.join("a.jpg.json"))
+            .unwrap()
+            .set_len(1 << 40);
+        if sparse.is_err() {
+            fs::remove_dir_all(&temp).unwrap();
+            eprintln!("filesystem refused a 1 TiB sparse file; skipped");
+            return;
+        }
+        let report = discover(&temp).expect("directory");
+        fs::remove_dir_all(&temp).unwrap();
+        assert_eq!(report.problems.len(), 1);
+        assert_eq!(report.problems[0].relative_path, "a.jpg.json");
+        assert_eq!(report.problems[0].kind, ProblemKind::InvalidJson);
+        assert_eq!(hit(&report, "a.jpg").confidence, Confidence::None);
+    }
 }
