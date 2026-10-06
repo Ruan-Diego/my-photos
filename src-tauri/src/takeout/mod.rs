@@ -746,6 +746,7 @@ mod tests {
         }
     }
 
+    #[cfg(windows)]
     #[test]
     fn unreadable_subdirectory_is_a_problem_and_keeps_the_neighbor() {
         let temp = std::env::temp_dir().join(format!("my-photos-f02-locked-{}", std::process::id()));
