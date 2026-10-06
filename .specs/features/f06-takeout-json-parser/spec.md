@@ -123,18 +123,18 @@ O F02 já lê o sidecar do Takeout e o `metadata.json` de álbum, mas só o bast
 
 | Requirement ID | Story | Phase | Status |
 | -------------- | ----- | ----- | ------ |
-| JSON-01 | Datas ISO, `0` e faixa | Design | Pending |
-| JSON-02 | Local com fonte e validação | Design | Pending |
-| JSON-03 | Pessoas e texto normalizados | Design | Pending |
-| JSON-04 | JSON bruto e álbum | Design | Pending |
-| JSON-05 | Teto, BOM, raiz | Design | Pending |
-| JSON-06 | `discover` usa o leitor limitado e o parser novo | Design | Pending |
+| JSON-01 | Datas ISO, `0` e faixa | T1–T3 | Verified |
+| JSON-02 | Local com fonte e validação | T1–T3 | Verified |
+| JSON-03 | Pessoas e texto normalizados | T1–T3 | Verified |
+| JSON-04 | JSON bruto e álbum | T1–T3 | Verified |
+| JSON-05 | Teto, BOM, raiz | T1–T3 | Verified |
+| JSON-06 | `discover` usa o leitor limitado e o parser novo | T1–T3 | Verified |
 
-**Coverage:** 6 total, 0 mapped to tasks, 6 unmapped.
+**Coverage:** 6 total, 6 mapped to tasks, 0 unmapped. Verified in `validation.md` (PASS, iteration 3).
 
 ---
 
 ## Success Criteria
 
-- [ ] Todos os critérios passam em `cargo test` só com bytes em memória e diretórios temporários
-- [ ] Os testes TD do F02 continuam passando (ajustados só para os campos novos)
+- [x] Todos os critérios passam em `cargo test` só com bytes em memória e diretórios temporários
+- [x] Os testes TD do F02 continuam passando (ajustados só para os campos novos)

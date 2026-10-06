@@ -263,3 +263,68 @@ None. The `scan::` (37), `time::` (5) and `takeout::` TD tests are unchanged and
 ### Summary (iteration 2)
 
 **Overall**: ❌ FAIL, on one narrow item. M07, M27 and M28 are killed, and M20 is killed where it now lives (inside `read_sidecar`). But replacing `read_sidecar` at the `discover` call site still survives, and it changes the report for a huge sidecar from `invalid_json` to `unreadable`. One `discover`-level test with a 1 TiB sparse sidecar (Unix only) closes it. No implementation bug was found. With that test added, the verdict would be PASS.
+
+---
+
+## Iteration 3 (re-verification)
+
+**Diff range**: `c04906c..3d37bc7` (`3d37bc7`). It adds one test, `mod.rs:912` `json06_discover_reports_a_terabyte_sidecar_as_invalid_json` (`#[cfg(unix)]`), and commits the iteration-2 report. No production change: `git show 3d37bc7 -- src-tauri/src` touches only the `mod tests` block.
+**Gate**: `cargo test --lib -- takeout:: time:: scan::` → **112 passed, 1 failed, 1 ignored** (111 before, plus 1 new test). The failure is still only the icacls test.
+
+### M20a, re-checked
+
+| Check | Evidence | Result |
+| ----- | -------- | ------ |
+| The new test really runs here and is not skipped | `cargo test --lib -- json06_discover_reports_a_terabyte --nocapture` → `... ok`, and the `skipped` message is **not** printed, so `set_len(1 << 40)` succeeded and the assertions ran | ✅ Runs |
+| It pins the spec outcome through `discover` | `assert_eq!(report.problems.len(), 1)`; problem `a.jpg.json` with kind `ProblemKind::InvalidJson`; `hit(&report, "a.jpg").confidence == Confidence::None` (JSON-06 AC5: `invalid_json`, media unmatched) | ✅ Discriminating |
+| M20a: `discover_with(root, \|p\| fs::read(p)…)` at `mod.rs:26` | 111 passed, **2 failed**. The new test fails (kind becomes `Unreadable`) | ✅ **Killed** |
+
+### Spot-check of the earlier mutants
+
+Each was re-applied alone, the gate was run, and the file was restored with `git checkout -- <file>`.
+
+| ID | Result | Killed by |
+| -- | ------ | --------- |
+| M20b `read_sidecar` → `fs::read` | ✅ Killed | `json05_discover_reads_a_huge_sidecar…`, `json06_discover_reports_a_terabyte…` |
+| M18 `take(MAX)` | ✅ Killed | `json05_capped_reader…`, `json05_discover_reads_a_huge_sidecar…` |
+| M01 cap `>=` | ✅ Killed | `json05_size_cap_is_inclusive`, `json05_the_bom_counts…` |
+| M07 one zero coordinate | ✅ Killed | `json02_one_zero_coordinate…` |
+| M27 BOM before the cap | ✅ Killed | `json05_the_bom_counts…` |
+| M28 altitude `0.0` dropped | ✅ Killed | `json02_one_zero_coordinate…` |
+
+The other 27 mutants from iteration 2 run against production code that has not changed since then (`3d37bc7` only adds a test), so they stay killed. Afterwards `git status --short` showed only this report modified.
+
+Note: M18 alone does not trip the new 1 TiB test, because a sidecar truncated to 1 MiB of zero bytes is still invalid JSON. It is killed by the two reader tests, so this is not a gap.
+
+### Regressions
+
+None. `scan::` (37), `time::` (5) and every `takeout::` TD and F06 test pass. The only failure is the known icacls test.
+
+### Not run (iteration 3)
+
+| Item | Reason |
+| ---- | ------ |
+| `unreadable_subdirectory_is_a_problem_and_keeps_the_neighbor` | Windows `icacls`; Windows CI |
+| `json06_discover_reports_a_terabyte…` on Windows | `#[cfg(unix)]` by design (NTFS `set_len` reserves real space). On Windows, JSON-06 wiring is covered only by the `read_sidecar` test plus reading `mod.rs:26` |
+| `real_takeout_survey` | `#[ignore]`, manual |
+| Full `cargo test` | 42 known Linux-only failures outside F06 |
+
+### Requirement status (final)
+
+| Requirement | Iteration 1 | Iteration 2 | Iteration 3 |
+| ----------- | ----------- | ----------- | ----------- |
+| JSON-01 | ✅ | ✅ | ✅ Verified |
+| JSON-02 | ❌ | ✅ | ✅ Verified |
+| JSON-03 | ✅ | ✅ | ✅ Verified |
+| JSON-04 | ✅ | ✅ | ✅ Verified |
+| JSON-05 | ⚠️ | ✅ | ✅ Verified |
+| JSON-06 | ⚠️ | ❌ | ✅ Verified (on Unix; `#[cfg(unix)]` test) |
+
+### Summary (final)
+
+**Overall**: ✅ PASS.
+**Spec-anchored check**: every JSON-01..06 AC and all 4 edge cases have tests that pin the spec's outcome. F02 behaviour holds, and changes only where F06 says so.
+**Sensor**: 34 mutants, 34 killed, 0 survivors.
+**Bugs**: none found.
+**Gate**: 112 passed. The 1 failure is the Windows-only icacls test.
+**Fix→re-verify iterations used**: 3.
