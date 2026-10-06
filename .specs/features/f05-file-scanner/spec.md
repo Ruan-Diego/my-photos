@@ -1,6 +1,6 @@
 # F05 — File Scanner Specification
 
-**Status**: Draft — aguardando confirmação do stakeholder (escrita em 2026-10-06, sessão na nuvem, sem o PRD e sem o `E:`)
+**Status**: Confirmada pelo stakeholder em 2026-10-06 ("pode prosseguir"), com os defaults abaixo. Escrita numa sessão na nuvem, sem o PRD e sem o `E:`
 
 ## Problem Statement
 
@@ -37,31 +37,28 @@ A F02 encontra e casa as mídias do Takeout só em memória, e a F04 entrega um 
 
 | Assumption / decision | Chosen default | Rationale | Confirmed? |
 | --------------------- | -------------- | --------- | ---------- |
-| Raiz varrida | `E:\` inteiro (AD-007, AD-010), árvore como está no disco. A função recebe a raiz e o banco como parâmetros | AD-010 | n |
-| O que é ignorado | `.myphotos` na raiz (caixa ignorada), pastas oculto+sistema (`$RECYCLE.BIN`, `System Volume Information`), symlinks e junções (não seguidos), arquivos que não são mídia (`.zip`, `.html`, `.txt`, JSON). Ignorado não vira erro | AD-010, AD-011; F02 já não segue symlink | n |
-| O que é mídia | As 18 extensões da F02 (`classify`). `media_type` = `video` para `mp4 mov mkv avi 3gp webm m4v`, `photo` para o resto | Mesma lista da F02; o esquema só aceita `photo`/`video` | n |
-| Linha da biblioteca | A primeira varredura cria `libraries` com `name = 'E:'`, `root_path = 'E:\'`, `status = 'active'`; as seguintes reusam a mesma linha (por `root_path`) | Esquema da F04 exige `library_id`; só existe uma biblioteca no MVP | n |
-| Pastas | Toda pasta visitada (exceto a raiz e as ignoradas) vira uma linha em `folders`, inclusive vazia ou sem mídia. Pasta que sumiu do disco é apagada de `folders` | F04: "a raiz não tem linha"; `folders` não tem status nem filhos com FK | n |
-| Identidade de uma mídia | Mesmo `relative_path` (comparação sem caixa, como o NTFS e o `COLLATE NOCASE`) = mesma linha, mesmo `id` | F04: `id` nunca reutilizado; caminho mutável | n |
-| Mídia nova | Caminho que não existe no banco → `INSERT` com hash, tamanho, datas, casamento F02, `indexing_status = 'ok'` | — | n |
-| Mídia modificada | Mesmo caminho, mas `size_bytes` ou `fs_modified_at` diferente do banco → recalcula o hash e atualiza a linha (mesmo `id`) | Tamanho + mtime é o critério barato padrão; reler 13 GB a cada varredura não escala | n |
-| Mídia inalterada | Mesmo caminho, mesmo tamanho e mesmo mtime → hash **não** é recalculado; só o casamento F02 é atualizado se mudou | Varredura incremental (US-07) | n |
-| Mídia removida | Caminho no banco que não apareceu numa varredura **completa** → `indexing_status = 'missing_file'`, linha mantida (favorito, notas e lixeira continuam ligados). Se o arquivo voltar no mesmo caminho → volta a `ok` com o mesmo `id` | Apagar a linha cascatearia favoritos e notas (F04 DB-05) | n |
-| Mídia movida ou renomeada fora do app | Mídia nova cujo SHA-256 e tamanho batem com **exatamente uma** linha `missing_file` → essa linha recebe o novo caminho (mesmo `id`). Zero ou mais de uma candidata → linha nova | Mantém favoritos quando o usuário reorganiza pelo Explorer. Empate não adivinha | n |
-| Varredura incompleta | Se a raiz some no meio (disco desconectado) ou uma pasta não pode ser lida, nenhuma mídia daquela parte vira `missing_file`. A run termina `failed` (raiz sumiu) ou `completed` com erro `unreadable_directory` (pasta) | Disco USB que cai não pode "apagar" a biblioteca | n |
-| Hash | SHA-256 do arquivo inteiro, hex minúsculo de 64 caracteres em `file_hash_sha256`. Leitura sequencial, uma mídia por vez, em ordem de caminho | `E:` é USB e respondeu `unknown` no F03; leitura paralela em HDD disputa a cabeça. F32 ajusta | n |
-| Datas do sistema de arquivos | `fs_modified_at` e `fs_created_at` em ISO-8601 UTC com `Z`, precisão de segundo (fração truncada). Data indisponível → `NULL` | Formato das datas da F04 | n |
-| Casamento com JSON | Usa a descoberta da F02 sobre a mesma árvore: `has_takeout_json`, `json_relative_path`, `json_match_confidence` (`exact`/`heuristic`/`none`). JSON inválido ou ilegível → `none` + erro `invalid_json`/`unreadable` | STATE: "usar o matcher da F02" | n |
-| Erros por arquivo | Arquivo que não abre no hash → linha com `indexing_status = 'error'`, `indexing_error` com o motivo, e uma linha em `indexing_errors` (`unreadable`). A varredura continua | US-08, RF-063 | n |
-| Registro da varredura | Uma linha em `indexing_runs` por chamada: `run_type = 'full'` na primeira da biblioteca, `'incremental'` nas seguintes; `files_scanned` = mídias vistas, `files_indexed` = inseridas ou atualizadas, `files_errored` = com erro; `status` final `completed` ou `failed`. Uma run que ficou `running` (app fechado no meio) vira `failed` na próxima varredura | Esquema da F04 | n |
-| Gravação | Em lotes de até 500 mídias por transação, para uma queda do disco perder no máximo um lote e não travar o banco por minutos. A marcação de `missing_file` acontece só no fim, numa transação | WAL + `synchronous=FULL` (F04) | n |
-| Como a varredura é disparada | Função Rust `scan(connection, root)` mais um teste `#[ignore]` que varre o `E:` real, como o `real_takeout_survey` da F02. **Sem** comando Tauri e sem varrer ao abrir o app | Phase 1 é "sem UI além de logging"; F10/F16/F17 decidem o gatilho | n |
-| `last_indexed_at` | `libraries.last_indexed_at` = fim da última run `completed` | Esquema da F04 | n |
+| Raiz varrida | `E:\` inteiro (AD-007, AD-010), árvore como está no disco. A função recebe a raiz e o banco como parâmetros | AD-010 | y |
+| O que é ignorado | `.myphotos` na raiz (caixa ignorada), pastas oculto+sistema (`$RECYCLE.BIN`, `System Volume Information`), symlinks e junções (não seguidos), arquivos que não são mídia (`.zip`, `.html`, `.txt`, JSON). Ignorado não vira erro | AD-010, AD-011; F02 já não segue symlink | y |
+| O que é mídia | As 18 extensões da F02 (`classify`). `media_type` = `video` para `mp4 mov mkv avi 3gp webm m4v`, `photo` para o resto | Mesma lista da F02; o esquema só aceita `photo`/`video` | y |
+| Linha da biblioteca | A primeira varredura cria `libraries` com `name = 'E:'`, `root_path = 'E:\'`, `status = 'active'`; as seguintes reusam a mesma linha (por `root_path`) | Esquema da F04 exige `library_id`; só existe uma biblioteca no MVP | y |
+| Pastas | Toda pasta visitada (exceto a raiz e as ignoradas) vira uma linha em `folders`, inclusive vazia ou sem mídia. Pasta que sumiu do disco é apagada de `folders` | F04: "a raiz não tem linha"; `folders` não tem status nem filhos com FK | y |
+| Identidade de uma mídia | Mesmo `relative_path` (comparação sem caixa, como o NTFS e o `COLLATE NOCASE`) = mesma linha, mesmo `id` | F04: `id` nunca reutilizado; caminho mutável | y |
+| Mídia nova | Caminho que não existe no banco → `INSERT` com hash, tamanho, datas, casamento F02, `indexing_status = 'ok'` | — | y |
+| Mídia modificada | Mesmo caminho, mas `size_bytes` ou `fs_modified_at` diferente do banco → recalcula o hash e atualiza a linha (mesmo `id`) | Tamanho + mtime é o critério barato padrão; reler 13 GB a cada varredura não escala | y |
+| Mídia inalterada | Mesmo caminho, mesmo tamanho e mesmo mtime → hash **não** é recalculado; só o casamento F02 é atualizado se mudou | Varredura incremental (US-07) | y |
+| Mídia removida | Caminho no banco que não apareceu numa varredura **completa** → `indexing_status = 'missing_file'`, linha mantida (favorito, notas e lixeira continuam ligados). Se o arquivo voltar no mesmo caminho → volta a `ok` com o mesmo `id` | Apagar a linha cascatearia favoritos e notas (F04 DB-05) | y |
+| Mídia movida ou renomeada fora do app | Mídia nova cujo SHA-256 e tamanho batem com **exatamente uma** linha `missing_file` → essa linha recebe o novo caminho (mesmo `id`). Zero ou mais de uma candidata → linha nova | Mantém favoritos quando o usuário reorganiza pelo Explorer. Empate não adivinha | y |
+| Varredura incompleta | Se a raiz some no meio (disco desconectado) ou uma pasta não pode ser lida, nenhuma mídia daquela parte vira `missing_file`. A run termina `failed` (raiz sumiu) ou `completed` com erro `unreadable_directory` (pasta) | Disco USB que cai não pode "apagar" a biblioteca | y |
+| Hash | SHA-256 do arquivo inteiro, hex minúsculo de 64 caracteres em `file_hash_sha256`. Leitura sequencial, uma mídia por vez, em ordem de caminho | `E:` é USB e respondeu `unknown` no F03; leitura paralela em HDD disputa a cabeça. F32 ajusta | y |
+| Datas do sistema de arquivos | `fs_modified_at` e `fs_created_at` em ISO-8601 UTC com `Z`, precisão de segundo (fração truncada). Data indisponível → `NULL` | Formato das datas da F04 | y |
+| Casamento com JSON | Usa a descoberta da F02 sobre a mesma árvore: `has_takeout_json`, `json_relative_path`, `json_match_confidence` (`exact`/`heuristic`/`none`). JSON inválido ou ilegível → `none` + erro `invalid_json`/`unreadable` | STATE: "usar o matcher da F02" | y |
+| Erros por arquivo | Arquivo que não abre no hash → linha com `indexing_status = 'error'`, `indexing_error` com o motivo, e uma linha em `indexing_errors` (`unreadable`). A varredura continua | US-08, RF-063 | y |
+| Registro da varredura | Uma linha em `indexing_runs` por chamada: `run_type = 'full'` na primeira da biblioteca, `'incremental'` nas seguintes; `files_scanned` = mídias vistas, `files_indexed` = inseridas ou atualizadas, `files_errored` = com erro; `status` final `completed` ou `failed`. Uma run que ficou `running` (app fechado no meio) vira `failed` na próxima varredura | Esquema da F04 | y |
+| Gravação | Em lotes de até 500 mídias por transação, para uma queda do disco perder no máximo um lote e não travar o banco por minutos. A marcação de `missing_file` acontece só no fim, numa transação | WAL + `synchronous=FULL` (F04) | y |
+| Como a varredura é disparada | Função Rust `scan(connection, root)` mais um teste `#[ignore]` que varre o `E:` real, como o `real_takeout_survey` da F02. **Sem** comando Tauri e sem varrer ao abrir o app | Phase 1 é "sem UI além de logging"; F10/F16/F17 decidem o gatilho | y |
+| `last_indexed_at` | `libraries.last_indexed_at` = fim da última run `completed` | Esquema da F04 | y |
 
-**Open questions:**
-
-1. Os defaults acima estão confirmados? Os que mais mudam o desenho: **mídia removida vira `missing_file` em vez de ser apagada**, **detecção de movido/renomeado por hash** e **sem gatilho no app** (só função + teste `#[ignore]`).
-2. O PRD não está no repositório (fica fora do git, na máquina local). RF-001, RF-002 e RF-010 a RF-013 foram inferidos do roadmap. Se algum deles pede algo além do que está aqui, entra como critério.
+**Open questions:** nenhuma. O PRD não está no repositório; RF-001, RF-002 e RF-010 a RF-013 foram inferidos do roadmap.
 
 ### Dimensões implícitas
 
@@ -176,15 +173,15 @@ A F02 encontra e casa as mídias do Takeout só em memória, e a F04 entrega um 
 
 | Requirement ID | Story | Phase | Status |
 | -------------- | ----- | ----- | ------ |
-| SCAN-01 | P1: Primeira varredura — o que entra e o que é ignorado | Design | Pending |
-| SCAN-02 | P1: Primeira varredura — campos, hash, casamento, registro | Design | Pending |
-| SCAN-03 | P1: Varredura incremental | Design | Pending |
-| SCAN-04 | P1: Mídia removida e movida, varredura incompleta | Design | Pending |
-| SCAN-05 | P1: Erros por arquivo | Design | Pending |
-| SCAN-06 | P1: Registro da varredura (`indexing_runs`) | Design | Pending |
-| SCAN-07 | P2: Varredura do `E:` real (manual) | Design | Pending |
+| SCAN-01 | P1: Primeira varredura — o que entra e o que é ignorado | T1–T2 | Implemented (CI pendente) |
+| SCAN-02 | P1: Primeira varredura — campos, hash, casamento, registro | T1–T2 | Implemented (CI pendente) |
+| SCAN-03 | P1: Varredura incremental | T1–T2 | Implemented (CI pendente) |
+| SCAN-04 | P1: Mídia removida e movida, varredura incompleta | T1–T2 | Implemented (CI pendente) |
+| SCAN-05 | P1: Erros por arquivo | T1–T2 | Implemented (CI pendente) |
+| SCAN-06 | P1: Registro da varredura (`indexing_runs`) | T1–T2 | Implemented (CI pendente) |
+| SCAN-07 | P2: Varredura do `E:` real (manual) | T2 | Pending (manual) |
 
-**Coverage:** 7 total, 0 mapped to tasks (design pendente).
+**Coverage:** 7 total, 7 mapped to tasks. Evidência em `validation.md`.
 
 ---
 

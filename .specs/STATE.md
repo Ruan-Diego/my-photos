@@ -93,12 +93,12 @@
 
 ## Handoff
 
-- **Feature**: F05 File Scanner — spec em rascunho, aguardando confirmação do stakeholder
-- **Phase / Task**: Phase 1. F05 na fase Specify: `.specs/features/f05-file-scanner/spec.md` (SCAN-01..07), todos os defaults com `Confirmed? n`
-- **Completed**: F01–F04. Relatório da F04 em `.specs/features/f04-database-schema/validation.md`
-- **In-progress**: confirmar os defaults da spec da F05; depois design e tasks
-- **Next step**: stakeholder responde às open questions da spec (sobretudo `missing_file` em vez de apagar, detecção de movido por hash, sem gatilho no app); então `design.md`
-- **Blockers**: sessão na nuvem (Linux) não compila o crate (Tauri pede GTK) e os testes são só-Windows (`E:\`, `icacls`, `symlink_dir`); o único gate de testes ali é o CI `windows-latest`. A skill `tlc-spec-driven` não está disponível na sessão na nuvem. `C:` com ~430 MB livres. `E:` deu "erro fatal de hardware" uma vez em 2026-10-02 — vigiar
-- **Open questions**: as da spec da F05; anomalia do baseline HDD (50k mais lento que 150k); 1885 mídias fora do Google Fotos dependem de EXIF/filesystem (F07/F09); 6 lições candidatas da F04 em `validation.md` aguardam Python para `lessons.py`; recuperação do WAL sem teste automático
+- **Feature**: F05 File Scanner — implementada; aguarda CI `windows-latest`, a corrida manual no `E:` e um Verifier independente
+- **Phase / Task**: Phase 1. F05 T1–T3 feitos em `claude/awesome-ride-rjqt4w`. Spec, design, tasks e validação em `.specs/features/f05-file-scanner/`
+- **Completed**: F01–F04. F05: `scan(&mut Connection, root)` em `src-tauri/src/scan/`, uma caminhada compartilhada com a F02 (`takeout::read_library_tree` + `discover_tree`). 27 testes verdes e 13/13 mutantes mortos num harness Linux
+- **In-progress**: nenhum
+- **Next step**: (1) conferir o CI do Windows na branch; (2) no Windows com o `E:`: `cargo test --manifest-path src-tauri/Cargo.toml real_library_scan -- --ignored --nocapture` (SCAN-07); (3) Verifier independente da F05 com a skill; depois F06 Takeout JSON Parser
+- **Blockers**: sessão na nuvem (Linux) não compila o crate (Tauri pede GTK) e os testes antigos são só-Windows; o gate ali é o CI `windows-latest`. A skill `tlc-spec-driven` não está disponível na sessão na nuvem. `C:` com ~430 MB livres. `E:` deu "erro fatal de hardware" uma vez em 2026-10-02 — vigiar
+- **Open questions**: anomalia do baseline HDD (50k mais lento que 150k); 1885 mídias fora do Google Fotos dependem de EXIF/filesystem (F07/F09); 6 lições candidatas da F04 em `validation.md` aguardam Python para `lessons.py`; recuperação do WAL sem teste automático
 - **Uncommitted files** (máquina local): PRD HTML, `.specs/LESSONS.md`, `.specs/lessons.json`
-- **Branch**: `claude/awesome-ride-rjqt4w` (sessão na nuvem)
+- **Branch**: `claude/awesome-ride-rjqt4w` (sessão na nuvem; não mesclada em `main`)
