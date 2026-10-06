@@ -417,3 +417,79 @@ Test only. Restore the deleted assertion, for example in `exif04_header_size_win
 ### Summary (iteration 3)
 
 **Overall**: ❌ FAIL, on one test-only item. The content-based size choice is correct. R8, M06, N08, N09, N06, R9 and R10 are all closed. No implementation bug is open: the probe confirms the header-unreadable fallback still works. But the rework deleted the only test for EXIF-04 AC5's "cabeçalho não é legível" branch, and mutant N19 (no EXIF fallback for JPEG/PNG/GIF/WebP content) now survives. One assertion restores it. With it, the sensor would be 71/77 killed with 0 spec-visible survivors, and the verdict would be PASS.
+
+---
+
+## Iteration 4 (re-verification)
+
+**Diff range**: `b8c5ddc..9b9eeca` (`9b9eeca`). The commit only adds `tests.rs:831` `exif04_unreadable_header_falls_back_to_exif_dimensions` and the iteration-3 report. `git diff b8c5ddc 9b9eeca -- src-tauri ':!src-tauri/src/photo_meta/tests.rs'` is empty, so there is no production change.
+**Gate**: `cargo test --lib -- photo_meta:: time::` → **43 passed, 0 failed** (42 before, plus 1 new). `scan::` + `takeout::` → 107 passed, 1 failed (the known Windows-only icacls test), 1 ignored, the same as every earlier iteration. `cargo clippy --lib --tests` shows no warnings in `photo_meta`.
+
+### N19, re-checked
+
+| Check | Evidence | Result |
+| ----- | -------- | ------ |
+| The new test pins the AC5 "cabeçalho não é legível" branch | `x.jpg`: JPEG with no SOF and EXIF `PixelX/Y 6000×4000` → `(Some(6000), Some(4000))`. `y.jpg`: no SOF and no pixel tags → `(None, None)` | ✅ Discriminating |
+| N19 (header formats never fall back to EXIF) | The new test fails | ✅ **Killed** |
+
+### Spot-check against regressions
+
+Each mutant was re-applied alone, the gate was run, and the file was restored with `git checkout -- <file>`.
+
+| ID | Result | Killed by |
+| -- | ------ | --------- |
+| M08 no EXIF size fallback | ✅ Killed | `exif04_tiff_and_raw_content…`, `exif04_unreadable_header…` |
+| M05 header always used | ✅ Killed | `exif04_heif_header…`, `exif04_tiff_and_raw_content…` |
+| M02 partial EXIF thrown away | ✅ Killed | `exif05_partly_readable…` |
+| N01 disk error → corrupt | ✅ Killed | `exif05_a_disk_error…` |
+| N06 EXIF height 0 kept | ✅ Killed | `exif04_zero_sizes…` |
+| N11 `Webp` dropped | ✅ Killed | `exif04_header_size_wins…` |
+| N16 `Heif` header used | ✅ Killed | `exif04_heif_header…` |
+| M25 thumbnail fields in `raw_json` | ✅ Killed | `exif05_raw_json_ignores_thumbnail_fields` |
+| D12 GPS offset floored | ✅ Killed | `exif02_gps_offset_rounds…` |
+| M37 −14:30 accepted | ✅ Killed | `exif02_gps_offset_beyond_minus…` |
+
+The other 66 mutants from iteration 3 run against production code that has not changed since `b8c5ddc`, and the only test change is an addition. So they stay killed, and the 6 equivalent ones stay equivalent. Afterwards `git status --short` showed only this report modified.
+
+### Final sensor
+
+77 mutants. **71 killed**. **6 equivalent or benign**: M07 (`imagesize` returns both sizes or neither), M30 (GPS seconds absorbed by 15-minute rounding), M33 (single-string ASCII tags), M36 (GPS ref accepted in lower case), N02 (kamadak never returns `Io(UnexpectedEof)`), N17 (if the sniff cannot read the file, `imagesize` cannot either). **0 spec-visible survivors.**
+
+### Open risks (recorded, not blocking)
+
+These are in `design.md` Risks, or are behaviour of the crates that tests built from generated files cannot reach:
+
+- A WebP `EXIF` chunk with an `Exif\0\0` prefix is reported as `exif_corrupt`.
+- kamadak reads TIFF/RAW files whole, and scans a JPEG without EXIF to its end.
+- GIFs count as "no EXIF" only because the code matches kamadak's exact error string `"Unknown image format"`.
+- A plain TIFF without `PixelX/YDimension` gets no size (documented; F12 fills it when decoding).
+- Real HEIC, WebP and RAW files have not been run. Check them in the F10 scan of the real library.
+
+### Not run
+
+| Item | Reason |
+| ---- | ------ |
+| Real HEIC/WebP/RAW files | Cannot be generated; covered by hand-built containers and by reading the crate code |
+| Windows run of `exif05_a_disk_error_after_opening_is_unreadable` | Linux container. On Windows, `File::open(dir)` already fails, which gives the same `Err(Unreadable)` |
+| `takeout::tests::unreadable_subdirectory…` | Needs Windows `icacls`; not F07 |
+| Full `cargo test` | 42 known Linux-only failures in `bench::`/`db::`/`takeout::`; not F07 |
+
+### Requirement status (final)
+
+| Requirement | It. 1 | It. 2 | It. 3 | It. 4 |
+| ----------- | ----- | ----- | ----- | ----- |
+| EXIF-01 | ✅ | ✅ | ✅ | ✅ Verified |
+| EXIF-02 | ❌ | ✅ | ✅ | ✅ Verified |
+| EXIF-03 | ⚠️ | ✅ | ✅ | ✅ Verified |
+| EXIF-04 | ❌ | ⚠️ | ⚠️ | ✅ Verified |
+| EXIF-05 | ❌ | ✅ | ✅ | ✅ Verified |
+| EXIF-06 | ✅ | ✅ | ✅ | ✅ Verified |
+
+### Summary (final)
+
+**Overall**: ✅ PASS.
+**Spec-anchored check**: every EXIF-01..06 AC and all 3 edge cases have tests that pin the spec's outcome.
+**Defects**: B1 (HEIC size rotated) and B2 (disk error reported as corrupt) are fixed and verified with tests. The size source is chosen by content, so a mislabelled HEIC is handled too.
+**Sensor**: 77 mutants, 71 killed, 6 equivalent, 0 spec-visible survivors.
+**Gate**: 43/43 `photo_meta::` + `time::`. No regression in `scan::`/`takeout::`.
+**Fix→re-verify iterations used**: 4.

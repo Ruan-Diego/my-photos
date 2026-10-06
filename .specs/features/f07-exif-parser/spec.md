@@ -121,18 +121,18 @@
 
 | Requirement ID | Story | Phase | Status |
 | -------------- | ----- | ----- | ------ |
-| EXIF-01 | Data e tag | Design | Pending |
-| EXIF-02 | Fuso (OffsetTime, GPS) | Design | Pending |
-| EXIF-03 | GPS | Design | Pending |
-| EXIF-04 | Dimensões e orientação | Design | Pending |
-| EXIF-05 | Sem EXIF, corrompido, ilegível, JSON bruto | Design | Pending |
-| EXIF-06 | Só leitura | Design | Pending |
+| EXIF-01 | Data e tag | T1–T3 | Verified |
+| EXIF-02 | Fuso (OffsetTime, GPS) | T1–T3 | Verified |
+| EXIF-03 | GPS | T1–T3 | Verified |
+| EXIF-04 | Dimensões e orientação | T1–T3 | Verified |
+| EXIF-05 | Sem EXIF, corrompido, ilegível, JSON bruto | T1–T3 | Verified |
+| EXIF-06 | Só leitura | T1–T3 | Verified |
 
-**Coverage:** 6 total, 0 mapped to tasks, 6 unmapped.
+**Coverage:** 6 total, 6 mapped to tasks, 0 unmapped. Verified in `validation.md` (PASS, iteration 4).
 
 ---
 
 ## Success Criteria
 
-- [ ] Todos os critérios passam em `cargo test` com imagens geradas no próprio teste
-- [ ] Nenhuma dependência nativa nova (só crates Rust puros)
+- [x] Todos os critérios passam em `cargo test` com imagens geradas no próprio teste
+- [x] Nenhuma dependência nativa nova (só crates Rust puros)
