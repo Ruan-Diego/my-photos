@@ -28,14 +28,43 @@ pub(crate) fn discover_with(
     root: &Path,
     read_json: impl Fn(&Path) -> Result<Vec<u8>, String>,
 ) -> Result<DiscoveryReport, String> {
+    let tree = read_library_tree(root)?;
+    Ok(discover_tree(root, tree, read_json))
+}
+
+/// AD-011: the app folder holds the database and the trash, never library media.
+pub(crate) const APP_FOLDER: &str = ".myphotos";
+
+/// Every folder and file name under `root`, read once, so the scanner (F05) and the
+/// matcher share one walk of the disk.
+#[derive(Debug, Default)]
+pub(crate) struct Tree {
+    /// Relative paths of every visited folder, the root excluded.
+    pub folders: Vec<String>,
+    files: BTreeMap<String, Vec<String>>,
+    problems: Vec<Problem>,
+}
+
+pub(crate) fn read_library_tree(root: &Path) -> Result<Tree, String> {
     let metadata = fs::symlink_metadata(root).map_err(|error| error.to_string())?;
     if !metadata.is_dir() {
         return Err(format!("{} não é um diretório", root.display()));
     }
+    let mut tree = Tree::default();
+    read_tree(root, "", &mut tree)?;
+    Ok(tree)
+}
 
-    let mut files = BTreeMap::new();
-    let mut problems: Vec<Problem> = Vec::new();
-    read_tree(root, "", &mut files, &mut problems)?;
+pub(crate) fn discover_tree(
+    root: &Path,
+    tree: Tree,
+    read_json: impl Fn(&Path) -> Result<Vec<u8>, String>,
+) -> DiscoveryReport {
+    let Tree {
+        files,
+        mut problems,
+        ..
+    } = tree;
 
     // Takeout splits one export into takeout-<stamp>-N-NNN folders, and a sidecar can land
     // in a different part than its media. Match inside the logical folder (part suffix
@@ -161,11 +190,11 @@ pub(crate) fn discover_with(
     media.sort_by(|left, right| left.relative_path.cmp(&right.relative_path));
     albums.sort_by(|left, right| left.relative_path.cmp(&right.relative_path));
     problems.sort_by(|left, right| left.relative_path.cmp(&right.relative_path));
-    Ok(DiscoveryReport {
+    DiscoveryReport {
         media,
         albums,
         problems,
-    })
+    }
 }
 
 fn read_media_json(
@@ -188,17 +217,12 @@ fn unmatched(relative_path: String) -> MediaHit {
     }
 }
 
-fn read_tree(
-    directory: &Path,
-    relative: &str,
-    files: &mut BTreeMap<String, Vec<String>>,
-    problems: &mut Vec<Problem>,
-) -> Result<(), String> {
+fn read_tree(directory: &Path, relative: &str, tree: &mut Tree) -> Result<(), String> {
     let entries = match fs::read_dir(directory) {
         Ok(entries) => entries,
         Err(error) if relative.is_empty() => return Err(error.to_string()),
         Err(_) => {
-            problems.push(Problem {
+            tree.problems.push(Problem {
                 relative_path: relative.to_string(),
                 kind: ProblemKind::UnreadableDirectory,
             });
@@ -210,7 +234,7 @@ fn read_tree(
             Ok(entry) => entry,
             Err(error) if relative.is_empty() => return Err(error.to_string()),
             Err(_) => {
-                problems.push(Problem {
+                tree.problems.push(Problem {
                     relative_path: relative.to_string(),
                     kind: ProblemKind::UnreadableDirectory,
                 });
@@ -220,7 +244,7 @@ fn read_tree(
         let name = match entry.file_name().into_string() {
             Ok(name) => name,
             Err(raw) => {
-                problems.push(Problem {
+                tree.problems.push(Problem {
                     relative_path: join_relative(relative, &raw.to_string_lossy()),
                     kind: ProblemKind::InvalidName,
                 });
@@ -231,7 +255,7 @@ fn read_tree(
             Ok(file_type) => file_type,
             Err(error) if relative.is_empty() => return Err(error.to_string()),
             Err(_) => {
-                problems.push(Problem {
+                tree.problems.push(Problem {
                     relative_path: join_relative(relative, &name),
                     kind: ProblemKind::Unreadable,
                 });
@@ -242,12 +266,15 @@ fn read_tree(
             continue;
         }
         if file_type.is_dir() {
-            if is_system_dir(&entry) {
+            let app_folder = relative.is_empty() && name.eq_ignore_ascii_case(APP_FOLDER);
+            if app_folder || is_system_dir(&entry) {
                 continue;
             }
-            read_tree(&entry.path(), &join_relative(relative, &name), files, problems)?;
+            let child = join_relative(relative, &name);
+            tree.folders.push(child.clone());
+            read_tree(&entry.path(), &child, tree)?;
         } else if file_type.is_file() {
-            files.entry(relative.to_string()).or_default().push(name);
+            tree.files.entry(relative.to_string()).or_default().push(name);
         }
     }
     Ok(())
