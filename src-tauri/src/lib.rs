@@ -3,6 +3,7 @@ mod commands;
 mod db;
 pub mod scan;
 mod time;
+mod photo_meta;
 mod takeout;
 
 use std::sync::Mutex;

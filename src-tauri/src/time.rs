@@ -14,10 +14,28 @@ const LAST_SECOND: i64 = 253_402_300_799; // 9999-12-31T23:59:59Z
 /// Unix seconds (negative = before 1970) → `1969-12-31T00:00:00.000Z`. `None` outside
 /// the years 1800–9999.
 pub(crate) fn iso_from_unix_seconds(seconds: i64) -> Option<String> {
-    if !(FIRST_SECOND..=LAST_SECOND).contains(&seconds) {
+    iso_from_unix_millis(seconds, 0)
+}
+
+/// Same as `iso_from_unix_seconds` with milliseconds (0–999) after the seconds.
+pub(crate) fn iso_from_unix_millis(seconds: i64, millis: u32) -> Option<String> {
+    if !(FIRST_SECOND..=LAST_SECOND).contains(&seconds) || millis > 999 {
         return None;
     }
-    Some(format_iso(seconds, 0))
+    Some(format_iso(seconds, millis))
+}
+
+/// (year, month, day) → days since 1970-01-01. Howard Hinnant's `days_from_civil`; the
+/// inverse of `civil_from_days` for any valid date.
+pub(crate) fn days_from_civil(year: i64, month: u32, day: u32) -> i64 {
+    let year = if month <= 2 { year - 1 } else { year };
+    let era = year.div_euclid(400);
+    let yoe = year - era * 400;
+    let month = i64::from(month);
+    let mp = if month > 2 { month - 3 } else { month + 9 };
+    let doy = (153 * mp + 2) / 5 + i64::from(day) - 1;
+    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    era * 146_097 + doe - 719_468
 }
 
 fn format_iso(seconds: i64, millis: u32) -> String {
@@ -49,7 +67,9 @@ fn civil_from_days(days: i64) -> (i64, u32, u32) {
 mod tests {
     use std::time::{Duration, UNIX_EPOCH};
 
-    use super::{iso_from_unix_seconds, iso_utc};
+    use super::{
+        civil_from_days, days_from_civil, iso_from_unix_millis, iso_from_unix_seconds, iso_utc,
+    };
 
     #[test]
     fn epoch_is_midnight_of_1970_01_01() {
@@ -110,5 +130,33 @@ mod tests {
         assert_eq!(iso_from_unix_seconds(253_402_300_800), None);
         assert_eq!(iso_from_unix_seconds(i64::MIN), None);
         assert_eq!(iso_from_unix_seconds(i64::MAX), None);
+    }
+
+    #[test]
+    fn days_from_civil_inverts_civil_from_days_from_1800_to_9999() {
+        let first = days_from_civil(1800, 1, 1);
+        let last = days_from_civil(9999, 12, 31);
+        assert_eq!(first, -62_091);
+        assert_eq!(last, 2_932_896);
+        for days in first..=last {
+            let (year, month, day) = civil_from_days(days);
+            assert_eq!(days_from_civil(year, month, day), days);
+        }
+        assert_eq!(days_from_civil(1970, 1, 1), 0);
+        assert_eq!(days_from_civil(2024, 2, 29), 19_782);
+    }
+
+    #[test]
+    fn millis_are_formatted_and_bounded() {
+        assert_eq!(
+            iso_from_unix_millis(1_660_142_220, 500).unwrap(),
+            "2022-08-10T14:37:00.500Z"
+        );
+        assert_eq!(
+            iso_from_unix_millis(-1, 999).unwrap(),
+            "1969-12-31T23:59:59.999Z"
+        );
+        assert_eq!(iso_from_unix_millis(0, 1000), None);
+        assert_eq!(iso_from_unix_millis(253_402_300_800, 0), None);
     }
 }

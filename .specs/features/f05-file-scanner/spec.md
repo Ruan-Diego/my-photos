@@ -33,25 +33,25 @@ A F04 entregou o banco `E:\.myphotos\library.db` com o esquema v1 vazio. O F02 s
 | Assumption / decision | Chosen default | Rationale | Confirmed? |
 | --------------------- | -------------- | --------- | ---------- |
 | Raiz da biblioteca | `E:\` (constante `LIBRARY_ROOT`); a função recebe a raiz como parâmetro | AD-007, AD-010 | y (AD) |
-| Biblioteca no banco | Uma linha em `libraries` por `root_path`; criada na primeira varredura com `name` = `root_path` sem a barra final (`E:` para `E:\`), `status = 'active'` | O esquema exige `library_id`; uma biblioteca no MVP | n — default |
-| O que é mídia | Mesma lista de extensões do F02 (`takeout::classify`), sem diferenciar caixa. `mp4 mov mkv avi 3gp webm m4v` são `video`; o resto da lista é `photo` | Uma só fonte da verdade para "o que é mídia" | n — default |
+| Biblioteca no banco | Uma linha em `libraries` por `root_path`; criada na primeira varredura com `name` = `root_path` sem a barra final (`E:` para `E:\`), `status = 'active'` | O esquema exige `library_id`; uma biblioteca no MVP | y |
+| O que é mídia | Mesma lista de extensões do F02 (`takeout::classify`), sem diferenciar caixa. `mp4 mov mkv avi 3gp webm m4v` são `video`; o resto da lista é `photo` | Uma só fonte da verdade para "o que é mídia" | y |
 | Outros arquivos (`.json`, `.zip`, `.html`, …) | Ignorados, sem linha e sem erro | AD-010 | y (AD) |
 | Pastas puladas | `.myphotos` na raiz (qualquer caixa), pastas com atributos oculto **e** sistema (`$RECYCLE.BIN`, `System Volume Information`) em qualquer nível, links simbólicos e junções (nem seguidos nem gravados) | AD-010, AD-011; mesmo critério do F02 | y (AD) |
 | Árvore | `folders` tem uma linha por pasta física, com o caminho como está no disco; partes `takeout-…-N-NNN` são pastas distintas | AD-010 | y (AD) |
 | Caminhos | Relativos à raiz, separador `/`, como no F02 e no F04 | F04 | y |
-| Detecção de mudança | Mídia já no banco com o mesmo `size_bytes`, o mesmo `fs_modified_at` e hash presente é "inalterada" e não é lida. Qualquer diferença, ou hash ausente, faz ler e recalcular | Evita reler 4 mil arquivos no HDD a cada abertura | n — default |
-| Precisão de data | `fs_modified_at` e `fs_created_at` em ISO-8601 UTC com milissegundos (`2026-10-02T12:00:00.123Z`); `fs_created_at` NULL se o sistema não informar | NTFS guarda 100 ns; segundos inteiros esconderiam uma edição rápida | n — default |
-| Mídia que sumiu | `indexing_status = 'missing_file'`, linha e `id` mantidos. Se o arquivo voltar no mesmo caminho, volta a `ok` | Favoritos/notas (F04 DB-05) não podem se perder por um HD mal conectado | n — default |
-| Pasta que sumiu | A linha de `folders` é apagada (nada referencia `folders`) | Mostrar a árvore como está no disco (AD-010) | n — default |
-| Pasta ilegível | Erro `unreadable_directory` em `indexing_errors`; mídias e pastas já conhecidas dentro dela ficam como estão (não viram `missing_file`) | Falha de leitura não é prova de remoção | n — default |
-| Arquivo ilegível | Linha gravada com `indexing_status = 'error'`, `indexing_error = 'unreadable'`, hash NULL; erro em `indexing_errors`; tentado de novo na próxima varredura | RF-014: falha num item não para a varredura | n — default |
-| Disco some no meio | A varredura para, a execução fica `failed`, o erro é `root_missing`, e **nenhuma** mídia é marcada `missing_file` nessa execução. O que já foi gravado fica | Disco USB (AD-011) | n — default |
-| Gravação | Novas pastas e mídias são inseridas numa transação antes do hash (hash NULL); os hashes são gravados em lotes de até 100 arquivos por transação | Uma queda no meio perde no máximo um lote; a próxima varredura continua de onde parou (hash NULL = ler de novo) | n — default |
-| Ordem do hash | Um arquivo por vez, em ordem de caminho | HDD: leitura sequencial é melhor que concorrente; paralelismo fica para a F32 | n — default |
-| Execução | Cada varredura cria uma linha em `indexing_runs`: `run_type = 'full'` se a biblioteca nunca teve execução `completed`, senão `'incremental'`; `status` termina `completed` ou `failed` | Esquema F04 | n — default |
-| Ferramenta de validação local | Binário `f05-scan` que abre `E:\.myphotos\library.db`, varre `E:\` e imprime o resumo em JSON | O ambiente de desenvolvimento não tem o `E:`; o stakeholder valida no disco real | n — default |
+| Detecção de mudança | Mídia já no banco com o mesmo `size_bytes`, o mesmo `fs_modified_at` e hash presente é "inalterada" e não é lida. Qualquer diferença, ou hash ausente, faz ler e recalcular | Evita reler 4 mil arquivos no HDD a cada abertura | y |
+| Precisão de data | `fs_modified_at` e `fs_created_at` em ISO-8601 UTC com milissegundos (`2026-10-02T12:00:00.123Z`); `fs_created_at` NULL se o sistema não informar | NTFS guarda 100 ns; segundos inteiros esconderiam uma edição rápida | y |
+| Mídia que sumiu | `indexing_status = 'missing_file'`, linha e `id` mantidos. Se o arquivo voltar no mesmo caminho, volta a `ok` | Favoritos/notas (F04 DB-05) não podem se perder por um HD mal conectado | y |
+| Pasta que sumiu | A linha de `folders` é apagada (nada referencia `folders`) | Mostrar a árvore como está no disco (AD-010) | y |
+| Pasta ilegível | Erro `unreadable_directory` em `indexing_errors`; mídias e pastas já conhecidas dentro dela ficam como estão (não viram `missing_file`) | Falha de leitura não é prova de remoção | y |
+| Arquivo ilegível | Linha gravada com `indexing_status = 'error'`, `indexing_error = 'unreadable'`, hash NULL; erro em `indexing_errors`; tentado de novo na próxima varredura | RF-014: falha num item não para a varredura | y |
+| Disco some no meio | A varredura para, a execução fica `failed`, o erro é `root_missing`, e **nenhuma** mídia é marcada `missing_file` nessa execução. O que já foi gravado fica | Disco USB (AD-011) | y |
+| Gravação | Novas pastas e mídias são inseridas numa transação antes do hash (hash NULL); os hashes são gravados em lotes de até 100 arquivos por transação | Uma queda no meio perde no máximo um lote; a próxima varredura continua de onde parou (hash NULL = ler de novo) | y |
+| Ordem do hash | Um arquivo por vez, em ordem de caminho | HDD: leitura sequencial é melhor que concorrente; paralelismo fica para a F32 | y |
+| Execução | Cada varredura cria uma linha em `indexing_runs`: `run_type = 'full'` se a biblioteca nunca teve execução `completed`, senão `'incremental'`; `status` termina `completed` ou `failed` | Esquema F04 | y |
+| Ferramenta de validação local | Binário `f05-scan` que abre `E:\.myphotos\library.db`, varre `E:\` e imprime o resumo em JSON | O ambiente de desenvolvimento não tem o `E:`; o stakeholder valida no disco real | y |
 
-**Open questions:** nenhuma bloqueante. Os defaults acima foram escolhidos sem confirmação ponto a ponto (o stakeholder pediu "go ahead" em 2026-10-05). Qualquer um pode ser revisto antes da F10.
+**Open questions:** nenhuma. Defaults confirmados pelo stakeholder em 2026-10-06 ("continue with defaults").
 
 ### Dimensões implícitas
 

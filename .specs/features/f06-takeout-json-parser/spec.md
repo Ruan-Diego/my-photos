@@ -30,20 +30,20 @@ O F02 já lê o sidecar do Takeout e o `metadata.json` de álbum, mas só o bast
 | Assumption / decision | Chosen default | Rationale | Confirmed? |
 | --------------------- | -------------- | --------- | ---------- |
 | Onde fica | Mesmo módulo `src-tauri/src/takeout/` do F02, ampliando `MediaMetadata` e `AlbumMetadata` com campos novos | F02 design: "F06 e F08 importam daqui em vez de abrir outro crate" | y (F02) |
-| Teto de tamanho | 1 MiB (1 048 576 bytes). Acima disso o sidecar é `invalid_json`; a leitura nunca passa de 1 MiB + 1 byte | Sidecars reais têm 1–20 KB; 1 MiB é 50× a margem e limita a memória. `indexing_errors` (F04) não tem um tipo "grande demais" e mudar o `CHECK` exigiria migração | n — default |
-| BOM UTF-8 | Ignorado no início; o JSON bruto guardado não tem BOM | Arquivos regravados por editores do Windows ganham BOM; o `serde_json` recusaria | n — default |
-| Raiz que não é objeto (`[]`, `"x"`, `3`) | `invalid_json` | Não é um sidecar; aceitar viraria um par com "nenhum metadado" que esconde o problema | n — default |
-| Formato de `taken_at` | ISO-8601 UTC com milissegundos e `Z` (`2022-08-10T14:37:00.000Z`), o mesmo de `fs_modified_at` na F05; instantes antes de 1970 suportados | Um formato só no banco ordena certo como texto | n — default |
-| Timestamp `0` | Ausente | O Takeout escreve `0` quando não sabe; 1970-01-01T00:00:00Z nunca é a data real de uma foto. Negativos (antes de 1970, foto escaneada) valem | n — default |
-| Faixa do instante | Ano entre 1800 e 9999; fora disso, ausente | Evita data absurda que quebraria a ordenação ISO (ano com 5 dígitos ou negativo) | n — default |
-| Coordenada válida | Latitude em [-90, 90], longitude em [-180, 180], ambas números finitos e não as duas `0.0`. Inválida conta como ausente e a fonte seguinte (`geoDataExif`) é tentada | `0.0/0.0` já era ausência no F02; fora da faixa é dado corrompido | n — default |
+| Teto de tamanho | 1 MiB (1 048 576 bytes). Acima disso o sidecar é `invalid_json`; a leitura nunca passa de 1 MiB + 1 byte | Sidecars reais têm 1–20 KB; 1 MiB é 50× a margem e limita a memória. `indexing_errors` (F04) não tem um tipo "grande demais" e mudar o `CHECK` exigiria migração | y |
+| BOM UTF-8 | Ignorado no início; o JSON bruto guardado não tem BOM | Arquivos regravados por editores do Windows ganham BOM; o `serde_json` recusaria | y |
+| Raiz que não é objeto (`[]`, `"x"`, `3`) | `invalid_json` | Não é um sidecar; aceitar viraria um par com "nenhum metadado" que esconde o problema | y |
+| Formato de `taken_at` | ISO-8601 UTC com milissegundos e `Z` (`2022-08-10T14:37:00.000Z`), o mesmo de `fs_modified_at` na F05; instantes antes de 1970 suportados | Um formato só no banco ordena certo como texto | y |
+| Timestamp `0` | Ausente | O Takeout escreve `0` quando não sabe; 1970-01-01T00:00:00Z nunca é a data real de uma foto. Negativos (antes de 1970, foto escaneada) valem | y |
+| Faixa do instante | Ano entre 1800 e 9999; fora disso, ausente | Evita data absurda que quebraria a ordenação ISO (ano com 5 dígitos ou negativo) | y |
+| Coordenada válida | Latitude em [-90, 90], longitude em [-180, 180], ambas números finitos e não as duas `0.0`. Inválida conta como ausente e a fonte seguinte (`geoDataExif`) é tentada | `0.0/0.0` já era ausência no F02; fora da faixa é dado corrompido | y |
 | Altitude | Só com ponto válido; número finito ou ausente | F02 já descartava altitude junto do ponto | y (F02) |
 | Fonte do local | `takeout_geoData` se `geoData` válido, senão `takeout_geoDataExif` se `geoDataExif` válido, senão nenhum local | Valores do `CHECK` de `media_locations.source` (F04) | y (F04) |
-| Nome de pessoa | Exibição: espaços das pontas removidos e espaços internos (qualquer espaço Unicode) colapsados em um. Normalizado: exibição em minúsculas Unicode. Nome vazio depois disso é descartado. Repetido pelo normalizado no mesmo JSON: fica o primeiro | `Ana  Maria`, `ana maria` e ` Ana Maria ` são a mesma pessoa para `people` | n — default |
-| Texto (título, descrição, url) | Pontas sem espaço; vazio ou só espaço → ausente. Quebras de linha internas da descrição mantidas | F02 já tratava vazio como ausente; espaço sobrando é ruído do Takeout | n — default |
-| JSON bruto | O texto UTF-8 do arquivo, sem BOM, exatamente como lido (não re-serializado) | `media_metadata_raw.takeout_json` deve permitir reprocessar sem reler o disco | n — default |
+| Nome de pessoa | Exibição: espaços das pontas removidos e espaços internos (qualquer espaço Unicode) colapsados em um. Normalizado: exibição em minúsculas Unicode. Nome vazio depois disso é descartado. Repetido pelo normalizado no mesmo JSON: fica o primeiro | `Ana  Maria`, `ana maria` e ` Ana Maria ` são a mesma pessoa para `people` | y |
+| Texto (título, descrição, url) | Pontas sem espaço; vazio ou só espaço → ausente. Quebras de linha internas da descrição mantidas | F02 já tratava vazio como ausente; espaço sobrando é ruído do Takeout | y |
+| JSON bruto | O texto UTF-8 do arquivo, sem BOM, exatamente como lido (não re-serializado) | `media_metadata_raw.takeout_json` deve permitir reprocessar sem reler o disco | y |
 
-**Open questions:** nenhuma bloqueante. Defaults escolhidos sem confirmação ponto a ponto (stakeholder: "continue", 2026-10-06).
+**Open questions:** nenhuma. Defaults confirmados pelo stakeholder em 2026-10-06 ("continue with defaults").
 
 ### Dimensões implícitas
 
