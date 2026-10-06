@@ -4,7 +4,7 @@
 **Spec**: `.specs/features/f05-file-scanner/spec.md`
 **Verifier**: autor (auto-verificação). **Não** é o Verifier independente do processo: a skill `tlc-spec-driven` não está disponível na sessão na nuvem. Repetir com um Verifier independente numa sessão local.
 
-**Verdict**: ⚠️ PASS provisório no harness Linux. Falta (1) o CI `windows-latest` verde no commit, que roda os testes só-Windows, e (2) a corrida manual SCAN-07 no `E:`.
+**Verdict**: ✅ PASS automático. CI `windows-latest` verde em `e1110e3` ([run 37511625382](https://github.com/Ruan-Diego/my-photos/actions/runs/37511625382)): `cargo test` 141 passed, 0 failed, 2 ignored (`real_library_scan`, `real_takeout_survey`), incluindo os testes só-Windows da F05. Falta a corrida manual SCAN-07 no `E:` e um Verifier independente.
 
 ---
 
@@ -23,8 +23,8 @@ Testes `#[cfg(windows)]` que **só o CI roda**: `hidden_system_folder_is_skipped
 | -- | ----- | --------- |
 | SCAN-01 AC1 mídias, tipos, pastas; `.txt` ignorado | `first_scan_records_media_and_folders_and_ignores_the_rest` | ✅ |
 | SCAN-01 AC2 `.myphotos` / `.MyPhotos` na raiz | `app_folder_at_the_root_is_skipped_in_any_case` | ✅ |
-| SCAN-01 AC3 symlink/junção não seguido | `linked_folder_is_not_followed` | ✅ Linux; junção no CI |
-| SCAN-01 pasta oculto+sistema abaixo da raiz (edge) | `hidden_system_folder_is_skipped_below_the_root` | ⏳ CI |
+| SCAN-01 AC3 symlink/junção não seguido | `linked_folder_is_not_followed` | ✅ (Linux e CI) |
+| SCAN-01 pasta oculto+sistema abaixo da raiz (edge) | `hidden_system_folder_is_skipped_below_the_root` | ✅ CI |
 | SCAN-02 AC4 campos e SHA-256 | `media_row_has_the_file_fields_and_the_sha256` | ✅ |
 | SCAN-02 AC5 casamento JSON | `takeout_json_match_is_recorded` | ✅ |
 | SCAN-02 AC6 biblioteca, run `full` `completed`, `last_indexed_at` | `first_scan_is_a_completed_full_run_of_one_library` | ✅ |
@@ -36,12 +36,12 @@ Testes `#[cfg(windows)]` que **só o CI roda**: `hidden_system_folder_is_skipped
 | SCAN-04 AC1–AC2 removida → `missing_file` com favorito e nota; volta a `ok` | `removed_file_is_missing_with_its_favorite_and_note_and_comes_back` | ✅ |
 | SCAN-04 AC3 movida mantém `id` | `file_moved_outside_the_app_keeps_its_id` | ✅ |
 | SCAN-04 AC4 duas gêmeas ausentes não adotam | `two_missing_twins_do_not_adopt_a_new_copy` | ✅ |
-| SCAN-04 AC5 pasta ilegível preserva status | `unreadable_folder_keeps_the_status_of_its_media` | ⏳ CI |
+| SCAN-04 AC5 pasta ilegível preserva status | `unreadable_folder_keeps_the_status_of_its_media` | ✅ CI |
 | SCAN-04 AC6 raiz some no meio | `root_lost_mid_scan_fails_the_run_and_marks_nothing_missing` | ✅ |
 | SCAN-04 AC7 pasta sumida sai de `folders` | `vanished_folder_leaves_the_folder_table` | ✅ |
 | SCAN-05 AC1, SCAN-06 AC4 arquivo ilegível | `unreadable_file_is_an_error_row_and_its_neighbors_are_written` | ✅ |
 | SCAN-05 AC2 JSON inválido | `invalid_json_leaves_the_media_unmatched_with_an_error` | ✅ |
-| SCAN-05 AC3 nome inválido | `invalid_name_is_an_error_outside_media_items` | ✅ Linux; UTF-16 no CI |
+| SCAN-05 AC3 nome inválido | `invalid_name_is_an_error_outside_media_items` | ✅ (Linux e CI) |
 | SCAN-06 AC5 run `running` antiga → `failed` | `run_left_running_by_a_previous_process_becomes_failed` | ✅ |
 | SCAN-06 AC6 raiz ausente | `missing_root_is_refused_without_writing` | ✅ |
 | Edge: arquivo de 0 bytes | `empty_file_has_the_sha256_of_no_bytes` | ✅ |
@@ -71,8 +71,11 @@ Cada mutação aplicada à cópia do harness, `cargo test --lib scan::`, cópia 
 
 **Result**: 13/13 killed. Não cobertos pelo sensor: o caminho de pasta ilegível (só Windows).
 
+## Correção no CI (pré-existente)
+
+O CI já estava vermelho no `main` (`758a96c`): o teste F02 `unreadable_subdirectory_is_a_problem_and_keeps_the_neighbor` bloqueava a pasta com `icacls /inheritance:r`, mas o runner do GitHub roda elevado e lista pastas com intenção de backup, que ignora a ACL. Os dois testes de pasta ilegível (F02 e F05) agora seguram a pasta aberta sem compartilhamento (`db::tests::lock_dir`), e a listagem falha por violação de compartilhamento para qualquer conta. Commits `0a60e80`, `e1110e3`.
+
 ## Pendências
 
-- CI `windows-latest` verde no commit da F05.
 - `real_library_scan` no `E:` (SCAN-07): imprimir contagens; segunda passada com `hashed=0`.
 - Verifier independente numa sessão com a skill.

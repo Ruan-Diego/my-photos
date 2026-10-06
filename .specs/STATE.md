@@ -93,11 +93,11 @@
 
 ## Handoff
 
-- **Feature**: F05 File Scanner — implementada; aguarda CI `windows-latest`, a corrida manual no `E:` e um Verifier independente
+- **Feature**: F05 File Scanner — implementada, CI `windows-latest` verde (141 testes); aguarda a corrida manual no `E:` e um Verifier independente
 - **Phase / Task**: Phase 1. F05 T1–T3 feitos em `claude/awesome-ride-rjqt4w`. Spec, design, tasks e validação em `.specs/features/f05-file-scanner/`
 - **Completed**: F01–F04. F05: `scan(&mut Connection, root)` em `src-tauri/src/scan/`, uma caminhada compartilhada com a F02 (`takeout::read_library_tree` + `discover_tree`). 27 testes verdes e 13/13 mutantes mortos num harness Linux
 - **In-progress**: nenhum
-- **Next step**: (1) conferir o CI do Windows na branch; (2) no Windows com o `E:`: `cargo test --manifest-path src-tauri/Cargo.toml real_library_scan -- --ignored --nocapture` (SCAN-07); (3) Verifier independente da F05 com a skill; depois F06 Takeout JSON Parser
+- **Next step**: (1) mesclar `claude/awesome-ride-rjqt4w` em `main` (também conserta o CI do `main`, vermelho desde a F04 pelo teste de pasta bloqueada com `icacls`); (2) no Windows com o `E:`: `cargo test --manifest-path src-tauri/Cargo.toml real_library_scan -- --ignored --nocapture` (SCAN-07); (3) Verifier independente da F05 com a skill; depois F06 Takeout JSON Parser
 - **Blockers**: sessão na nuvem (Linux) não compila o crate (Tauri pede GTK) e os testes antigos são só-Windows; o gate ali é o CI `windows-latest`. A skill `tlc-spec-driven` não está disponível na sessão na nuvem. `C:` com ~430 MB livres. `E:` deu "erro fatal de hardware" uma vez em 2026-10-02 — vigiar
 - **Open questions**: anomalia do baseline HDD (50k mais lento que 150k); 1885 mídias fora do Google Fotos dependem de EXIF/filesystem (F07/F09); 6 lições candidatas da F04 em `validation.md` aguardam Python para `lessons.py`; recuperação do WAL sem teste automático
 - **Uncommitted files** (máquina local): PRD HTML, `.specs/LESSONS.md`, `.specs/lessons.json`
