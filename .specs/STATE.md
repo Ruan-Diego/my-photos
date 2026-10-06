@@ -93,12 +93,12 @@
 
 ## Handoff
 
-- **Feature**: F04 Database Schema — concluída (Verifier PASS na iteração 2: 20/20 ACs, 27/27 mutantes mortos)
-- **Phase / Task**: Phase 1 iniciada. F04 entregue: `E:\.myphotos\library.db` (oculto) criado pelo app em 2026-10-02, esquema v1 com 16 tabelas, migrações com `.bak-vN`
-- **Completed**: F01–F04. Commits da F04 `dbc1ab5`..`2f7fa3e`, relatório em `.specs/features/f04-database-schema/validation.md`. Correção de build `17d90eb`: `default-run` no Cargo — `tauri dev` estava quebrado desde a F03
-- **In-progress**: nenhum
-- **Next step**: F05 File Scanner — varrer `E:\` ignorando `.myphotos`, gravar `folders`/`media_items`, hash SHA-256; usar o matcher da F02
-- **Blockers**: `C:` com ~430 MB livres. `E:` deu "erro fatal de hardware" uma vez em 2026-10-02 e voltou após reconexão — vigiar
-- **Open questions**: anomalia do baseline HDD (50k mais lento que 150k); 1885 mídias fora do Google Fotos dependem de EXIF/filesystem (F07/F09); 6 lições candidatas da F04 em `validation.md` aguardam Python para `lessons.py`; recuperação do WAL sem teste automático (comportamento padrão do SQLite)
-- **Uncommitted files**: PRD HTML, `.specs/LESSONS.md`, `.specs/lessons.json`
-- **Branch**: main
+- **Feature**: F05 File Scanner — spec em rascunho, aguardando confirmação do stakeholder
+- **Phase / Task**: Phase 1. F05 na fase Specify: `.specs/features/f05-file-scanner/spec.md` (SCAN-01..07), todos os defaults com `Confirmed? n`
+- **Completed**: F01–F04. Relatório da F04 em `.specs/features/f04-database-schema/validation.md`
+- **In-progress**: confirmar os defaults da spec da F05; depois design e tasks
+- **Next step**: stakeholder responde às open questions da spec (sobretudo `missing_file` em vez de apagar, detecção de movido por hash, sem gatilho no app); então `design.md`
+- **Blockers**: sessão na nuvem (Linux) não compila o crate (Tauri pede GTK) e os testes são só-Windows (`E:\`, `icacls`, `symlink_dir`); o único gate de testes ali é o CI `windows-latest`. A skill `tlc-spec-driven` não está disponível na sessão na nuvem. `C:` com ~430 MB livres. `E:` deu "erro fatal de hardware" uma vez em 2026-10-02 — vigiar
+- **Open questions**: as da spec da F05; anomalia do baseline HDD (50k mais lento que 150k); 1885 mídias fora do Google Fotos dependem de EXIF/filesystem (F07/F09); 6 lições candidatas da F04 em `validation.md` aguardam Python para `lessons.py`; recuperação do WAL sem teste automático
+- **Uncommitted files** (máquina local): PRD HTML, `.specs/LESSONS.md`, `.specs/lessons.json`
+- **Branch**: `claude/awesome-ride-rjqt4w` (sessão na nuvem)
