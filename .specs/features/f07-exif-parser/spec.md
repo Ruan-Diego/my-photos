@@ -29,7 +29,7 @@
 | Assumption / decision | Chosen default | Rationale | Confirmed? |
 | --------------------- | -------------- | --------- | ---------- |
 | Biblioteca EXIF | `kamadak-exif` 0.6 (Rust puro, BSD-2): JPEG, TIFF (DNG/CR2/NEF/ARW são TIFF), HEIF/HEIC, PNG (`eXIf`), WebP | Sem código nativo; licença permissiva; formatos da lista do MVP | y — "continue with defaults" (2026-10-06) |
-| Dimensões | `imagesize` 0.15 lê o cabeçalho (JPEG, PNG, GIF, WebP, HEIF). Para RAW (`dng cr2 nef arw`) e quando o cabeçalho falha, `PixelXDimension`/`PixelYDimension` do EXIF | O cabeçalho é a verdade da imagem; em RAW o primeiro IFD costuma ser a miniatura | y |
+| Dimensões | `imagesize` 0.15 lê o cabeçalho de JPEG, PNG, GIF e WebP. Para HEIC/HEIF, RAW (`dng cr2 nef arw`) e quando o cabeçalho falha, `PixelXDimension`/`PixelYDimension` do EXIF. Largura e altura vêm juntas e maiores que 0, ou ficam as duas ausentes | O cabeçalho é a verdade da imagem; em RAW o primeiro IFD costuma ser a miniatura; em HEIF o `imagesize` aplica a rotação `irot` e devolveria o tamanho girado (Verifier F07, B1) | y |
 | Tag da data | `DateTimeOriginal`; se ausente/inválida, `DateTimeDigitized`. `DateTime` (IFD0, data de modificação) nunca | PRD 9.5: data de captura; `DateTime` muda quando um editor regrava | y |
 | Formato aceito | `AAAA:MM:DD HH:MM:SS` (também `-` na data); data de calendário real; ano 1800–9999; `0000:00:00 00:00:00`, vazio ou lixo → ausente. `SubSecTime*` (dígitos) vira milissegundos | Câmeras zeradas gravam zeros; mesma faixa de ano do F06 | y |
 | Fuso | 1º `OffsetTime*` da mesma tag (`±HH:MM`, até ±14:00). 2º diferença entre a hora local e `GPSDateStamp`+`GPSTimeStamp` (UTC), arredondada a 15 min, se couber em ±14:00. 3º desconhecido | O EXIF guarda hora local de parede; o GPS é UTC | y |
@@ -38,7 +38,7 @@
 | Orientação | Tag `Orientation` do IFD principal, só 1–8 | Valores do padrão; o resto é lixo | y |
 | JSON bruto | Objeto `{ "NomeDaTag": "valor legível" }` dos campos do IFD principal (inclui Exif e GPS), sem `MakerNote`; cada valor cortado em 1024 caracteres; ausente quando não há EXIF | `media_metadata_raw.exif_json` para diagnóstico e reprocessamento | y |
 | EXIF corrompido | Campos EXIF ausentes, `exif_corrupt = true`; dimensões ainda tentadas. Se o EXIF vier parcial, os campos lidos valem | RF-014: um item ruim não para nada; quem grava `corrupt_media` é a F10 | y |
-| Arquivo ilegível | `Err(unreadable)` | Mesma semântica do F05 | y |
+| Arquivo ilegível | `Err(unreadable)` ao abrir **ou** em erro de disco durante a leitura; um arquivo que termina antes da hora (truncado) é `exif_corrupt` | Mesma semântica do F05; erro de disco não é mídia corrompida (Verifier F07, B2) | y |
 
 **Open questions:** nenhuma. Defaults aceitos pelo stakeholder antes da escrita ("continue with defaults", 2026-10-06).
 
@@ -86,7 +86,7 @@
 2. WHEN `GPSAltitude = 760/1` e `GPSAltitudeRef = 1` THEN altitude SHALL ser `-760`; com `Ref = 0` ou ausente SHALL ser `760`; WHEN o denominador da altitude é 0 THEN altitude SHALL ser ausente e o ponto continua valendo
 3. WHEN o `Ref` de latitude ou longitude falta, um denominador é 0, a latitude passa de 90, a longitude de 180, ou o ponto é `0/0` THEN latitude, longitude e altitude SHALL ser ausentes
 4. WHEN a imagem é um JPEG/PNG cujo cabeçalho diz 4032×3024 THEN `width`/`height` SHALL ser 4032/3024, mesmo que o EXIF diga outra coisa
-5. WHEN o arquivo é RAW (`.dng .cr2 .nef .arw`) ou o cabeçalho não é legível THEN SHALL usar `PixelXDimension`/`PixelYDimension`; sem eles, ausentes
+5. WHEN o arquivo é HEIC/HEIF ou RAW (`.dng .cr2 .nef .arw`) ou o cabeçalho não é legível THEN SHALL usar `PixelXDimension`/`PixelYDimension`; sem eles, ausentes
 6. WHEN `Orientation` é 1..8 THEN SHALL ser copiada; 0, 9 ou ausente → ausente
 
 **Independent Test**: JPEG/PNG gerados com SOF/IHDR e EXIF escolhidos.
@@ -101,7 +101,7 @@
 
 1. WHEN a foto não tem EXIF (PNG sem `eXIf`, GIF, JPEG sem APP1) THEN SHALL devolver `Ok` com campos EXIF ausentes, `raw_json` ausente, `exif_corrupt = false` e dimensões do cabeçalho
 2. WHEN o bloco EXIF existe mas é lixo THEN SHALL devolver `Ok` com `exif_corrupt = true`, campos EXIF ausentes e dimensões do cabeçalho
-3. WHEN o arquivo não pode ser aberto THEN SHALL devolver `Err` com código `unreadable`
+3. WHEN o arquivo não pode ser aberto ou a leitura falha no disco THEN SHALL devolver `Err` com código `unreadable`; WHEN o arquivo está truncado THEN `exif_corrupt = true`
 4. WHEN o EXIF é lido THEN `raw_json` SHALL ser um objeto JSON com `DateTimeOriginal`, `GPSLatitude` etc. como texto, sem `MakerNote`, e nenhum valor com mais de 1024 caracteres
 5. WHEN a leitura termina THEN os bytes, o tamanho e a data de modificação do arquivo SHALL ser os de antes (EXIF-06)
 

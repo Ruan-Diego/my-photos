@@ -616,3 +616,141 @@ fn exif06_reading_never_changes_the_file() {
     assert_eq!(before, after);
     assert_eq!(fs::read_dir(&photos.scratch.path).unwrap().count(), 1);
 }
+
+// ---------------------------------------------------------------- Verifier iteration 1
+
+#[test]
+fn exif04_heif_size_comes_from_exif_not_the_header() {
+    // A HEIC's own header may carry a rotation that imagesize applies; the stored size is
+    // the EXIF one. A JPEG-shaped body with a 640x480 header proves the header is not used.
+    let photos = Photos::new("size-heif");
+    let exif = tiff(&pixel_dimensions(4032, 3024));
+    for name in ["a.heic", "b.HEIF"] {
+        let metadata = photos.read(name, &jpeg(Some(&exif), Some((640, 480))));
+        assert_eq!(
+            (metadata.width, metadata.height),
+            (Some(4032), Some(3024)),
+            "{name}"
+        );
+    }
+}
+
+#[test]
+fn exif04_zero_sizes_are_absent() {
+    let photos = Photos::new("size-zero");
+    let header = photos.read("a.png", &png(None, 0, 16));
+    assert_eq!((header.width, header.height), (None, None));
+    let exif = photos.read(
+        "b.dng",
+        &jpeg(Some(&tiff(&pixel_dimensions(0, 3024))), None),
+    );
+    assert_eq!((exif.width, exif.height), (None, None));
+}
+
+#[test]
+fn exif05_a_disk_error_after_opening_is_unreadable() {
+    // Opening a directory succeeds on Unix and reading it fails; on Windows the open fails.
+    let photos = Photos::new("dir");
+    let error = read_embedded(&photos.scratch.path).unwrap_err();
+    assert_eq!(error, EmbeddedError::Unreadable);
+}
+
+#[test]
+fn exif05_truncated_photo_is_flagged_corrupt() {
+    let photos = Photos::new("truncated");
+    let mut bytes = jpeg(None, Some((640, 480)));
+    bytes.truncate(bytes.len() - 2);
+    let metadata = photos.read("a.jpg", &bytes);
+    assert!(metadata.exif_corrupt);
+    assert_eq!(metadata.raw_json, None);
+}
+
+#[test]
+fn exif05_partly_readable_exif_keeps_what_was_read() {
+    let photos = Photos::new("partial");
+    let fields = [
+        ascii(Tag::Make, "Fabricante Quebrado"),
+        ascii(Tag::Model, "Modelo Bom"),
+        ascii(Tag::DateTimeOriginal, ORIGINAL),
+    ];
+    let mut exif = tiff(&fields);
+    // Big-endian TIFF: IFD0 at offset 8 → entry count, then 12-byte entries. Point the
+    // Make value (stored by offset) far outside the block.
+    assert_eq!(&exif[..4], b"MM\0*");
+    let count = u16::from_be_bytes([exif[8], exif[9]]) as usize;
+    let make = (0..count)
+        .map(|index| 10 + index * 12)
+        .find(|&entry| exif[entry..entry + 2] == [0x01, 0x0F])
+        .expect("Make entry");
+    exif[make + 8..make + 12].copy_from_slice(&[0xFF, 0xFF, 0xFF, 0x00]);
+
+    let metadata = photos.read("a.jpg", &jpeg(Some(&exif), Some((640, 480))));
+    assert!(metadata.exif_corrupt);
+    assert_eq!(
+        metadata.taken_at_local.as_deref(),
+        Some("2022-08-10T11:37:00.000")
+    );
+    let raw = metadata.raw_json.expect("partial fields kept");
+    assert!(raw.contains("Modelo Bom"));
+    assert!(!raw.contains("Fabricante"));
+}
+
+#[test]
+fn edge_north_pole_and_antimeridian_west_are_valid() {
+    let photos = Photos::new("gps-edge-2");
+    let metadata = photos.jpeg_with(&[
+        rational(Tag::GPSLatitude, &[(90, 1), (0, 1), (0, 1)]),
+        ascii(Tag::GPSLatitudeRef, "N"),
+        rational(Tag::GPSLongitude, &[(180, 1), (0, 1), (0, 1)]),
+        ascii(Tag::GPSLongitudeRef, "W"),
+    ]);
+    assert_eq!(
+        (metadata.latitude, metadata.longitude),
+        (Some(90.0), Some(-180.0))
+    );
+}
+
+#[test]
+fn exif05_raw_json_ignores_thumbnail_fields() {
+    let photos = Photos::new("raw-thumb");
+    let metadata = photos.jpeg_with(&[
+        ascii(Tag::Make, "Principal"),
+        Field {
+            tag: Tag::Make,
+            ifd_num: In::THUMBNAIL,
+            value: Value::Ascii(vec![b"Miniatura".to_vec()]),
+        },
+        Field {
+            tag: Tag::Software,
+            ifd_num: In::THUMBNAIL,
+            value: Value::Ascii(vec![b"SoMiniatura".to_vec()]),
+        },
+    ]);
+    let raw = metadata.raw_json.unwrap();
+    assert!(raw.contains("Principal"));
+    assert!(!raw.contains("Miniatura"));
+}
+
+#[test]
+fn exif02_gps_offset_beyond_minus_fourteen_hours_is_unknown() {
+    let photos = Photos::new("gps-west");
+    // Local 00:05 on the 10th vs UTC 14:35 on the 10th: −14:30.
+    let mut fields = vec![ascii(Tag::DateTimeOriginal, "2022:08:10 00:05:00")];
+    gps_time(&mut fields, "2022:08:10", (14, 35, 0));
+    let metadata = photos.jpeg_with(&fields);
+    assert_eq!((metadata.taken_at_offset, metadata.taken_at), (None, None));
+}
+
+#[test]
+fn exif02_gps_offset_rounds_to_the_nearest_quarter_hour() {
+    let photos = Photos::new("gps-round");
+    // Local 17:33:10 vs UTC 14:35:10: +2:58 → +03:00 (down would give +02:45).
+    let mut fields = vec![ascii(Tag::DateTimeOriginal, "2022:08:10 17:33:10")];
+    gps_time(&mut fields, "2022:08:10", (14, 35, 10));
+    let metadata = photos.jpeg_with(&fields);
+    assert_eq!(metadata.taken_at_offset.as_deref(), Some("+03:00"));
+    assert_eq!(
+        metadata.taken_at.as_deref(),
+        Some("2022-08-10T14:33:10.000Z")
+    );
+}

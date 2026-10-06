@@ -7,7 +7,7 @@
 
 ## Architecture Overview
 
-Uma função de leitura por foto, sem estado. O arquivo é aberto só para leitura duas vezes no pior caso (cabeçalho de dimensões e contêiner EXIF); as duas leituras param no começo do arquivo.
+Uma função de leitura por foto, sem estado. O arquivo é aberto só para leitura duas vezes no pior caso (cabeçalho de dimensões e contêiner EXIF). O cabeçalho para no começo do arquivo; o `kamadak-exif` pode ler o arquivo inteiro (TIFF/RAW, JPEG sem EXIF) — ver Risks.
 
 ```mermaid
 flowchart TD
@@ -105,6 +105,8 @@ pub fn read_embedded(path: &Path) -> Result<EmbeddedMetadata, EmbeddedError>
 
 | Risk | Mitigation |
 | ---- | ---------- |
-| HEIC real não testado (gerar HEIC no teste é inviável) | Coberto pelo crate; validar na varredura real (F10) |
+| HEIC real não testado (gerar HEIC no teste é inviável) | Coberto pelo crate; tamanho de HEIF vem do EXIF (o `imagesize` aplica `irot`); validar na varredura real (F10) |
+| WebP cujo chunk EXIF começa com `Exif\0\0` (alguns gravadores) | O crate o vê como EXIF corrompido: `exif_corrupt` e sem campos. Registrado; medir na varredura real antes de contornar |
+| Leitura completa: TIFF/RAW é lido inteiro e JPEG sem EXIF é percorrido até o fim (comportamento do crate) | O F05 já lê cada arquivo inteiro para o hash; custo de I/O igual. Otimização (ler junto com o hash) fica para F10/F32 |
 | `imagesize` em RAW devolver a miniatura | RAW nunca usa `imagesize` |
 | GPS com hora de fix antiga desvia o fuso | Arredondamento a 15 min absorve até ±7 min; acima disso o fuso pode errar e fica registrado como derivado do GPS (a fonte é reportável depois) |

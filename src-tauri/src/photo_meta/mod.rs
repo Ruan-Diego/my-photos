@@ -1,3 +1,6 @@
+// Reachable from F09/F10; nothing in the app calls it yet.
+#![allow(dead_code)]
+
 //! F07: metadata embedded in a photo (EXIF + image header). Reads only; never writes.
 
 mod date;
@@ -16,7 +19,10 @@ use date::{
     to_utc,
 };
 
-const RAW_EXTENSIONS: &[&str] = &["dng", "cr2", "nef", "arw"];
+/// Formats whose header `imagesize` reads as stored. HEIF is not here: `imagesize`
+/// applies the HEIF rotation (`irot`), so iPhone photos would come back turned; RAW is not
+/// here because its first IFD is usually the preview. Both use the EXIF pixel dimensions.
+const HEADER_SIZE_EXTENSIONS: &[&str] = &["jpg", "jpeg", "png", "gif", "webp"];
 
 /// Longest text kept per tag in `raw_json`, in characters.
 const RAW_VALUE_CHARS: usize = 1024;
@@ -74,21 +80,23 @@ impl EmbeddedError {
 pub fn read_embedded(path: &Path) -> Result<EmbeddedMetadata, EmbeddedError> {
     let file = File::open(path).map_err(|_| EmbeddedError::Unreadable)?;
     let mut metadata = EmbeddedMetadata::default();
-    let (exif, corrupt) = read_exif(file);
+    let (exif, corrupt) = read_exif(file)?;
     metadata.exif_corrupt = corrupt;
 
-    let is_raw = path
+    let header_size = path
         .extension()
         .and_then(|extension| extension.to_str())
         .is_some_and(|extension| {
-            RAW_EXTENSIONS
+            HEADER_SIZE_EXTENSIONS
                 .iter()
-                .any(|raw| raw.eq_ignore_ascii_case(extension))
+                .any(|known| known.eq_ignore_ascii_case(extension))
         });
-    if !is_raw {
+    if header_size {
         if let Ok(size) = imagesize::size(path) {
-            metadata.width = u32::try_from(size.width).ok();
-            metadata.height = u32::try_from(size.height).ok();
+            if let (Some(width), Some(height)) = (positive(size.width), positive(size.height)) {
+                metadata.width = Some(width);
+                metadata.height = Some(height);
+            }
         }
     }
 
@@ -98,27 +106,36 @@ pub fn read_embedded(path: &Path) -> Result<EmbeddedMetadata, EmbeddedError> {
     Ok(metadata)
 }
 
-/// `(exif, corrupt)`: no EXIF → `(None, false)`; unreadable EXIF → `(None, true)`;
-/// partly readable → `(Some, true)`.
-fn read_exif(file: File) -> (Option<Exif>, bool) {
+/// `(exif, corrupt)`: no EXIF → `(None, false)`; unreadable EXIF or a truncated file →
+/// `(None, true)`; partly readable → `(Some, true)`. A disk error is `Unreadable`.
+fn read_exif(file: File) -> Result<(Option<Exif>, bool), EmbeddedError> {
     let mut reader = BufReader::new(file);
-    match Reader::new()
-        .continue_on_error(true)
-        .read_from_container(&mut reader)
-    {
-        Ok(exif) => (Some(exif), false),
-        // No EXIF block, or a container kamadak-exif does not read (GIF): its
-        // read_from_container reports that as this exact InvalidFormat.
-        Err(exif::Error::NotFound(_) | exif::Error::InvalidFormat("Unknown image format")) => {
-            (None, false)
-        }
-        Err(exif::Error::PartialResult(partial)) => {
-            let (exif, _) = partial.into_inner();
-            let usable = exif.fields().len() > 0;
-            (usable.then_some(exif), true)
-        }
-        Err(_) => (None, true),
-    }
+    Ok(
+        match Reader::new()
+            .continue_on_error(true)
+            .read_from_container(&mut reader)
+        {
+            Ok(exif) => (Some(exif), false),
+            Err(exif::Error::Io(error)) if error.kind() != std::io::ErrorKind::UnexpectedEof => {
+                return Err(EmbeddedError::Unreadable);
+            }
+            // No EXIF block, or a container kamadak-exif does not read (GIF): its
+            // read_from_container reports that as this exact InvalidFormat.
+            Err(exif::Error::NotFound(_) | exif::Error::InvalidFormat("Unknown image format")) => {
+                (None, false)
+            }
+            Err(exif::Error::PartialResult(partial)) => {
+                let (exif, _) = partial.into_inner();
+                let usable = exif.fields().len() > 0;
+                (usable.then_some(exif), true)
+            }
+            Err(_) => (None, true),
+        },
+    )
+}
+
+fn positive(size: usize) -> Option<u32> {
+    u32::try_from(size).ok().filter(|size| *size > 0)
 }
 
 fn fill_from_exif(metadata: &mut EmbeddedMetadata, exif: &Exif) {
@@ -133,8 +150,8 @@ fn fill_from_exif(metadata: &mut EmbeddedMetadata, exif: &Exif) {
         .map(|value| value as u16);
     if metadata.width.is_none() || metadata.height.is_none() {
         if let (Some(width), Some(height)) = (
-            uint(exif, Tag::PixelXDimension),
-            uint(exif, Tag::PixelYDimension),
+            uint(exif, Tag::PixelXDimension).filter(|width| *width > 0),
+            uint(exif, Tag::PixelYDimension).filter(|height| *height > 0),
         ) {
             metadata.width = Some(width);
             metadata.height = Some(height);
