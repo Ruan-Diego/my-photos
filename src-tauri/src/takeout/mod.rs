@@ -23,9 +23,12 @@ pub use model::{
 pub use parse::MAX_SIDECAR_BYTES;
 
 pub fn discover(root: &Path) -> Result<DiscoveryReport, String> {
-    discover_with(root, |path| {
-        read_json_capped(File::open(path).map_err(|error| error.to_string())?)
-    })
+    discover_with(root, read_sidecar)
+}
+
+/// How `discover` reads every JSON: opened read-only and capped (F06).
+pub(crate) fn read_sidecar(path: &Path) -> Result<Vec<u8>, String> {
+    read_json_capped(File::open(path).map_err(|error| error.to_string())?)
 }
 
 /// F06: reads at most `MAX_SIDECAR_BYTES + 1` bytes. A longer sidecar comes back one byte
@@ -333,7 +336,7 @@ mod tests {
     use std::fs;
     use std::path::{Path, PathBuf};
 
-    use super::{discover, discover_with, read_json_capped, MAX_SIDECAR_BYTES};
+    use super::{discover, discover_with, read_json_capped, read_sidecar, MAX_SIDECAR_BYTES};
     use crate::takeout::model::{Confidence, ProblemKind, UnmatchedReason};
 
     fn fixture(name: &str) -> PathBuf {
@@ -886,5 +889,19 @@ mod tests {
             neighbour.metadata.as_ref().and_then(|m| m.taken_at.as_deref()),
             Some("2022-08-10T14:37:00.000Z")
         );
+    }
+
+    #[test]
+    fn json05_discover_reads_a_huge_sidecar_only_up_to_the_cap() {
+        let temp = std::env::temp_dir().join(format!("my-photos-f06-huge-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&temp);
+        fs::create_dir_all(&temp).unwrap();
+        let path = temp.join("enorme.jpg.json");
+        // Sparse 64 MiB: no disk space used, but an unbounded read would load all of it.
+        fs::File::create(&path).unwrap().set_len(64 * 1024 * 1024).unwrap();
+        let bytes = read_sidecar(&path).unwrap();
+        assert!(read_sidecar(&temp.join("absent.json")).is_err());
+        fs::remove_dir_all(&temp).unwrap();
+        assert_eq!(bytes.len(), MAX_SIDECAR_BYTES + 1);
     }
 }

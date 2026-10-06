@@ -573,4 +573,31 @@ mod tests {
         assert!(parse_media_json(b"\xEF\xBB\xBF{}").is_ok());
         assert!(parse_album_json(b"\xEF\xBB\xBF{}").is_ok());
     }
+
+    #[test]
+    fn json02_one_zero_coordinate_is_a_real_place_and_zero_altitude_is_kept() {
+        for (latitude, longitude) in [(0.0, 10.0), (10.0, 0.0)] {
+            let metadata = media(&format!(
+                r#"{{ "geoData": {{ "latitude": {latitude:?}, "longitude": {longitude:?}, "altitude": 0.0 }} }}"#
+            ));
+            assert_eq!(metadata.location_source, Some(LocationSource::GeoData));
+            assert_eq!((metadata.latitude, metadata.longitude), (Some(latitude), Some(longitude)));
+            assert_eq!(metadata.altitude, Some(0.0));
+        }
+    }
+
+    #[test]
+    fn json05_the_bom_counts_toward_the_size_cap() {
+        let fill = |json_len: usize| {
+            let mut bytes = b"\xEF\xBB\xBF{\"pad\":\"".to_vec();
+            bytes.resize(3 + json_len - 2, b'a');
+            bytes.extend_from_slice(b"\"}");
+            bytes
+        };
+        // BOM + JSON = exactly the cap: accepted. One more byte: rejected.
+        assert_eq!(fill(MAX_SIDECAR_BYTES - 3).len(), MAX_SIDECAR_BYTES);
+        assert!(parse_media_json(&fill(MAX_SIDECAR_BYTES - 3)).is_ok());
+        assert!(parse_media_json(&fill(MAX_SIDECAR_BYTES - 2)).is_err());
+        assert!(parse_media_json(&fill(MAX_SIDECAR_BYTES)).is_err());
+    }
 }
