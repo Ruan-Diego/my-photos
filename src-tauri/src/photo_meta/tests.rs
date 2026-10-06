@@ -827,3 +827,16 @@ fn exif04_heif_header_is_never_used_whatever_the_name() {
         (Some(640), Some(480))
     );
 }
+
+#[test]
+fn exif04_unreadable_header_falls_back_to_exif_dimensions() {
+    let photos = Photos::new("size-no-header");
+    let exif = tiff(&pixel_dimensions(6000, 4000));
+    let no_header = photos.read("x.jpg", &jpeg(Some(&exif), None));
+    assert_eq!(
+        (no_header.width, no_header.height),
+        (Some(6000), Some(4000))
+    );
+    let nothing = photos.read("y.jpg", &jpeg(Some(&tiff(&[ascii(Tag::Make, "X")])), None));
+    assert_eq!((nothing.width, nothing.height), (None, None));
+}

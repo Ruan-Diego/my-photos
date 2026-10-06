@@ -352,3 +352,68 @@ Recommended, not blocking: R8 (choose the size source by content), R9 (state how
 ### Summary (iteration 2)
 
 **Overall**: ❌ FAIL, narrowly. B1 and B2 are fixed and verified with probes and new tests. All 7 iteration-1 spec-visible survivors are killed. 63 of 73 mutants are killed, and the 6 other survivors are equivalent. The FAIL rests on 4 spec-visible survivors in the new header allowlist code: `.JPG` upper case (M06), `.jpeg` (N09), `.webp` (N08), and EXIF height 0 alone (N06). No production bug is open. All four close with test-only additions. R8 (a HEIF with a `.jpg` name) is a residual risk I recommend fixing by choosing the size source by content.
+
+---
+
+## Iteration 3 (re-verification)
+
+**Diff range**: `c544197..b8c5ddc` (`b8c5ddc`). Production change: `mod.rs:85` now calls `header_size_is_stored_size` (`mod.rs:132-142`). It reads the first 256 bytes and uses the header only when `imagesize::image_type` says `Jpeg`, `Png`, `Gif` or `Webp`. The extension allowlist is gone. `Cargo.toml` sets `rust-version = "1.87"`. Tests are reworked in `tests.rs`, and `spec.md`/`design.md` are edited.
+**Gate**: `cargo test --lib -- photo_meta:: time::` → **42 passed, 0 failed**. The total is unchanged: 2 new tests, and 2 tests folded or removed (see the gap below). `cargo clippy --lib --tests` shows no warnings in `photo_meta`.
+
+### Iteration-2 findings
+
+| Finding | Evidence | Result |
+| ------- | -------- | ------ |
+| R8 HEIF under a `.jpg` name rotated | `tests.rs:813` `exif04_heif_header_is_never_used_whatever_the_name`: the hand-built rotated HEIF under `a.heic`, `b.HEIF`, `c.jpg`. It first asserts that `imagesize::size` itself returns `3024×4032`, then that `read_embedded` returns `(None, None)` (no EXIF). A JPEG body named `d.heic` uses its header `640×480`. N16 (`Heif(_)` added to the header set) is killed | ✅ Fixed. The choice is now made by content |
+| M06 `.JPG`, N09 `.jpeg` | `tests.rs:513`: `C.JPG`, `d.jpeg`, and a JPEG named `e.dng` → header `4032×3024` over EXIF `100×50`. N12 (`Jpeg` dropped) is killed | ✅ Fixed. Extension mutants no longer apply |
+| N08 WebP header | `tests.rs:513`: VP8X WebP `4032×3024` with EXIF `100×50` → `4032×3024`, and `raw_json` contains `PixelXDimension` (so kamadak reads WebP EXIF). N11 (`Webp` dropped) is killed | ✅ Fixed |
+| N06 EXIF height 0 | `tests.rs:665`: EXIF `0×3024` and `4032×0` → `(None, None)` | ✅ Killed |
+| R9 plain TIFF size | `tests.rs:787` `exif04_tiff_and_raw_content_use_exif_pixel_dimensions`: TIFF content named `.CR2 .nef .arw .dng .tif .jpg`, with `imagesize` asserted to see the `160×120` IFD0. `read_embedded` returns EXIF `6000×4000`. Without PixelX/Y → `(None, None)`. The spec now says "TIFF e RAW … `PixelXDimension`" (Assumptions "Dimensões", EXIF-04 AC5), and design Risks says F12 fills the size when decoding. N15 (`Tiff` added to the header set) is killed | ✅ Spec, design and code agree |
+| R10 design stale | `design.md:16` flowchart, `:76` content-based rule, `:101` new disk-error row | ✅ Fixed |
+| `UnexpectedEof` guard (N02) | Kept as defence | ⚪ Equivalent, as recorded in iteration 2 |
+
+### New gap introduced by the rework
+
+The rework rewrote `exif04_raw_and_unreadable_headers_use_exif_dimensions` and removed its two assertions on the **unreadable-header** path. Those were a JPEG with no SOF and EXIF `6000×4000` → `6000×4000`, and a JPEG with no SOF and no PixelX/Y → `(None, None)`. No test now exercises EXIF-04 AC5 "ou o cabeçalho não é legível THEN SHALL usar `PixelXDimension`/`PixelYDimension`" for JPEG/PNG/GIF/WebP content. The only remaining no-SOF JPEG (`tests.rs:665`) has zero EXIF sizes, so its expected result is `(None, None)` either way.
+
+- **N19**: "header formats never fall back to EXIF". `read_embedded` keeps the header result (here `None`) and throws away the EXIF sizes when `header_size_is_stored_size` is true. ❌ **Survived** (42/42 pass).
+- A probe on HEAD (temporary test, restored with `git checkout`) shows the code is correct: a JPEG with no SOF and EXIF `6000×4000` → `(Some(6000), Some(4000))`. So this is a missing test, not a bug.
+
+### Mutation set, re-run
+
+All iteration-2 mutants were re-applied, except M06/N03/N08/N09/N10, which targeted the removed extension list. 9 new mutants were added for the content check (N11–N19). Each was applied alone and checked as applied, the gate was run, and the file was restored with `git checkout -- <file>`.
+
+| ID | Mutation | Result | Killed by / note |
+| -- | -------- | ------ | ---------------- |
+| M01–M05, M08–M29, M31, M32, M34, M35, M37, N01, N04–N07, D01–D21, T01–T05 | (as before) | ✅ Killed | N06 now killed by `exif04_zero_sizes…` |
+| M07, M30, M33, M36, N02 | (as before) | ⚪ Survived, equivalent/benign | Reasons unchanged |
+| N11 | `Webp` dropped from the header set | ✅ Killed | `exif04_header_size_wins…` |
+| N12 | `Jpeg` dropped | ✅ Killed | 4 tests |
+| N13 | `Png` dropped | ✅ Killed | `exif04_header…`, `exif05_photos_without_exif…` |
+| N14 | `Gif` dropped | ✅ Killed | `exif05_photos_without_exif…` |
+| N15 | `Tiff` added | ✅ Killed | `exif04_tiff_and_raw_content…` |
+| N16 | `Heif(_)` added | ✅ Killed | `exif04_heif_header_is_never_used…` |
+| N17 | sniff read error → `true` | ⚪ Survived, equivalent | If the sniff cannot open or read the file, `imagesize::size` fails the same way, so the result does not change |
+| N18 | sniff 2 bytes, not 256 | ✅ Killed | 4 tests |
+| **N19** | header formats never fall back to EXIF | ❌ **Survived** | EXIF-04 AC5 "cabeçalho não é legível" |
+
+**Totals**: 77 mutants (36 M, 6 N from iteration 2, 9 new N11–N19, 21 D, 5 T). **70 killed**. **6 equivalent or benign** (M07, M30, M33, M36, N02, N17). **1 spec-visible survivor (N19)**.
+
+### Required to reach PASS
+
+Test only. Restore the deleted assertion, for example in `exif04_header_size_wins_over_exif_dimensions` or a small new test: `jpeg(Some(&tiff(&pixel_dimensions(6000, 4000))), None)` named `x.jpg` → `(Some(6000), Some(4000))`. That kills N19. Optionally add the second removed case: no SOF and no PixelX/Y → `(None, None)`.
+
+### Requirement status (iteration 3)
+
+| Requirement | It. 1 | It. 2 | It. 3 |
+| ----------- | ----- | ----- | ----- |
+| EXIF-01 | ✅ | ✅ | ✅ Verified |
+| EXIF-02 | ❌ | ✅ | ✅ Verified |
+| EXIF-03 | ⚠️ | ✅ | ✅ Verified |
+| EXIF-04 | ❌ | ⚠️ | ⚠️ AC4, AC6, the HEIF/TIFF part of AC5 and the size-pair rule are verified. The **unreadable header → EXIF** branch of AC5 lost its test (N19) |
+| EXIF-05 | ❌ | ✅ | ✅ Verified |
+| EXIF-06 | ✅ | ✅ | ✅ Verified |
+
+### Summary (iteration 3)
+
+**Overall**: ❌ FAIL, on one test-only item. The content-based size choice is correct. R8, M06, N08, N09, N06, R9 and R10 are all closed. No implementation bug is open: the probe confirms the header-unreadable fallback still works. But the rework deleted the only test for EXIF-04 AC5's "cabeçalho não é legível" branch, and mutant N19 (no EXIF fallback for JPEG/PNG/GIF/WebP content) now survives. One assertion restores it. With it, the sensor would be 71/77 killed with 0 spec-visible survivors, and the verdict would be PASS.
