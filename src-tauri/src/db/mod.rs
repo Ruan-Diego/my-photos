@@ -154,6 +154,14 @@ fn backup_path(path: &Path, version: u32) -> PathBuf {
     path.with_file_name(name)
 }
 
+/// Folds the WAL into the main file and closes the connection, so a normal exit leaves
+/// `library.db` complete and no `-wal` sidecar with the real data. Best effort: on any
+/// failure the WAL is still valid and SQLite recovers it on the next open.
+pub fn close(connection: Connection) {
+    let _ = connection.query_row("PRAGMA wal_checkpoint(TRUNCATE)", [], |_| Ok(()));
+    let _ = connection.close();
+}
+
 pub fn schema_version(connection: &Connection) -> Result<u32, DbError> {
     user_version(connection)
 }
@@ -297,6 +305,7 @@ pub(crate) mod tests {
         }
     }
 
+    #[cfg(windows)]
     fn is_hidden(path: &Path) -> bool {
         use std::os::windows::fs::MetadataExt;
         fs::metadata(path).unwrap().file_attributes() & 0x2 != 0
@@ -332,6 +341,7 @@ pub(crate) mod tests {
         assert!(!absent.exists());
     }
 
+    #[cfg(windows)]
     #[test]
     fn missing_folder_is_created_hidden_with_the_database_inside() {
         let scratch = Scratch::new("hidden");
@@ -344,6 +354,7 @@ pub(crate) mod tests {
         assert!(path.is_file());
     }
 
+    #[cfg(windows)]
     #[test]
     fn existing_visible_folder_keeps_its_attributes() {
         let scratch = Scratch::new("visible");

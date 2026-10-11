@@ -1,23 +1,34 @@
 pub mod bench;
 mod commands;
 mod db;
+pub mod scan;
+mod time;
+mod photo_meta;
 mod takeout;
 
 use std::sync::Mutex;
 
-use tauri::Manager;
+use tauri::{Manager, RunEvent};
 
 use commands::health::DbState;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let app = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
-            app.manage(DbState(db::open_library().map(Mutex::new)));
+            app.manage(DbState(db::open_library().map(|c| Mutex::new(Some(c)))));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![commands::health::app_health])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application");
+
+    app.run(|handle, event| {
+        if let RunEvent::Exit = event {
+            if let Some(state) = handle.try_state::<DbState>() {
+                state.shutdown();
+            }
+        }
+    });
 }

@@ -93,12 +93,12 @@
 
 ## Handoff
 
-- **Feature**: F04 Database Schema — concluída (Verifier PASS na iteração 2: 20/20 ACs, 27/27 mutantes mortos)
-- **Phase / Task**: Phase 1 iniciada. F04 entregue: `E:\.myphotos\library.db` (oculto) criado pelo app em 2026-10-02, esquema v1 com 16 tabelas, migrações com `.bak-vN`
-- **Completed**: F01–F04. Commits da F04 `dbc1ab5`..`2f7fa3e`, relatório em `.specs/features/f04-database-schema/validation.md`. Correção de build `17d90eb`: `default-run` no Cargo — `tauri dev` estava quebrado desde a F03
+- **Feature**: F07 EXIF Parser — concluída (Verifier PASS na iteração 4: EXIF-01..06; 71/77 mutantes mortos, os 6 sobreviventes sem efeito visível no spec). F06 concluída (PASS iteração 3). F05 concluída na nuvem (PASS iteração 3), validação local SCAN-07 no `E:` pendente
+- **Phase / Task**: Phase 1. F07 em `src-tauri/src/photo_meta/` (`read_embedded`): data de captura local + UTC quando o fuso é conhecido (OffsetTime* ou relógio do GPS), GPS validado, dimensões pelo conteúdo (cabeçalho em JPEG/PNG/GIF/WebP; EXIF em HEIF e TIFF/RAW), orientação 1–8, `raw_json` do EXIF, `exif_corrupt`, `unreadable`. Dependências novas, Rust puro: `kamadak-exif` 0.6.1, `imagesize` 0.15.0; `rust-version = "1.87"`
+- **Completed**: F01–F07. Defaults da F05/F06/F07 confirmados pelo stakeholder em 2026-10-06 ("continue with defaults"). CI `windows-latest` verde desde o run 4. Relatórios em `.specs/features/f0{5,6,7}-*/validation.md`
 - **In-progress**: nenhum
-- **Next step**: F05 File Scanner — varrer `E:\` ignorando `.myphotos`, gravar `folders`/`media_items`, hash SHA-256; usar o matcher da F02
-- **Blockers**: `C:` com ~430 MB livres. `E:` deu "erro fatal de hardware" uma vez em 2026-10-02 e voltou após reconexão — vigiar
-- **Open questions**: anomalia do baseline HDD (50k mais lento que 150k); 1885 mídias fora do Google Fotos dependem de EXIF/filesystem (F07/F09); 6 lições candidatas da F04 em `validation.md` aguardam Python para `lessons.py`; recuperação do WAL sem teste automático (comportamento padrão do SQLite)
-- **Uncommitted files**: PRD HTML, `.specs/LESSONS.md`, `.specs/lessons.json`
-- **Branch**: main
+- **Next step**: (1) Validar a F05 no `E:` (fechar o app antes): `cargo run --release --manifest-path src-tauri/Cargo.toml --bin f05-scan` duas vezes — 1ª `new` ≈ total de mídias; 2ª `unchanged` = `media`, `hashed` 0; conferir que `E:\.myphotos\library.db` cresceu após fechar o app. (2) Próxima feature: F08 Media↔JSON Matcher — o matcher do F02 já cobre a cascata; a F08 provavelmente só mede >98% no Takeout real e fecha lacunas. Depois F09 (resolver JSON > EXIF > sistema de arquivos, usa F06 + F07) e F10 (pipeline que grava tudo)
+- **Blockers**: `C:` com ~430 MB livres (as dependências novas e o build `--release` ocupam espaço em `src-tauri/target`). `E:` deu "erro fatal de hardware" uma vez em 2026-10-02 — vigiar
+- **Open questions**: riscos da F07 a medir na varredura real (F10): WebP com EXIF prefixado por `Exif\0\0` vira `exif_corrupt`; o crate lê TIFF/RAW inteiro e percorre JPEG sem EXIF até o fim (ler junto com o hash na F10/F32); HEIC/WebP/RAW reais nunca testados; hora EXIF sem fuso fica só local (a F09 decide). Mídia movida fora do app vira nova + `missing_file` (F10/F48). Anomalia do baseline HDD. Lições candidatas da F04 aguardam Python
+- **Uncommitted files**: PRD HTML, `.specs/LESSONS.md`, `.specs/lessons.json` (só na máquina local)
+- **Branch**: `main-klpj09` (nuvem) — ainda não mesclada em `main`
