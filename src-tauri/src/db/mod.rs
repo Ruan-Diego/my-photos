@@ -234,6 +234,16 @@ fn hide(folder: &Path) {
 #[cfg(not(windows))]
 fn hide(_folder: &Path) {}
 
+/// Migrated database at any path, without the drive-letter checks of `open`, so tests of
+/// later features run on every platform.
+#[cfg(test)]
+pub(crate) fn open_unchecked(path: &Path) -> Connection {
+    let mut connection = Connection::open(path).expect("open");
+    configure(&connection).expect("configure");
+    migrate(&mut connection, path, 0, MIGRATIONS).expect("migrate");
+    connection
+}
+
 #[cfg(test)]
 mod schema_tests;
 

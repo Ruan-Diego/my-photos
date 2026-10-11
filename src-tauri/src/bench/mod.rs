@@ -1,5 +1,5 @@
 mod corpus;
-mod hash;
+pub(crate) mod hash;
 mod model;
 mod volume;
 
