@@ -93,12 +93,11 @@
 
 ## Handoff
 
-- **Feature**: F04 Database Schema — concluída (Verifier PASS na iteração 2: 20/20 ACs, 27/27 mutantes mortos)
-- **Phase / Task**: Phase 1 iniciada. F04 entregue: `E:\.myphotos\library.db` (oculto) criado pelo app em 2026-10-02, esquema v1 com 16 tabelas, migrações com `.bak-vN`
-- **Completed**: F01–F04. Commits da F04 `dbc1ab5`..`2f7fa3e`, relatório em `.specs/features/f04-database-schema/validation.md`. Correção de build `17d90eb`: `default-run` no Cargo — `tauri dev` estava quebrado desde a F03
+- **Feature**: F05 File Scanner — implementada, aguarda CI no Windows e confirmação das premissas do spec
+- **Phase / Task**: Phase 1. `scanner::scan(conexão, raiz)` grava `folders`, `media_items`, `indexing_runs`, `indexing_errors`; incremental por tamanho + `mtime`; movido por fora mantém o `id` (mesmo SHA-256); sumido vira `missing_file`
+- **Completed**: F01–F04; F05 T1–T4 (`.specs/features/f05-file-scanner/`). 17 testes da F05 passam no Linux; os testes do F04/F03 só rodam no Windows
 - **In-progress**: nenhum
-- **Next step**: F05 File Scanner — varrer `E:\` ignorando `.myphotos`, gravar `folders`/`media_items`, hash SHA-256; usar o matcher da F02
+- **Next step**: confirmar as premissas do spec da F05; depois F06 JSON Parser ou F10 (chamar `scanner::scan` a partir de um comando)
 - **Blockers**: `C:` com ~430 MB livres. `E:` deu "erro fatal de hardware" uma vez em 2026-10-02 e voltou após reconexão — vigiar
-- **Open questions**: anomalia do baseline HDD (50k mais lento que 150k); 1885 mídias fora do Google Fotos dependem de EXIF/filesystem (F07/F09); 6 lições candidatas da F04 em `validation.md` aguardam Python para `lessons.py`; recuperação do WAL sem teste automático (comportamento padrão do SQLite)
-- **Uncommitted files**: PRD HTML, `.specs/LESSONS.md`, `.specs/lessons.json`
-- **Branch**: main
+- **Open questions**: premissas da F05 (spec, coluna "Confirmed?"); anomalia do baseline HDD (50k mais lento que 150k); 1885 mídias fora do Google Fotos dependem de EXIF/filesystem (F07/F09); 6 lições candidatas da F04 em `validation.md`; recuperação do WAL sem teste automático
+- **Branch**: claude/project-thread-7sqrg0
