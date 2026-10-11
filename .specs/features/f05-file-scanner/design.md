@@ -1,7 +1,7 @@
 # F05 — File Scanner Design
 
 **Spec**: `.specs/features/f05-file-scanner/spec.md`
-**Status**: Draft — aguarda confirmação das premissas do spec
+**Status**: Approved (stakeholder "confirm, continue", 2026-10-11)
 
 ## Architecture Overview
 

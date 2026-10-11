@@ -93,11 +93,11 @@
 
 ## Handoff
 
-- **Feature**: F05 File Scanner — implementada, aguarda CI no Windows e confirmação das premissas do spec
+- **Feature**: F05 File Scanner — implementada, premissas confirmadas em 2026-10-11, aguarda CI no Windows
 - **Phase / Task**: Phase 1. `scanner::scan(conexão, raiz)` grava `folders`, `media_items`, `indexing_runs`, `indexing_errors`; incremental por tamanho + `mtime`; movido por fora mantém o `id` (mesmo SHA-256); sumido vira `missing_file`
 - **Completed**: F01–F04; F05 T1–T4 (`.specs/features/f05-file-scanner/`). 17 testes da F05 passam no Linux; os testes do F04/F03 só rodam no Windows
 - **In-progress**: nenhum
-- **Next step**: confirmar as premissas do spec da F05; depois F06 JSON Parser ou F10 (chamar `scanner::scan` a partir de um comando)
+- **Next step**: F06 JSON Parser ou F10 (chamar `scanner::scan` a partir de um comando)
 - **Blockers**: `C:` com ~430 MB livres. `E:` deu "erro fatal de hardware" uma vez em 2026-10-02 e voltou após reconexão — vigiar
-- **Open questions**: premissas da F05 (spec, coluna "Confirmed?"); anomalia do baseline HDD (50k mais lento que 150k); 1885 mídias fora do Google Fotos dependem de EXIF/filesystem (F07/F09); 6 lições candidatas da F04 em `validation.md`; recuperação do WAL sem teste automático
+- **Open questions**: anomalia do baseline HDD (50k mais lento que 150k); 1885 mídias fora do Google Fotos dependem de EXIF/filesystem (F07/F09); 6 lições candidatas da F04 em `validation.md`; recuperação do WAL sem teste automático
 - **Branch**: claude/project-thread-7sqrg0

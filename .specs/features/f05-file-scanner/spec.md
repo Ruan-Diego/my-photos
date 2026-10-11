@@ -28,21 +28,21 @@ A F04 entregou o banco vazio em `E:\.myphotos\library.db` e a F02 já casa mídi
 
 | Assumption / decision | Chosen default | Rationale | Confirmed? |
 | --------------------- | -------------- | --------- | ---------- |
-| Quem varre | `takeout::discover` (F02), estendido para ignorar `.myphotos` na raiz e listar todas as pastas | Reaproveita o casamento entre partes do Takeout (AD-010) | n |
-| Pasta do app | `<raiz>/.myphotos` é pulada só na raiz, sem diferenciar caixa. Uma `.myphotos` mais funda é pasta comum | AD-011 | n |
-| Biblioteca | Uma linha em `libraries` por `root_path`, criada na primeira varredura | O esquema já prevê várias; hoje só existe `E:\` | n |
-| Mudou? | Tamanho **ou** `fs_modified_at` (segundos, UTC) diferentes, ou linha sem hash / com status diferente de `ok` → recalcula o hash | Padrão de indexadores; ler o arquivo inteiro a cada varredura custaria horas no HDD | n |
-| Arquivo sumiu | `indexing_status = 'missing_file'`, a linha **não** é apagada | Apagar levaria favoritos, notas e álbuns em cascata (F04). Se o arquivo voltar, a mesma linha volta a `ok` | n |
-| Movido por fora do app | Arquivo novo com mesmo tamanho e SHA-256 de uma linha sumida herda o `id` dela | AD-008: identidade estável ao mover | n |
-| Cópia | Arquivo novo igual a um que **continua** no disco é mídia nova | Duplicata é P2, não movimento | n |
-| Arquivo ilegível | Linha com `indexing_status = 'error'` e a mensagem; se já existia, mantém o hash antigo. Registro `unreadable` em `indexing_errors`. A varredura continua | US-08: falha isolada não para a indexação | n |
-| Pasta ilegível | Mídias e pastas abaixo dela **não** viram `missing_file` nem são apagadas | Um erro de leitura no USB não pode parecer exclusão | n |
-| Problemas da F02 | JSON inválido, órfão, ilegível, nome inválido e pasta ilegível viram linhas em `indexing_errors` com o tipo da F02 | Os tipos já existem no `CHECK` da F04 | n |
-| Pastas | Toda pasta no disco (inclusive vazia) tem linha em `folders`; linha de pasta que sumiu é apagada | Pasta não tem dados do usuário ligados | n |
-| Escrita | Hash fora da transação; todas as escritas de uma varredura numa transação só. Falha de banco → run `failed`, nada gravado | Atômico e simples para ~4 mil mídias | n |
-| Tipo de mídia | `video` para `mp4 mov mkv avi 3gp webm m4v`, senão `photo` | Mesma lista da F02 | n |
+| Quem varre | `takeout::discover` (F02), estendido para ignorar `.myphotos` na raiz e listar todas as pastas | Reaproveita o casamento entre partes do Takeout (AD-010) | y |
+| Pasta do app | `<raiz>/.myphotos` é pulada só na raiz, sem diferenciar caixa. Uma `.myphotos` mais funda é pasta comum | AD-011 | y |
+| Biblioteca | Uma linha em `libraries` por `root_path`, criada na primeira varredura | O esquema já prevê várias; hoje só existe `E:\` | y |
+| Mudou? | Tamanho **ou** `fs_modified_at` (segundos, UTC) diferentes, ou linha sem hash / com status diferente de `ok` → recalcula o hash | Padrão de indexadores; ler o arquivo inteiro a cada varredura custaria horas no HDD | y |
+| Arquivo sumiu | `indexing_status = 'missing_file'`, a linha **não** é apagada | Apagar levaria favoritos, notas e álbuns em cascata (F04). Se o arquivo voltar, a mesma linha volta a `ok` | y |
+| Movido por fora do app | Arquivo novo com mesmo tamanho e SHA-256 de uma linha sumida herda o `id` dela | AD-008: identidade estável ao mover | y |
+| Cópia | Arquivo novo igual a um que **continua** no disco é mídia nova | Duplicata é P2, não movimento | y |
+| Arquivo ilegível | Linha com `indexing_status = 'error'` e a mensagem; se já existia, mantém o hash antigo. Registro `unreadable` em `indexing_errors`. A varredura continua | US-08: falha isolada não para a indexação | y |
+| Pasta ilegível | Mídias e pastas abaixo dela **não** viram `missing_file` nem são apagadas | Um erro de leitura no USB não pode parecer exclusão | y |
+| Problemas da F02 | JSON inválido, órfão, ilegível, nome inválido e pasta ilegível viram linhas em `indexing_errors` com o tipo da F02 | Os tipos já existem no `CHECK` da F04 | y |
+| Pastas | Toda pasta no disco (inclusive vazia) tem linha em `folders`; linha de pasta que sumiu é apagada | Pasta não tem dados do usuário ligados | y |
+| Escrita | Hash fora da transação; todas as escritas de uma varredura numa transação só. Falha de banco → run `failed`, nada gravado | Atômico e simples para ~4 mil mídias | y |
+| Tipo de mídia | `video` para `mp4 mov mkv avi 3gp webm m4v`, senão `photo` | Mesma lista da F02 | y |
 
-**Open questions:** todas as linhas acima aguardam confirmação do stakeholder.
+**Open questions:** nenhuma. Premissas confirmadas pelo stakeholder em 2026-10-11.
 
 ---
 

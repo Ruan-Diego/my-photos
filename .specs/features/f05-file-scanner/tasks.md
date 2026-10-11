@@ -1,7 +1,7 @@
 # F05 File Scanner Tasks
 
 **Design**: `.specs/features/f05-file-scanner/design.md`
-**Status**: Implemented — aguarda `cargo test` no Windows (CI) e confirmação das premissas
+**Status**: Implemented — aguarda `cargo test` no Windows (CI)
 
 | Task | What | Where | Requirement | Status |
 | ---- | ---- | ----- | ----------- | ------ |
