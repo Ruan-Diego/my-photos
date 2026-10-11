@@ -307,6 +307,21 @@ pub(crate) mod tests {
         }
     }
 
+    /// Holds `folder` open without sharing, so listing it fails with a sharing violation.
+    /// An ACL change is not enough: an elevated process (the GitHub runner) lists folders
+    /// with backup intent and skips the ACL. Dropping the handle unlocks the folder.
+    #[cfg(windows)]
+    pub(crate) fn lock_dir(folder: &Path) -> fs::File {
+        use std::os::windows::fs::OpenOptionsExt;
+        const FILE_FLAG_BACKUP_SEMANTICS: u32 = 0x0200_0000;
+        fs::OpenOptions::new()
+            .read(true)
+            .share_mode(0)
+            .custom_flags(FILE_FLAG_BACKUP_SEMANTICS)
+            .open(folder)
+            .expect("lock folder")
+    }
+
     fn is_hidden(path: &Path) -> bool {
         use std::os::windows::fs::MetadataExt;
         fs::metadata(path).unwrap().file_attributes() & 0x2 != 0

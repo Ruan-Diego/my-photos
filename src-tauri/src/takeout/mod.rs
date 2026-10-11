@@ -730,6 +730,7 @@ mod tests {
         }
     }
 
+    #[cfg(windows)]
     #[test]
     fn unreadable_subdirectory_is_a_problem_and_keeps_the_neighbor() {
         let temp = std::env::temp_dir().join(format!("my-photos-f02-locked-{}", std::process::id()));
@@ -738,20 +739,10 @@ mod tests {
         fs::create_dir_all(&locked).expect("locked");
         fs::write(locked.join("foto.jpg"), b"x").expect("hidden media");
         fs::write(temp.join("outra.jpg"), b"y").expect("neighbor");
-        // Dropping every inherited ACE blocks the process whatever SID it runs as.
-        // The owner keeps WRITE_DAC, so /reset restores the inherited ACL.
-        let acl = |args: &[&str]| {
-            let output = std::process::Command::new("icacls")
-                .arg(&locked)
-                .args(args)
-                .output()
-                .expect("icacls");
-            assert!(output.status.success(), "icacls {args:?}");
-        };
-        acl(&["/inheritance:r"]);
+        let lock = crate::db::tests::lock_dir(&locked);
 
         let report = discover(&temp);
-        acl(&["/reset"]);
+        drop(lock);
         fs::remove_dir_all(&temp).expect("cleanup");
 
         let report = report.expect("directory");
