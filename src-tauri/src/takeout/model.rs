@@ -67,5 +67,7 @@ pub struct Problem {
 pub struct DiscoveryReport {
     pub media: Vec<MediaHit>,
     pub albums: Vec<AlbumHit>,
+    /// Every folder walked, inclusive of empty ones, relative to the root with `/`.
+    pub folders: Vec<String>,
     pub problems: Vec<Problem>,
 }

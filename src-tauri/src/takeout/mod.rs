@@ -34,8 +34,9 @@ pub(crate) fn discover_with(
     }
 
     let mut files = BTreeMap::new();
+    let mut folders = Vec::new();
     let mut problems: Vec<Problem> = Vec::new();
-    read_tree(root, "", &mut files, &mut problems)?;
+    read_tree(root, "", &mut files, &mut folders, &mut problems)?;
 
     // Takeout splits one export into takeout-<stamp>-N-NNN folders, and a sidecar can land
     // in a different part than its media. Match inside the logical folder (part suffix
@@ -161,9 +162,11 @@ pub(crate) fn discover_with(
     media.sort_by(|left, right| left.relative_path.cmp(&right.relative_path));
     albums.sort_by(|left, right| left.relative_path.cmp(&right.relative_path));
     problems.sort_by(|left, right| left.relative_path.cmp(&right.relative_path));
+    folders.sort();
     Ok(DiscoveryReport {
         media,
         albums,
+        folders,
         problems,
     })
 }
@@ -192,6 +195,7 @@ fn read_tree(
     directory: &Path,
     relative: &str,
     files: &mut BTreeMap<String, Vec<String>>,
+    folders: &mut Vec<String>,
     problems: &mut Vec<Problem>,
 ) -> Result<(), String> {
     let entries = match fs::read_dir(directory) {
@@ -242,10 +246,12 @@ fn read_tree(
             continue;
         }
         if file_type.is_dir() {
-            if is_system_dir(&entry) {
+            if is_system_dir(&entry) || (relative.is_empty() && is_app_dir(&name)) {
                 continue;
             }
-            read_tree(&entry.path(), &join_relative(relative, &name), files, problems)?;
+            let child = join_relative(relative, &name);
+            folders.push(child.clone());
+            read_tree(&entry.path(), &child, files, folders, problems)?;
         } else if file_type.is_file() {
             files.entry(relative.to_string()).or_default().push(name);
         }
@@ -294,6 +300,11 @@ fn is_system_dir(entry: &fs::DirEntry) -> bool {
         let _ = entry;
         false
     }
+}
+
+/// AD-011: the database and the trash live in `<root>/.myphotos`, never part of the library.
+fn is_app_dir(name: &str) -> bool {
+    name.eq_ignore_ascii_case(".myphotos")
 }
 
 fn join_relative(directory: &str, name: &str) -> String {
@@ -777,6 +788,23 @@ mod tests {
         }
         walk(root, "", &mut found);
         found
+    }
+
+    #[test]
+    fn app_folder_at_the_root_is_skipped_and_every_folder_is_listed() {
+        let temp = std::env::temp_dir().join(format!("my-photos-f05-walk-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&temp);
+        fs::create_dir_all(temp.join(".MyPhotos").join("trash")).expect("app folder");
+        fs::write(temp.join(".MyPhotos").join("trash").join("old.jpg"), b"old").expect("trashed");
+        fs::create_dir_all(temp.join("Fotos").join(".myphotos")).expect("nested");
+        fs::write(temp.join("Fotos").join(".myphotos").join("kept.jpg"), b"kept").expect("kept");
+        fs::create_dir_all(temp.join("Vazia")).expect("empty");
+
+        let report = discover(&temp).expect("directory");
+        let media: Vec<&str> = report.media.iter().map(|item| item.relative_path.as_str()).collect();
+        assert_eq!(media, ["Fotos/.myphotos/kept.jpg"]);
+        assert_eq!(report.folders, ["Fotos", "Fotos/.myphotos", "Vazia"]);
+        fs::remove_dir_all(&temp).expect("cleanup");
     }
 
     fn assert_symlink_is_not_followed() {
