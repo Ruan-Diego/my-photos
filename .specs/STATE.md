@@ -93,12 +93,12 @@
 
 ## Handoff
 
-- **Feature**: F07 EXIF Parser — concluída (Verifier PASS na iteração 4: EXIF-01..06; 71/77 mutantes mortos, os 6 sobreviventes sem efeito visível no spec). F06 concluída (PASS iteração 3). F05 concluída na nuvem (PASS iteração 3), validação local SCAN-07 no `E:` pendente
+- **Feature**: F07 EXIF Parser — concluída (Verifier PASS na iteração 4: EXIF-01..06; 71/77 mutantes mortos, os 6 sobreviventes sem efeito visível no spec). F06 concluída (PASS iteração 3). F05 concluída (PASS iteração 3; SCAN-07 no `E:` PASS em 2026-10-12: 6132 mídias, 38 pastas, 2ª varredura 6132 `unchanged`, 0 hash)
 - **Phase / Task**: Phase 1. F07 em `src-tauri/src/photo_meta/` (`read_embedded`): data de captura local + UTC quando o fuso é conhecido (OffsetTime* ou relógio do GPS), GPS validado, dimensões pelo conteúdo (cabeçalho em JPEG/PNG/GIF/WebP; EXIF em HEIF e TIFF/RAW), orientação 1–8, `raw_json` do EXIF, `exif_corrupt`, `unreadable`. Dependências novas, Rust puro: `kamadak-exif` 0.6.1, `imagesize` 0.15.0; `rust-version = "1.87"`
 - **Completed**: F01–F07. Defaults da F05/F06/F07 confirmados pelo stakeholder em 2026-10-06 ("continue with defaults"). CI `windows-latest` verde desde o run 4. Relatórios em `.specs/features/f0{5,6,7}-*/validation.md`
 - **In-progress**: nenhum
-- **Next step**: (1) Validar a F05 no `E:` (fechar o app antes): `cargo run --release --manifest-path src-tauri/Cargo.toml --bin f05-scan` duas vezes — 1ª `new` ≈ total de mídias; 2ª `unchanged` = `media`, `hashed` 0; conferir que `E:\.myphotos\library.db` cresceu após fechar o app. (2) Próxima feature: F08 Media↔JSON Matcher — o matcher do F02 já cobre a cascata; a F08 provavelmente só mede >98% no Takeout real e fecha lacunas. Depois F09 (resolver JSON > EXIF > sistema de arquivos, usa F06 + F07) e F10 (pipeline que grava tudo)
-- **Blockers**: `C:` com ~430 MB livres (as dependências novas e o build `--release` ocupam espaço em `src-tauri/target`). `E:` deu "erro fatal de hardware" uma vez em 2026-10-02 — vigiar
+- **Next step**: Próxima feature: F08 Media↔JSON Matcher — o matcher do F02 já cobre a cascata; a F08 provavelmente só mede >98% no Takeout real e fecha lacunas. Depois F09 (resolver JSON > EXIF > sistema de arquivos, usa F06 + F07) e F10 (pipeline que grava tudo)
+- **Blockers**: nenhum (`C:` com ~38 GB livres em 2026-10-12). `E:` deu "erro fatal de hardware" uma vez em 2026-10-02 — vigiar
 - **Open questions**: riscos da F07 a medir na varredura real (F10): WebP com EXIF prefixado por `Exif\0\0` vira `exif_corrupt`; o crate lê TIFF/RAW inteiro e percorre JPEG sem EXIF até o fim (ler junto com o hash na F10/F32); HEIC/WebP/RAW reais nunca testados; hora EXIF sem fuso fica só local (a F09 decide). Mídia movida fora do app vira nova + `missing_file` (F10/F48). Anomalia do baseline HDD. Lições candidatas da F04 aguardam Python
 - **Uncommitted files**: PRD HTML, `.specs/LESSONS.md`, `.specs/lessons.json` (só na máquina local)
-- **Branch**: `main-klpj09` (nuvem) — ainda não mesclada em `main`
+- **Branch**: `main` (F05–F07 mescladas pelo PR #2 em 2026-10-11)
