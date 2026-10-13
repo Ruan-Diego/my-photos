@@ -75,7 +75,7 @@ Aplicam-se a uma árvore de diretórios. A associação acontece só entre arqui
 **Cascata, por arquivo de mídia, parando no primeiro passo com um único candidato.** Cada mídia vê sozinha os `.json` da mesma pasta, exceto `metadata.json`. Uma mídia não tira o JSON das outras durante a cascata.
 
 1. `exact`: existe arquivo cujo nome é `{nome}{ext}.json` ou `{nome}.json`, sem truncar. `{nome}{ext}` é o nome da mídia.
-2. `heuristic`: existe arquivo cujo nome é o truncamento de `{nome}{ext}.supplemental-metadata.json` ou de `{nome}.supplemental-metadata.json`.
+2. `exact` (alterado pela F08): existe arquivo cujo nome é `{nome}{ext}.supplemental-metadata.json` ou `{nome}.supplemental-metadata.json`, sem truncar, de qualquer tamanho. `heuristic`: existe arquivo cujo nome é o truncamento de um dos dois.
 3. `heuristic`: existe arquivo cujo nome é o truncamento de `{nome}{ext}.json` ou de `{nome}.json`, usado só quando o passo 1 não achou o nome inteiro.
 4. `heuristic`, só se o nome da mídia, sem extensão, termina em `(N)` com `N` inteiro positivo sem sinal: o sidecar `base.ext(N).json` ou `base.ext.supplemental-metadata(N).json`, em que `base` é o nome sem o `(N)`. O `(N)` é acrescentado depois do truncamento da parte anterior a ele, e o nome resultante pode ter mais de 51 bytes.
 5. `heuristic`, só se o nome sem extensão termina em `-edited`: repetir os passos 1 a 4 procurando o JSON de `{nome-sem-edited}{ext}`. A confiança permanece `heuristic`. Esse passo só vale depois que o arquivo original, se existir na pasta, ficou com esse JSON. Se o original ficou `ambiguous` ou `none`, o editado fica `none`.
@@ -109,7 +109,7 @@ Depois da cascata: se duas mídias que não são o par `{nome}{ext}` e `{nome}-e
 1. WHEN a pasta contém `IMG_20220810_143700.jpg` e `IMG_20220810_143700.jpg.json` THEN a descoberta SHALL associar os dois com confiança `exact` e com o caminho relativo do JSON.
 2. WHEN a mídia é `IMG_20220810_143700.JPG` e o JSON é `IMG_20220810_143700.jpg.json` THEN a descoberta SHALL associar os dois com confiança `exact`.
 3. WHEN a pasta contém `foto.jpg` e só `foto.json` THEN a descoberta SHALL associar os dois com confiança `exact`.
-4. WHEN a pasta contém `foto.jpg` e `foto.jpg.supplemental-metadata.json` THEN a descoberta SHALL associar os dois com confiança `heuristic`.
+4. WHEN a pasta contém `foto.jpg` e `foto.jpg.supplemental-metadata.json` THEN a descoberta SHALL associar os dois com confiança `exact` (era `heuristic`; alterado pela F08).
 5. WHEN a mídia é `foto_com_nome_longo_demais_para_o_takeout_001.jpg` (49 bytes) e o único JSON da pasta é `foto_com_nome_longo_demais_para_o_takeout_001..json` (51 bytes, truncamento de `…001.jpg.json`) THEN a descoberta SHALL associar os dois com confiança `heuristic`.
 6. WHEN a mídia é `camphoto_1271212614(1).jpg` e o JSON é `camphoto_1271212614.jpg.supplemental-metadata(1).json` THEN a descoberta SHALL associar os dois com confiança `heuristic`.
 7. WHEN a pasta contém `foto.jpg`, `foto.jpg.json` e `foto-edited.jpg` THEN `foto.jpg` SHALL ficar `exact` nesse JSON e `foto-edited.jpg` SHALL ficar `heuristic` nesse mesmo JSON.
