@@ -379,3 +379,14 @@ I re-ran the full set. The 8 iteration-2 mutants of the removed reconciliation c
 **Gate**: `cargo test --lib scan::` 41 passed.
 **Fix→re-verify iterations used**: 3.
 **Outside the automated gate**: the Windows-only walk tests (CI) and the manual `f05-scan` run on `E:` (SCAN-07 / Success Criteria).
+
+## SCAN-07 — real `E:` run (2026-10-12)
+
+Run on the stakeholder's machine at `52a4f17` (main after PR #2), app closed, `cargo run --release --bin f05-scan` twice.
+
+| Run | runType | folders | media | new | unchanged | missing | hashed | errors | bytesHashed | time |
+| --- | ------- | ------- | ----- | --- | --------- | ------- | ------ | ------ | ----------- | ---- |
+| 1 | full | 38 | 6132 | 6132 | 0 | 0 | 6132 | 0 | 109,505,485,009 | ~21.7 min |
+| 2 | incremental | 38 | 6132 | 0 | 6132 | 0 | 0 | 0 | 0 | ~4 s |
+
+`E:\.myphotos\library.db` = 3,616,768 bytes after the app-free run; WAL checkpointed. **SCAN-07: ✅ PASS.**
