@@ -65,4 +65,4 @@ Antes: os 4 247 acertos eram todos `heuristic`, 0 `exact`, 0 ambíguos. Problema
 ## Success Criteria
 
 - [ ] CI `windows-latest` verde
-- [ ] `real_takeout_survey` no `E:` com `google_photos_matched` >98% (ver `validation.md`)
+- [x] `real_takeout_survey` no `E:` com `google_photos_matched` >98%: 100,00%, 4 247 `exact` (ver `validation.md`)

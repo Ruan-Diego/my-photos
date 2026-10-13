@@ -1,7 +1,7 @@
 # F08 Media↔JSON Matcher Tasks
 
 **Design**: `.specs/features/f08-media-json-matcher/design.md`
-**Status**: T1–T2 feitos; T3 aguarda rodada no `E:`
+**Status**: Done — T1–T3 (survey no `E:` 100%, 4 247 `exact`)
 
 | Task | O quê | Gate |
 | ---- | ----- | ---- |
