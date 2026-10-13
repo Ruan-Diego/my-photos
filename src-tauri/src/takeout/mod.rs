@@ -390,10 +390,10 @@ mod tests {
     }
 
     #[test]
-    fn td04_supplemental_metadata_is_heuristic() {
+    fn td04_supplemental_metadata_is_exact() {
         let report = discover(&fixture("td04")).expect("directory");
         let media = hit(&report, "foto.jpg");
-        assert_eq!(media.confidence, Confidence::Heuristic);
+        assert_eq!(media.confidence, Confidence::Exact);
         assert_eq!(
             media.json_relative_path.as_deref(),
             Some("foto.jpg.supplemental-metadata.json")
@@ -658,7 +658,7 @@ mod tests {
             &report,
             "takeout-20260921T183943Z-1-001/Takeout/Google Fotos/Fotos de 2025/a.jpg",
         );
-        assert_eq!(a.confidence, Confidence::Heuristic);
+        assert_eq!(a.confidence, Confidence::Exact);
         assert_eq!(
             a.json_relative_path.as_deref(),
             Some("takeout-20260921T183943Z-1-002/Takeout/Google Fotos/Fotos de 2025/a.jpg.supplemental-metadata.json")
@@ -696,6 +696,20 @@ mod tests {
         assert_eq!(logical_dir(""), "");
     }
 
+    fn in_google_photos(relative: &str) -> bool {
+        relative
+            .split('/')
+            .any(|part| part == "Google Fotos" || part == "Google Photos")
+    }
+
+    #[test]
+    fn google_photos_scope_is_by_folder_name() {
+        assert!(in_google_photos("t-1-001/Takeout/Google Fotos/Fotos de 2025/a.jpg"));
+        assert!(in_google_photos("t-1-001/Takeout/Google Photos/Album/a.jpg"));
+        assert!(!in_google_photos("t-2-001/Takeout/Drive/a.jpg"));
+        assert!(!in_google_photos("Ruan/Photos-1-001/Google Fotos.jpg"));
+    }
+
     /// Read-only survey of a real Takeout. Run with
     /// `TAKEOUT_ROOT=<dir> cargo test real_takeout_survey -- --ignored --nocapture`.
     #[test]
@@ -723,6 +737,23 @@ mod tests {
                 "matched={:.2}%",
                 100.0 * (exact + heuristic) as f64 / total as f64
             );
+        }
+        // F08: the >98% target counts only media in Google Photos folders; other
+        // sources (Drive, phone copies) never ship sidecars.
+        let scoped: Vec<_> = report
+            .media
+            .iter()
+            .filter(|item| in_google_photos(&item.relative_path))
+            .collect();
+        let scoped_matched = scoped
+            .iter()
+            .filter(|item| item.confidence != Confidence::None)
+            .count();
+        println!("google_photos={} matched={scoped_matched}", scoped.len());
+        if !scoped.is_empty() {
+            let rate = 100.0 * scoped_matched as f64 / scoped.len() as f64;
+            println!("google_photos_matched={rate:.2}%");
+            assert!(rate > 98.0, "F08 target is >98% of Google Photos media");
         }
         println!("albums={}", report.albums.len());
         let mut kinds: BTreeMap<String, usize> = BTreeMap::new();

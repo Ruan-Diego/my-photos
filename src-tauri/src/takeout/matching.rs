@@ -78,11 +78,14 @@ fn resolve_steps_1_to_4(name: &str, extension: &str, sidecars: &[String]) -> Nam
         format!("{name}.supplemental-metadata.json"),
         format!("{stem}.supplemental-metadata.json"),
     ];
-    // Newer exports keep the full name past 51 characters, so try both spellings.
+    // The full supplemental name is Takeout's standard spelling, also past 51 characters.
+    if let Some(matched) = step(&supplemental, sidecars, Confidence::Exact) {
+        return matched_or_none(name, matched);
+    }
+
     let supplemental: Vec<String> = supplemental
         .iter()
-        .flat_map(|logical| [Some(logical.clone()), truncate_sidecar_name(logical)])
-        .flatten()
+        .filter_map(|logical| truncated_only(logical))
         .collect();
     if let Some(matched) = step(&supplemental, sidecars, Confidence::Heuristic) {
         return matched_or_none(name, matched);
@@ -369,13 +372,13 @@ mod tests {
     }
 
     #[test]
-    fn td04_supplemental_metadata_is_heuristic() {
+    fn td04_supplemental_metadata_is_exact_and_its_truncation_heuristic() {
         let matches = match_directory(&names(&[
             "foto.jpg",
             "foto.jpg.supplemental-metadata.json",
         ]));
         let hit = find(&matches, "foto.jpg");
-        assert_eq!(hit.confidence, Confidence::Heuristic);
+        assert_eq!(hit.confidence, Confidence::Exact);
         assert_eq!(
             hit.json_name.as_deref(),
             Some("foto.jpg.supplemental-metadata.json")
@@ -400,7 +403,7 @@ mod tests {
         assert!(sidecar.len() > 51);
         let matches = match_directory(&names(&[media_name, &sidecar]));
         let hit = find(&matches, media_name);
-        assert_eq!(hit.confidence, Confidence::Heuristic);
+        assert_eq!(hit.confidence, Confidence::Exact);
         assert_eq!(hit.json_name.as_deref(), Some(sidecar.as_str()));
 
         let media_name = format!("{}(1).jpg", "q".repeat(40));

@@ -91,7 +91,7 @@ Candidatos são os `JsonSidecar` da mesma lista. `AlbumMetadata` nunca é candid
 Passos, parando no primeiro com um único candidato:
 
 1. `Exact`: `{arquivo}.json` ou `{stem}.json`, sem truncar. `{arquivo}` é o nome completo da mídia. Os dois existentes juntos empatam.
-2. `Heuristic`: truncamento de `{arquivo}.supplemental-metadata.json` e de `{stem}.supplemental-metadata.json`.
+2. `Exact` para `{arquivo}.supplemental-metadata.json` e `{stem}.supplemental-metadata.json` com o nome inteiro; senão `Heuristic` para o truncamento deles (F08).
 3. `Heuristic`: truncamento de `{arquivo}.json` e de `{stem}.json`, só se o passo 1 não achou o nome inteiro.
 4. `Heuristic`: o stem termina em `(N)`, com `N` casando `\(([1-9][0-9]*)\)$` no fim. `base` é o stem sem esse sufixo. Os sidecars esperados são o truncamento de `base{ext}.json` e de `base{ext}.supplemental-metadata.json`, tirando o `.json` final e acrescentando `(N).json`. O resultado pode passar de 51 bytes. `(0)` e `(01)` não são marcador.
 5. Só para stem que termina em `-edited` (ASCII, sem considerar maiúsculas). Roda depois dos passos 1–4 das outras mídias e depois do desempate entre elas. Repete os passos 1–4 com o nome `{stem-sem-edited}{ext}`. Só aceita o JSON se a mídia original está na mesma lista e ficou com esse JSON. A confiança do editado é sempre `Heuristic`. Se o original ficou `None` ou `Ambiguous`, o editado fica `None` sem motivo `Ambiguous`.
