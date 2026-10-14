@@ -4,6 +4,7 @@ mod db;
 pub mod scan;
 mod time;
 mod photo_meta;
+mod resolve;
 mod takeout;
 
 use std::sync::Mutex;

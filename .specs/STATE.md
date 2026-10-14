@@ -91,13 +91,21 @@
 - **Date**: 2026-10-02
 - **Status**: active
 
+### AD-012
+- **Decision**: Hora EXIF sem fuso é convertida para UTC com um fuso padrão de **-03:00 (Brasília)**, configurável (`DEFAULT_FALLBACK_OFFSET_MINUTES`). `taken_at_timezone` fica vazio nesse caso; só guarda o fuso que o próprio arquivo informou.
+- **Reason**: A maior parte do acervo foi fotografada no Brasil; assim essas fotos ficam ao lado das datadas pelo JSON (UTC) na linha do tempo.
+- **Trade-off**: Fotos tiradas no exterior ou em horário de verão antigo (até 2019) podem ficar até 1–2 h deslocadas.
+- **Scope**: F09, F10, F18.
+- **Date**: 2026-10-13
+- **Status**: proposed (card de decisão aberto)
+
 ## Handoff
 
 - **Feature**: F07 EXIF Parser — concluída (Verifier PASS na iteração 4: EXIF-01..06; 71/77 mutantes mortos, os 6 sobreviventes sem efeito visível no spec). F06 concluída (PASS iteração 3). F05 concluída (PASS iteração 3; SCAN-07 no `E:` PASS em 2026-10-12: 6132 mídias, 38 pastas, 2ª varredura 6132 `unchanged`, 0 hash)
 - **Phase / Task**: Phase 1. F07 em `src-tauri/src/photo_meta/` (`read_embedded`): data de captura local + UTC quando o fuso é conhecido (OffsetTime* ou relógio do GPS), GPS validado, dimensões pelo conteúdo (cabeçalho em JPEG/PNG/GIF/WebP; EXIF em HEIF e TIFF/RAW), orientação 1–8, `raw_json` do EXIF, `exif_corrupt`, `unreadable`. Dependências novas, Rust puro: `kamadak-exif` 0.6.1, `imagesize` 0.15.0; `rust-version = "1.87"`
 - **Completed**: F01–F07. Defaults da F05/F06/F07 confirmados pelo stakeholder em 2026-10-06 ("continue with defaults"). CI `windows-latest` verde desde o run 4. Relatórios em `.specs/features/f0{5,6,7}-*/validation.md`
-- **In-progress**: nenhum. F08 Media↔JSON Matcher concluída no código: supplemental inteiro vira `exact`; no `E:` (2026-10-13) Google Fotos 4 247/4 247 = 100%, todos `exact`; 5 `OrphanJson` são lacuna do export
-- **Next step**: Próxima feature: F09 (resolver JSON > EXIF > sistema de arquivos, usa F06 + F07) e F10 (pipeline que grava tudo)
+- **In-progress**: F09 Metadata Resolver em `src-tauri/src/resolve/` (`resolve`): data JSON > EXIF > sistema de arquivos (o mais antigo entre criação e modificação), local JSON > EXIF, dimensões/orientação do EXIF, título/descrição do JSON. F08 concluída (PR #4)
+- **Next step**: Fechar a F09 (CI). Depois F10 (pipeline que grava tudo: scan → match → parse → EXIF → resolve → banco)
 - **Blockers**: nenhum (`C:` com ~38 GB livres em 2026-10-12). `E:` deu "erro fatal de hardware" uma vez em 2026-10-02 — vigiar
 - **Open questions**: riscos da F07 a medir na varredura real (F10): WebP com EXIF prefixado por `Exif\0\0` vira `exif_corrupt`; o crate lê TIFF/RAW inteiro e percorre JPEG sem EXIF até o fim (ler junto com o hash na F10/F32); HEIC/WebP/RAW reais nunca testados; hora EXIF sem fuso fica só local (a F09 decide). Mídia movida fora do app vira nova + `missing_file` (F10/F48). Anomalia do baseline HDD. Lições candidatas da F04 aguardam Python
 - **Uncommitted files**: PRD HTML, `.specs/LESSONS.md`, `.specs/lessons.json` (só na máquina local)
