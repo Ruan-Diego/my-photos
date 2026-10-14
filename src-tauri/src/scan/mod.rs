@@ -17,7 +17,7 @@ use crate::bench::hash::{hash_reader, to_hex};
 use crate::db;
 use crate::time::iso_utc;
 use walk::{absolute, walk, FileFact, Walk};
-pub(crate) use walk::{FileSystem, RealFs};
+pub(crate) use walk::{absolute as absolute_path, FileSystem, RealFs};
 
 /// AD-007 and AD-010: the library is the whole `E:` volume.
 pub const LIBRARY_ROOT: &str = r"E:\";
@@ -101,15 +101,7 @@ pub(crate) fn scan_with(
     fs: &dyn FileSystem,
     now: &str,
 ) -> Result<ScanSummary, ScanError> {
-    if !root.is_absolute() {
-        return Err(ScanError::RootNotAbsolute);
-    }
-    match std::fs::metadata(root) {
-        Err(_) => return Err(ScanError::RootMissing),
-        Ok(meta) if !meta.is_dir() => return Err(ScanError::RootNotDirectory),
-        Ok(_) => {}
-    }
-
+    check_root(root)?;
     let (library_id, mut summary) = start_run(connection, &root.to_string_lossy(), now)?;
     let outcome = scan_run(connection, root, fs, now, library_id, &mut summary);
     let status = if outcome.is_ok() {
@@ -123,22 +115,35 @@ pub(crate) fn scan_with(
     Ok(summary)
 }
 
-fn scan_run(
+pub(crate) fn check_root(root: &Path) -> Result<(), ScanError> {
+    if !root.is_absolute() {
+        return Err(ScanError::RootNotAbsolute);
+    }
+    match std::fs::metadata(root) {
+        Err(_) => Err(ScanError::RootMissing),
+        Ok(meta) if !meta.is_dir() => Err(ScanError::RootNotDirectory),
+        Ok(_) => Ok(()),
+    }
+}
+
+/// Returns the ids of the media rows read (hashed or failed) in this run.
+pub(crate) fn scan_run(
     connection: &mut Connection,
     root: &Path,
     fs: &dyn FileSystem,
     now: &str,
     library_id: i64,
     summary: &mut ScanSummary,
-) -> Result<(), ScanError> {
+) -> Result<Vec<i64>, ScanError> {
     let found = walk(root, fs).map_err(|_| ScanError::RootMissing)?;
     summary.folders = found.folders.len() as u64;
     summary.media = found.files.len() as u64;
     let queue = reconcile(connection, library_id, &found, now, summary)?;
-    hash_queue(connection, root, fs, now, summary, &queue)
+    hash_queue(connection, root, fs, now, summary, &queue)?;
+    Ok(queue.into_iter().map(|(id, _)| id).collect())
 }
 
-fn start_run(
+pub(crate) fn start_run(
     connection: &mut Connection,
     root_path: &str,
     now: &str,
@@ -184,7 +189,7 @@ fn start_run(
     ))
 }
 
-fn finish_run(
+pub(crate) fn finish_run(
     connection: &Connection,
     library_id: i64,
     summary: &ScanSummary,
@@ -418,7 +423,7 @@ fn update_known(
     Ok(None)
 }
 
-fn insert_error(
+pub(crate) fn insert_error(
     connection: &Connection,
     summary: &mut ScanSummary,
     relative_path: &str,
