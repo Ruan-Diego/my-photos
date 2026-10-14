@@ -48,7 +48,8 @@ fn count(connection: &Connection, sql: &str, id: i64) -> i64 {
 #[test]
 fn v1_has_exactly_the_spec_tables_and_indexes() {
     let (_scratch, connection) = library();
-    assert_eq!(latest_version(), 1);
+    // v2 (F12) adds the thumbnail tables.
+    assert_eq!(latest_version(), 2);
     let mut expected = vec![
         "libraries",
         "folders",
@@ -66,12 +67,20 @@ fn v1_has_exactly_the_spec_tables_and_indexes() {
         "indexing_runs",
         "indexing_errors",
         "app_settings",
+        "thumbnails",
+        "thumbnail_failures",
     ];
     expected.sort_unstable();
     assert_eq!(names(&connection, "table"), expected);
     assert_eq!(
         names(&connection, "index"),
-        vec!["idx_media_hash", "idx_media_taken_at", "idx_media_type", "idx_trash_purge"]
+        vec![
+            "idx_media_hash",
+            "idx_media_taken_at",
+            "idx_media_type",
+            "idx_thumbnails_lru",
+            "idx_trash_purge"
+        ]
     );
 }
 

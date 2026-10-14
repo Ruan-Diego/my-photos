@@ -54,10 +54,16 @@ pub(crate) struct Migration {
 }
 
 /// Every published migration, in version order. Never edit one that shipped; add N+1.
-pub(crate) const MIGRATIONS: &[Migration] = &[Migration {
-    version: 1,
-    sql: include_str!("migrations/0001_initial.sql"),
-}];
+pub(crate) const MIGRATIONS: &[Migration] = &[
+    Migration {
+        version: 1,
+        sql: include_str!("migrations/0001_initial.sql"),
+    },
+    Migration {
+        version: 2,
+        sql: include_str!("migrations/0002_thumbnails.sql"),
+    },
+];
 
 // Read by F05 and later; today only the schema tests use it.
 #[allow(dead_code)]

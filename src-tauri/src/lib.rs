@@ -8,6 +8,7 @@ mod resolve;
 pub mod volume;
 pub mod index;
 mod takeout;
+pub mod thumbs;
 
 use std::sync::Mutex;
 

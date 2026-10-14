@@ -99,13 +99,21 @@
 - **Date**: 2026-10-13
 - **Status**: proposed (card de decisão aberto)
 
+### AD-013
+- **Decision**: Miniaturas ficam no disco da biblioteca, em `.myphotos\thumbs\`, como JPEG q82 em três tamanhos (300/1280/2560 px no maior lado), com cache LRU de 4 GiB por padrão (`app_settings.thumbnail_cache_limit_bytes`). Decodificador em Rust puro (`image`), sem HEIC/RAW.
+- **Reason**: AD-011 (o que é do app vive no disco); JPEG é lido por qualquer webview; sem dependência nativa no build do Windows.
+- **Trade-off**: HEIC e RAW ficam sem miniatura (`unsupported_format`) até haver um decodificador do Windows (WIC) ou `libheif`. Disco desconectado = sem miniaturas, como já é sem banco.
+- **Scope**: F12, F13, F18, F19.
+- **Date**: 2026-10-14
+- **Status**: proposed
+
 ## Handoff
 
 - **Feature**: F07 EXIF Parser — concluída (Verifier PASS na iteração 4: EXIF-01..06; 71/77 mutantes mortos, os 6 sobreviventes sem efeito visível no spec). F06 concluída (PASS iteração 3). F05 concluída (PASS iteração 3; SCAN-07 no `E:` PASS em 2026-10-12: 6132 mídias, 38 pastas, 2ª varredura 6132 `unchanged`, 0 hash)
 - **Phase / Task**: Phase 1. F07 em `src-tauri/src/photo_meta/` (`read_embedded`): data de captura local + UTC quando o fuso é conhecido (OffsetTime* ou relógio do GPS), GPS validado, dimensões pelo conteúdo (cabeçalho em JPEG/PNG/GIF/WebP; EXIF em HEIF e TIFF/RAW), orientação 1–8, `raw_json` do EXIF, `exif_corrupt`, `unreadable`. Dependências novas, Rust puro: `kamadak-exif` 0.6.1, `imagesize` 0.15.0; `rust-version = "1.87"`
 - **Completed**: F01–F07. Defaults da F05/F06/F07 confirmados pelo stakeholder em 2026-10-06 ("continue with defaults"). CI `windows-latest` verde desde o run 4. Relatórios em `.specs/features/f0{5,6,7}-*/validation.md`
-- **In-progress**: F11 Volume Resolver em `src-tauri/src/volume/`: acha o disco da biblioteca por `.myphotos\library.db` em qualquer letra (`E:` primeiro), grava serial/rótulo em `libraries`, revincula `root_path` quando a letra muda. F10 concluída (PR #6; `E:` 6 132 resolvidas)
-- **Next step**: Fechar a F11 (CI; conferir `volume_id` na próxima indexação real). Depois F12 Thumbnails
+- **In-progress**: F12 Thumbnail Service em `src-tauri/src/thumbs/` (migração v2 `thumbnails`/`thumbnail_failures`; fila com prioridade, workers, LRU). F11 concluída (PR #7)
+- **Next step**: Fechar a F12 (CI; rodar `f12-thumbs` no `E:` e contar `unsupported` para decidir HEIC). Pendente da F11: conferir `libraries.volume_id` na próxima indexação real. Depois F13 Video Thumbnail
 - **Blockers**: nenhum (`C:` com ~38 GB livres em 2026-10-12). `E:` deu "erro fatal de hardware" uma vez em 2026-10-02 — vigiar
 - **Open questions**: riscos da F07 a medir na varredura real (F10): WebP com EXIF prefixado por `Exif\0\0` vira `exif_corrupt`; o crate lê TIFF/RAW inteiro e percorre JPEG sem EXIF até o fim (ler junto com o hash na F10/F32); HEIC/WebP/RAW reais nunca testados; hora EXIF sem fuso fica só local (a F09 decide). Mídia movida fora do app vira nova + `missing_file` (F10/F48). Anomalia do baseline HDD. Lições candidatas da F04 aguardam Python
 - **Uncommitted files**: PRD HTML, `.specs/LESSONS.md`, `.specs/lessons.json` (só na máquina local)
