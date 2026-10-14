@@ -19,7 +19,9 @@ use crate::time::iso_utc;
 use walk::{absolute, walk, FileFact, Walk};
 pub(crate) use walk::{absolute as absolute_path, FileSystem, RealFs};
 
-/// AD-007 and AD-010: the library is the whole `E:` volume.
+/// AD-007 and AD-010: the library is the whole `E:` volume. F11 finds it on another
+/// letter when the disk moves (`volume::locate_library`).
+#[allow(dead_code)]
 pub const LIBRARY_ROOT: &str = r"E:\";
 
 /// Hash results are committed in batches this size; a crash loses at most one batch.
@@ -87,10 +89,10 @@ pub fn scan_library(connection: &mut Connection, root: &Path) -> Result<ScanSumm
     scan_with(connection, root, &RealFs, &now)
 }
 
-/// Opens `E:\.myphotos\library.db`, scans `E:\` and closes the database. Errors are codes.
+/// Finds the library disk (F11), scans it into its `.myphotos\library.db` and closes it. Errors are codes.
 pub fn scan_default_library() -> Result<ScanSummary, &'static str> {
-    let mut connection = db::open_library().map_err(|error| error.as_code())?;
-    let result = scan_library(&mut connection, Path::new(LIBRARY_ROOT));
+    let (root, mut connection) = db::open_located().map_err(|error| error.as_code())?;
+    let result = scan_library(&mut connection, &root);
     db::close(connection);
     result.map_err(|error| error.as_code())
 }
@@ -148,7 +150,9 @@ pub(crate) fn start_run(
     root_path: &str,
     now: &str,
 ) -> Result<(i64, ScanSummary), ScanError> {
+    let volume = crate::volume::volume_info(Path::new(root_path));
     let transaction = connection.transaction()?;
+    crate::volume::relink(&transaction, root_path, volume.as_ref())?;
     let existing: Option<i64> = transaction
         .query_row(
             "SELECT id FROM libraries WHERE root_path = ?1",
@@ -172,6 +176,7 @@ pub(crate) fn start_run(
         [library_id],
         |row| row.get(0),
     )?;
+    crate::volume::record_volume(&transaction, library_id, volume.as_ref())?;
     let run_type = if completed { "incremental" } else { "full" };
     transaction.execute(
         "INSERT INTO indexing_runs (library_id, started_at, run_type, status) VALUES (?1, ?2, ?3, 'running')",

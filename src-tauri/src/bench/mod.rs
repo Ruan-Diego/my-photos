@@ -1,7 +1,7 @@
 mod corpus;
 pub(crate) mod hash;
 mod model;
-mod volume;
+pub(crate) mod volume;
 
 use std::fs::{self, File};
 use std::io::{self, Read};

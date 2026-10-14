@@ -5,6 +5,7 @@ pub mod scan;
 mod time;
 mod photo_meta;
 mod resolve;
+pub mod volume;
 pub mod index;
 mod takeout;
 
