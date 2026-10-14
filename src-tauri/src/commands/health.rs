@@ -124,7 +124,7 @@ mod tests {
     fn every_open_error_becomes_its_portuguese_message() {
         assert_eq!(
             health_from_open(Err(DbError::VolumeMissing)).unwrap_err(),
-            "disco E: não encontrado"
+            "disco da biblioteca não encontrado"
         );
         for error in [
             DbError::PathNotAbsolute,

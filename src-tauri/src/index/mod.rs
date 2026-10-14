@@ -17,7 +17,7 @@ use crate::photo_meta::{read_embedded, EmbeddedError, EmbeddedMetadata};
 use crate::resolve::{resolve, DateSource, FsTimes, ResolvedMetadata, DEFAULT_FALLBACK_OFFSET_MINUTES};
 use crate::scan::{
     check_root, finish_run, insert_error, scan_run, start_run, FileSystem, RealFs, ScanError,
-    ScanSummary, LIBRARY_ROOT,
+    ScanSummary,
 };
 use crate::takeout::{
     discover, normalized_person_name, Confidence, DiscoveryReport, MediaHit, MediaMetadata,
@@ -85,12 +85,12 @@ pub fn index_library(
     index_with(connection, root, &sources, &now, progress)
 }
 
-/// Opens `E:\.myphotos\library.db`, indexes `E:\` and closes the database. Errors are codes.
+/// Finds the library disk (F11), indexes it into its `.myphotos\library.db` and closes it. Errors are codes.
 pub fn index_default_library(
     progress: &mut dyn FnMut(Progress),
 ) -> Result<IndexSummary, &'static str> {
-    let mut connection = db::open_library().map_err(|error| error.as_code())?;
-    let result = index_library(&mut connection, Path::new(LIBRARY_ROOT), progress);
+    let (root, mut connection) = db::open_located().map_err(|error| error.as_code())?;
+    let result = index_library(&mut connection, &root, progress);
     db::close(connection);
     result.map_err(|error| error.as_code())
 }

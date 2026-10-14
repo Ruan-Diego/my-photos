@@ -35,8 +35,8 @@ impl DbError {
     pub fn message(self) -> &'static str {
         match self {
             Self::PathNotAbsolute => "caminho do banco não é absoluto",
-            // The only production path is LIBRARY_DB_PATH on E:.
-            Self::VolumeMissing => "disco E: não encontrado",
+            // F11: the library disk is found by volume, not only on E:.
+            Self::VolumeMissing => "disco da biblioteca não encontrado",
             Self::ParentMissing => "pasta do banco não encontrada",
             Self::OpenFailed => "não foi possível abrir o banco",
             Self::NotSqlite => "o arquivo do banco não é um banco SQLite",
@@ -65,11 +65,18 @@ pub fn latest_version() -> u32 {
     latest_version_of(MIGRATIONS)
 }
 
-/// AD-007 and AD-011: the library is E:\ and its database lives inside it.
-pub const LIBRARY_DB_PATH: &str = r"E:\.myphotos\library.db";
-
+/// AD-011: the database lives inside the library disk, found by F11.
 pub fn open_library() -> Result<Connection, DbError> {
-    open(Path::new(LIBRARY_DB_PATH))
+    open_located().map(|(_, connection)| connection)
+}
+
+/// F11: finds the library disk (`E:\` first, else the one drive with a library) and
+/// opens its database. Returns the library root with the connection.
+pub fn open_located() -> Result<(PathBuf, Connection), DbError> {
+    let root = crate::volume::locate_library().map_err(|_| DbError::VolumeMissing)?;
+    let root = PathBuf::from(root);
+    let connection = open(&root.join(crate::volume::DB_RELATIVE))?;
+    Ok((root, connection))
 }
 
 pub fn open(path: &Path) -> Result<Connection, DbError> {
@@ -256,7 +263,7 @@ pub(crate) mod tests {
     fn every_error_has_the_design_code_and_message() {
         let expected = [
             (DbError::PathNotAbsolute, "path_not_absolute", "caminho do banco não é absoluto"),
-            (DbError::VolumeMissing, "volume_missing", "disco E: não encontrado"),
+            (DbError::VolumeMissing, "volume_missing", "disco da biblioteca não encontrado"),
             (DbError::ParentMissing, "parent_missing", "pasta do banco não encontrada"),
             (DbError::OpenFailed, "open_failed", "não foi possível abrir o banco"),
             (DbError::NotSqlite, "db_not_sqlite", "o arquivo do banco não é um banco SQLite"),
