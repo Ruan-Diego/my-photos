@@ -1,7 +1,7 @@
 # F10 Indexing Pipeline Tasks
 
 **Design**: `.specs/features/f10-indexing-pipeline/design.md`
-**Status**: T1–T2 feitos; T3 aguarda rodada no `E:`
+**Status**: Done — T1–T3
 
 | Task | O quê | Gate |
 | ---- | ----- | ---- |

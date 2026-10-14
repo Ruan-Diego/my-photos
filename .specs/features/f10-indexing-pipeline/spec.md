@@ -10,7 +10,7 @@ F05 grava caminhos e hashes; F02/F06/F08 casam e leem o JSON do Takeout; F07 lê
 - [x] Incremental: só lê de novo o que mudou
 - [x] Um arquivo ou JSON ruim nunca para a execução; vira `indexing_errors`
 - [x] Progresso por etapa para a F17
-- [ ] Rodar no `E:` real
+- [x] Rodar no `E:` real
 
 ## Out of Scope
 
@@ -69,4 +69,4 @@ F05 grava caminhos e hashes; F02/F06/F08 casam e leem o JSON do Takeout; F07 lê
 
 - [x] `index::tests` (8) cobrindo IDX-01..06
 - [ ] CI `windows-latest` verde
-- [ ] `f10-index` no `E:`: 6 132 mídias resolvidas; ~4 247 com data do JSON; 2ª execução com 0 resolvidas
+- [x] `f10-index` no `E:`: 6 132 resolvidas (4 247 JSON, 850 EXIF, 1 035 arquivo, 0 sem data); 2ª execução 0 resolvidas em 1,4 s

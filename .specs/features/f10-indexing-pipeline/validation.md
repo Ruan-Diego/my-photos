@@ -13,7 +13,13 @@
 
 Local (Linux, 2026-10-14): `index::` 8/8, `scan::` e `resolve::` sem regressão; as 42 falhas restantes da suíte são as mesmas só-Windows de antes (`bench::`, `db::`, `icacls`). CI Windows é o gate.
 
-## `E:` (pendente)
+## `E:` (2026-10-14, `05b8126`, `cargo run --release --bin f10-index`)
 
 | Execução | media | resolved | json | exif | assumed | filesystem | no_date | location | errors | tempo |
 | -------- | ----- | -------- | ---- | ---- | ------- | ---------- | ------- | -------- | ------ | ----- |
+| 1 (run 3) | 6 132 | 6 132 | 4 247 | 850 | 370 | 1 035 | 0 | 323 | 5 `orphan_json` | ~2m46s (sem o build) |
+| 2 (run 4) | 6 132 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 5 `orphan_json` | 1,4 s |
+
+O banco já tinha a varredura F05 (SCAN-07), então a 1ª execução foi `incremental` com 0 hash; as 6 132 mídias entraram por `taken_at_source` vazio. Depois: `taken_at_source` = 4 247 `takeout_json`, 850 `exif`, 1 035 `filesystem`; 3 pessoas; 323 locais. `library.db` 3,6 MB → 15,8 MB. Backup antes da execução em `%TEMP%\library-before-f10.db` na máquina. Os 5 `orphan_json` são os mesmos da F08 (fotos ausentes no export) e se repetem a cada execução.
+
+**Veredito: PASS** (todas as mídias com data; 2ª execução sem trabalho).
