@@ -1,19 +1,23 @@
 //! F12: JPEG thumbnails of the photos in three sizes, kept under `.myphotos\thumbs\` on
 //! the library disk (AD-011). A queue serves what the UI asks for first and fills in the
 //! rest newest first; the cache is held under a size limit by evicting the least
-//! recently used. Reads the originals only (AD-008). Videos are F13.
+//! recently used. Reads the originals only (AD-008). F13 adds video covers (`video`).
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod video_tests;
 
 mod queue;
 mod render;
 mod service;
+pub mod video;
 
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use std::time::SystemTime;
 
 use rusqlite::{params, Connection, OptionalExtension};
@@ -26,6 +30,7 @@ use crate::time::iso_utc;
 pub(crate) use queue::{Job, Priority, ThumbQueue};
 pub(crate) use render::render;
 pub use service::ThumbService;
+pub use video::{locate_ffmpeg, Ffmpeg, VideoProbe, VideoTool};
 
 /// `app_settings` key for the cache limit in bytes (RF-058).
 pub const CACHE_LIMIT_SETTING: &str = "thumbnail_cache_limit_bytes";
@@ -100,6 +105,14 @@ pub struct ThumbSummary {
     pub unreadable: u64,
     /// The thumbnail file or its row could not be written; tried again next time.
     pub write_failed: u64,
+    /// F13: of `generated`, video covers.
+    pub videos: u64,
+    /// F13: ffmpeg could not be run for a video; tried again next time.
+    pub tool_failed: u64,
+    /// F13: videos left out because no ffmpeg was found.
+    pub videos_skipped: u64,
+    /// F13: the folder ffmpeg was found in.
+    pub ffmpeg_dir: Option<String>,
     pub evicted: u64,
     pub evicted_bytes: u64,
     pub cache_bytes: u64,
@@ -110,7 +123,12 @@ pub struct ThumbSummary {
 
 impl ThumbSummary {
     pub fn done(&self) -> u64 {
-        self.generated + self.unsupported + self.corrupt + self.unreadable + self.write_failed
+        self.generated
+            + self.unsupported
+            + self.corrupt
+            + self.unreadable
+            + self.write_failed
+            + self.tool_failed
     }
 }
 
@@ -160,12 +178,14 @@ pub fn cache_bytes(connection: &Connection) -> rusqlite::Result<u64> {
     })
 }
 
-const MEDIA_COLUMNS: &str = "m.id, m.relative_path, m.orientation, m.taken_at, m.size_bytes, m.fs_modified_at";
+const MEDIA_COLUMNS: &str =
+    "m.id, m.relative_path, m.orientation, m.taken_at, m.size_bytes, m.fs_modified_at, m.media_type";
 
 fn job_from_row(row: &rusqlite::Row, size: ThumbSize, priority: Priority) -> rusqlite::Result<Job> {
     let orientation: Option<i64> = row.get(2)?;
     let size_bytes: Option<i64> = row.get(4)?;
     let modified_at: Option<String> = row.get(5)?;
+    let media_type: String = row.get(6)?;
     Ok(Job {
         media_id: row.get(0)?,
         size,
@@ -173,16 +193,18 @@ fn job_from_row(row: &rusqlite::Row, size: ThumbSize, priority: Priority) -> rus
         orientation: orientation.and_then(|value| u16::try_from(value).ok()),
         fingerprint: fingerprint(size_bytes, modified_at.as_deref(), orientation),
         taken_at: row.get(3)?,
+        video: media_type == "video",
         priority,
     })
 }
 
-/// Photos of the library at `root` with no up-to-date `size` thumbnail and no recorded
-/// failure for their current version, newest first.
+/// Photos (and videos, when `videos`) of the library at `root` with no up-to-date `size`
+/// thumbnail and no recorded failure for their current version, newest first.
 pub(crate) fn pending(
     connection: &Connection,
     root: &Path,
     size: ThumbSize,
+    videos: bool,
 ) -> rusqlite::Result<Vec<Job>> {
     let made = fingerprints(
         connection,
@@ -196,12 +218,13 @@ pub(crate) fn pending(
     )?;
     let mut statement = connection.prepare(&format!(
         "SELECT {MEDIA_COLUMNS} FROM media_items m
-         WHERE m.media_type = 'photo' AND m.indexing_status != 'missing_file'
+         WHERE (m.media_type = 'photo' OR (?2 AND m.media_type = 'video'))
+           AND m.indexing_status != 'missing_file'
            AND m.library_id IN (SELECT id FROM libraries WHERE root_path = ?1 COLLATE NOCASE)
          ORDER BY m.taken_at DESC, m.id DESC"
     ))?;
     let jobs = statement
-        .query_map([root.to_string_lossy()], |row| {
+        .query_map(params![root.to_string_lossy(), videos], |row| {
             job_from_row(row, size, Priority::Background)
         })?
         .collect::<rusqlite::Result<Vec<Job>>>()?;
@@ -227,20 +250,22 @@ fn fingerprints(
     }
 }
 
-/// The job for one photo when its `size` thumbnail is missing or stale; `None` when it
-/// is up to date, failed for this version, is a video or does not exist.
+/// The job for one photo (or video, when `videos`) when its `size` thumbnail is missing
+/// or stale; `None` when it is up to date, failed for this version or cannot be made.
 pub(crate) fn job_for(
     connection: &Connection,
     media_id: i64,
     size: ThumbSize,
+    videos: bool,
 ) -> rusqlite::Result<Option<Job>> {
     let job = connection
         .query_row(
             &format!(
                 "SELECT {MEDIA_COLUMNS} FROM media_items m
-                 WHERE m.id = ?1 AND m.media_type = 'photo' AND m.indexing_status != 'missing_file'"
+                 WHERE m.id = ?1 AND (m.media_type = 'photo' OR (?2 AND m.media_type = 'video'))
+                   AND m.indexing_status != 'missing_file'"
             ),
-            [media_id],
+            params![media_id, videos],
             |row| job_from_row(row, size, Priority::Requested),
         )
         .optional()?;
@@ -267,7 +292,7 @@ pub fn thumbnail_for(
     size: ThumbSize,
     now: &str,
 ) -> rusqlite::Result<Option<PathBuf>> {
-    if job_for(connection, media_id, size)?.is_some() {
+    if job_for(connection, media_id, size, true)?.is_some() {
         return Ok(None);
     }
     let path = thumb_path(root, media_id, size);
@@ -305,6 +330,26 @@ pub(crate) fn record_done(
         params![job.media_id, job.size.as_column(), width, height, bytes as i64, job.fingerprint, now],
     )?;
     connection.execute("DELETE FROM thumbnail_failures WHERE media_id = ?1", [job.media_id])?;
+    Ok(())
+}
+
+/// F13: what ffprobe read goes to `media_items`; a value it could not read keeps the old one.
+pub(crate) fn record_video(
+    connection: &Connection,
+    media_id: i64,
+    probe: &VideoProbe,
+) -> rusqlite::Result<()> {
+    connection.execute(
+        "UPDATE media_items SET duration_ms = COALESCE(?2, duration_ms),
+           width = COALESCE(?3, width), height = COALESCE(?4, height)
+         WHERE id = ?1 AND media_type = 'video'",
+        params![
+            media_id,
+            probe.duration_ms.map(|value| value as i64),
+            probe.width,
+            probe.height
+        ],
+    )?;
     Ok(())
 }
 
@@ -390,7 +435,7 @@ pub fn default_workers() -> usize {
 }
 
 /// Makes every missing `size` thumbnail of the library at `root`, newest first, and
-/// hands the connection back.
+/// hands the connection back. Videos too when ffmpeg is found (F13).
 pub fn generate_library(
     connection: Connection,
     root: &Path,
@@ -398,19 +443,48 @@ pub fn generate_library(
     workers: usize,
     progress: &mut dyn FnMut(u64, u64),
 ) -> (Connection, Result<ThumbSummary, rusqlite::Error>) {
-    let jobs = match pending(&connection, root, size) {
-        Ok(jobs) => jobs,
+    let ffmpeg = locate_ffmpeg();
+    let dir = video::describe(ffmpeg.as_ref());
+    let tool = ffmpeg.map(|tool| Arc::new(tool) as Arc<dyn VideoTool>);
+    let (connection, result) = generate_with(connection, root, size, workers, tool, progress);
+    let result = result.map(|summary| ThumbSummary {
+        ffmpeg_dir: dir,
+        ..summary
+    });
+    (connection, result)
+}
+
+pub(crate) fn generate_with(
+    connection: Connection,
+    root: &Path,
+    size: ThumbSize,
+    workers: usize,
+    video: Option<Arc<dyn VideoTool>>,
+    progress: &mut dyn FnMut(u64, u64),
+) -> (Connection, Result<ThumbSummary, rusqlite::Error>) {
+    let prepared = pending(&connection, root, size, video.is_some()).and_then(|jobs| {
+        let skipped = if video.is_some() {
+            0
+        } else {
+            pending(&connection, root, size, true)?.len() - jobs.len()
+        };
+        Ok((jobs, skipped as u64, cache_limit(&connection)?))
+    });
+    let (jobs, skipped, limit) = match prepared {
+        Ok(prepared) => prepared,
         Err(error) => return (connection, Err(error)),
     };
-    let limit = match cache_limit(&connection) {
-        Ok(limit) => limit,
-        Err(error) => return (connection, Err(error)),
-    };
-    let service = ThumbService::start(connection, root.to_path_buf(), workers, limit);
+    let service = ThumbService::start_with(connection, root.to_path_buf(), workers, limit, video);
     service.enqueue(jobs);
     service.wait_idle(progress);
     let (connection, summary) = service.shutdown();
-    (connection, Ok(summary))
+    (
+        connection,
+        Ok(ThumbSummary {
+            videos_skipped: skipped,
+            ..summary
+        }),
+    )
 }
 
 /// Finds the library disk (F11) and makes its missing `size` thumbnails. Errors are codes.

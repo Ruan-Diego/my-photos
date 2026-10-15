@@ -442,3 +442,22 @@ fn idx06_missing_media_is_left_alone() {
     let video = library.row("Ruan/Clipes/video.mp4");
     assert_eq!(video.source.as_deref(), Some("filesystem"));
 }
+
+#[test]
+fn idx07_re_resolving_a_video_keeps_the_size_f13_read() {
+    let mut library = Library::new("video-size");
+    library.write("2022/clip.mp4", b"video");
+    library.index(T1);
+    // F13 (ffprobe) filled these in.
+    library
+        .connection
+        .execute("UPDATE media_items SET width = 1080, height = 1920, duration_ms = 4000", [])
+        .unwrap();
+
+    library.write("2022/clip.mp4.json", &sidecar(1500000000, &[]));
+    let (summary, _) = library.index(T2);
+    assert_eq!(summary.resolved, 1);
+    let video = library.row("2022/clip.mp4");
+    assert_eq!(video.source.as_deref(), Some("takeout_json"));
+    assert_eq!((video.width, video.height), (Some(1080), Some(1920)));
+}

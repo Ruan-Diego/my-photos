@@ -318,7 +318,11 @@ fn write_media(
 ) -> Result<(), ScanError> {
     let (json_path, confidence) = json_columns(hit);
     transaction.execute(
-        "UPDATE media_items SET width = ?2, height = ?3, orientation = ?4, taken_at = ?5,
+        // Video dimensions come from F13 (ffprobe), not from here: keep them.
+        "UPDATE media_items SET
+           width = CASE WHEN media_type = 'video' THEN width ELSE ?2 END,
+           height = CASE WHEN media_type = 'video' THEN height ELSE ?3 END,
+           orientation = ?4, taken_at = ?5,
            taken_at_source = ?6, taken_at_timezone = ?7, has_takeout_json = ?8,
            json_relative_path = ?9, json_match_confidence = ?10, title = ?11, description = ?12,
            updated_at = ?13

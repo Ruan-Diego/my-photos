@@ -22,6 +22,8 @@ pub struct Job {
     pub fingerprint: String,
     /// UTC ISO text, so it sorts as time.
     pub taken_at: Option<String>,
+    /// F13: made by ffmpeg, not by `render`.
+    pub video: bool,
     pub priority: Priority,
 }
 

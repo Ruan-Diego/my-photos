@@ -11,18 +11,27 @@ use std::time::Duration;
 
 use rusqlite::Connection;
 
+use super::video::{cover_time, locate_ffmpeg, VideoError, VideoProbe, VideoTool};
 use super::{
-    cache_bytes, evict, job_for, now, original_path, record_done, record_failure, render,
-    thumb_path, write_thumb, Job, Priority, ThumbError, ThumbQueue, ThumbSize, ThumbSummary,
+    cache_bytes, evict, job_for, now, original_path, record_done, record_failure, record_video,
+    render, thumb_path, write_thumb, Job, Priority, ThumbError, ThumbQueue, ThumbSize,
+    ThumbSummary,
 };
 
 /// Results recorded per transaction at most; the writer commits sooner when idle.
 const WRITE_BATCH: usize = 64;
 
 enum Outcome {
-    Done { width: u32, height: u32, bytes: u64 },
+    Done {
+        width: u32,
+        height: u32,
+        bytes: u64,
+        video: Option<VideoProbe>,
+    },
     Failed(ThumbError),
     WriteFailed,
+    /// F13: ffmpeg could not be run.
+    ToolFailed,
 }
 
 enum Message {
@@ -60,8 +69,21 @@ pub struct ThumbService {
 }
 
 impl ThumbService {
-    /// `limit` is the cache size in bytes (`cache_limit`).
+    /// `limit` is the cache size in bytes (`cache_limit`). Videos get covers when ffmpeg
+    /// is found (F13).
     pub fn start(connection: Connection, root: PathBuf, workers: usize, limit: u64) -> Self {
+        let tool = locate_ffmpeg().map(|tool| Arc::new(tool) as Arc<dyn VideoTool>);
+        Self::start_with(connection, root, workers, limit, tool)
+    }
+
+    pub(crate) fn start_with(
+        connection: Connection,
+        root: PathBuf,
+        workers: usize,
+        limit: u64,
+        video: Option<Arc<dyn VideoTool>>,
+    ) -> Self {
+        let videos = video.is_some();
         let shared = Arc::new(Shared {
             state: Mutex::new(State::default()),
             changed: Condvar::new(),
@@ -73,12 +95,13 @@ impl ThumbService {
                 let shared = Arc::clone(&shared);
                 let sender = sender.clone();
                 let root = root.clone();
-                thread::spawn(move || work(&shared, &sender, &root))
+                let video = video.clone();
+                thread::spawn(move || work(&shared, &sender, &root, video.as_deref()))
             })
             .collect();
         let writer = {
             let shared = Arc::clone(&shared);
-            thread::spawn(move || write(connection, &root, limit, &shared, &receiver))
+            thread::spawn(move || write(connection, &root, limit, videos, &shared, &receiver))
         };
         Self {
             shared,
@@ -157,7 +180,7 @@ impl ThumbService {
     }
 }
 
-fn work(shared: &Shared, sender: &Sender<Message>, root: &Path) {
+fn work(shared: &Shared, sender: &Sender<Message>, root: &Path, video: Option<&dyn VideoTool>) {
     loop {
         let job = {
             let mut state = shared.lock();
@@ -175,7 +198,11 @@ fn work(shared: &Shared, sender: &Sender<Message>, root: &Path) {
                     .unwrap_or_else(|poisoned| poisoned.into_inner());
             }
         };
-        let outcome = make(root, &job);
+        let outcome = match (job.video, video) {
+            (false, _) => make(root, &job),
+            (true, Some(tool)) => make_video(tool, root, &job),
+            (true, None) => Outcome::ToolFailed,
+        };
         if sender.send(Message::Finished(job, outcome)).is_err() {
             return;
         }
@@ -189,6 +216,7 @@ fn make(root: &Path, job: &Job) -> Outcome {
                 width: rendered.width,
                 height: rendered.height,
                 bytes: rendered.jpeg.len() as u64,
+                video: None,
             },
             Err(_) => Outcome::WriteFailed,
         },
@@ -196,10 +224,43 @@ fn make(root: &Path, job: &Job) -> Outcome {
     }
 }
 
+/// F13: probe, take the cover frame, write it like a photo thumbnail.
+fn make_video(tool: &dyn VideoTool, root: &Path, job: &Job) -> Outcome {
+    let path = original_path(root, job);
+    if !path.is_file() {
+        return Outcome::Failed(ThumbError::Unreadable);
+    }
+    let fail = |error: VideoError| match error {
+        VideoError::Media(error) => Outcome::Failed(error),
+        VideoError::Tool => Outcome::ToolFailed,
+    };
+    let probe = match tool.probe(&path) {
+        Ok(probe) => probe,
+        Err(error) => return fail(error),
+    };
+    let jpeg = match tool.frame(&path, cover_time(probe.duration_ms), job.size.max_edge()) {
+        Ok(jpeg) => jpeg,
+        Err(error) => return fail(error),
+    };
+    let Ok(size) = imagesize::blob_size(&jpeg) else {
+        return Outcome::Failed(ThumbError::Corrupt);
+    };
+    match write_thumb(&thumb_path(root, job.media_id, job.size), &jpeg) {
+        Ok(()) => Outcome::Done {
+            width: size.width as u32,
+            height: size.height as u32,
+            bytes: jpeg.len() as u64,
+            video: Some(probe),
+        },
+        Err(_) => Outcome::WriteFailed,
+    }
+}
+
 fn write(
     mut connection: Connection,
     root: &Path,
     limit: u64,
+    videos: bool,
     shared: &Shared,
     receiver: &Receiver<Message>,
 ) -> Connection {
@@ -211,7 +272,7 @@ fn write(
                 Err(_) => break,
             }
         }
-        if record_batch(&mut connection, root, limit, shared, batch) {
+        if record_batch(&mut connection, root, limit, videos, shared, batch) {
             break;
         }
     }
@@ -223,6 +284,7 @@ fn record_batch(
     connection: &mut Connection,
     root: &Path,
     limit: u64,
+    videos: bool,
     shared: &Shared,
     batch: Vec<Message>,
 ) -> bool {
@@ -240,7 +302,7 @@ fn record_batch(
                 Message::Stop => stop = true,
                 Message::Request(media_id, size) => {
                     settled += 1;
-                    match job_for(&transaction, media_id, size)? {
+                    match job_for(&transaction, media_id, size, videos)? {
                         Some(job) => requested.push(job),
                         None => {
                             transaction.execute(
@@ -253,8 +315,16 @@ fn record_batch(
                 Message::Finished(job, outcome) => {
                     settled += 1;
                     match &outcome {
-                        Outcome::Done { width, height, bytes } => {
+                        Outcome::Done {
+                            width,
+                            height,
+                            bytes,
+                            video,
+                        } => {
                             record_done(&transaction, &job, *width, *height, *bytes, &now)?;
+                            if let Some(probe) = video {
+                                record_video(&transaction, job.media_id, probe)?;
+                            }
                             if job.priority == Priority::Requested {
                                 keep.insert((job.media_id, job.size));
                             } else {
@@ -262,7 +332,7 @@ fn record_batch(
                             }
                         }
                         Outcome::Failed(error) => record_failure(&transaction, &job, *error, &now)?,
-                        Outcome::WriteFailed => {}
+                        Outcome::WriteFailed | Outcome::ToolFailed => {}
                     }
                     finished.push(outcome);
                 }
@@ -283,8 +353,12 @@ fn record_batch(
     for outcome in &finished {
         let summary = &mut state.summary;
         match (outcome, saved.is_ok()) {
+            (Outcome::ToolFailed, _) => summary.tool_failed += 1,
             (_, false) | (Outcome::WriteFailed, _) => summary.write_failed += 1,
-            (Outcome::Done { .. }, true) => summary.generated += 1,
+            (Outcome::Done { video, .. }, true) => {
+                summary.generated += 1;
+                summary.videos += u64::from(video.is_some());
+            }
             (Outcome::Failed(ThumbError::Unsupported), true) => summary.unsupported += 1,
             (Outcome::Failed(ThumbError::Corrupt), true) => summary.corrupt += 1,
             (Outcome::Failed(ThumbError::Unreadable), true) => summary.unreadable += 1,
