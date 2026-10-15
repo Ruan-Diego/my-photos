@@ -71,7 +71,7 @@ impl Library {
     }
 
     fn pending_ids(&self, size: ThumbSize) -> Vec<i64> {
-        pending(&self.connection, &self.root, size)
+        pending(&self.connection, &self.root, size, false)
             .unwrap()
             .into_iter()
             .map(|job| job.media_id)
@@ -84,7 +84,7 @@ impl Library {
             root,
             connection,
         } = self;
-        let (connection, summary) = generate_library(connection, &root, size, workers, &mut |_, _| {});
+        let (connection, summary) = generate_with(connection, &root, size, workers, None, &mut |_, _| {});
         (
             Self {
                 _scratch,
@@ -120,6 +120,7 @@ fn job(id: i64, taken_at: Option<&str>, priority: Priority) -> Job {
         orientation: None,
         fingerprint: String::new(),
         taken_at: taken_at.map(str::to_string),
+        video: false,
         priority,
     }
 }
@@ -247,10 +248,10 @@ fn thumb04_pending_lists_photos_without_an_up_to_date_thumbnail_newest_first() {
         .execute("UPDATE media_items SET indexing_status = 'missing_file' WHERE id = ?1", [gone])
         .unwrap();
     assert_eq!(library.pending_ids(ThumbSize::Small), [new, old, undated]);
-    assert!(job_for(&library.connection, video, ThumbSize::Small).unwrap().is_none());
-    assert!(job_for(&library.connection, gone, ThumbSize::Small).unwrap().is_none());
+    assert!(job_for(&library.connection, video, ThumbSize::Small, false).unwrap().is_none());
+    assert!(job_for(&library.connection, gone, ThumbSize::Small, true).unwrap().is_none());
 
-    let jobs = pending(&library.connection, &library.root, ThumbSize::Small).unwrap();
+    let jobs = pending(&library.connection, &library.root, ThumbSize::Small, false).unwrap();
     record_done(&library.connection, &jobs[0], 300, 200, 1000, NOW).unwrap();
     record_failure(&library.connection, &jobs[1], ThumbError::Unsupported, NOW).unwrap();
     assert_eq!(library.pending_ids(ThumbSize::Small), [undated]);
@@ -264,7 +265,7 @@ fn thumb04_pending_lists_photos_without_an_up_to_date_thumbnail_newest_first() {
         .unwrap();
     assert_eq!(library.pending_ids(ThumbSize::Small), [new, old, undated]);
     // Rotated by the user later: the baked-in rotation is stale.
-    record_done(&library.connection, &pending(&library.connection, &library.root, ThumbSize::Small).unwrap()[0], 300, 200, 1000, NOW).unwrap();
+    record_done(&library.connection, &pending(&library.connection, &library.root, ThumbSize::Small, false).unwrap()[0], 300, 200, 1000, NOW).unwrap();
     assert_eq!(library.pending_ids(ThumbSize::Small), [old, undated]);
     library
         .connection
@@ -336,6 +337,8 @@ fn thumb05_generate_library_makes_each_missing_thumbnail_once() {
     );
     assert!(!summary.stopped_cache_full);
     assert_eq!(summary.cache_limit_bytes, DEFAULT_CACHE_LIMIT_BYTES);
+    // No ffmpeg in this run (F13): the video is counted, not failed.
+    assert_eq!((summary.videos, summary.videos_skipped, summary.tool_failed), (0, 1, 0));
 
     let (width, height, bytes, _) = library.thumbnail_row(a, ThumbSize::Small).unwrap();
     assert_eq!((width, height), (300, 200));
@@ -398,7 +401,7 @@ fn thumb06_requests_are_served_and_marked_used() {
         root,
         connection,
     } = library;
-    let service = ThumbService::start(connection, root.clone(), 2, DEFAULT_CACHE_LIMIT_BYTES);
+    let service = ThumbService::start_with(connection, root.clone(), 2, DEFAULT_CACHE_LIMIT_BYTES, None);
     service.request(id, ThumbSize::Medium);
     service.wait_idle(&mut |_, _| {});
     assert_eq!(service.summary().generated, 1);
@@ -442,6 +445,7 @@ fn thumb07_eviction_drops_least_recently_used_large_and_medium_first() {
             orientation: None,
             fingerprint: String::new(),
             taken_at: None,
+            video: false,
             priority: Priority::Background,
         };
         record_done(&library.connection, &job, 1, 1, 100, used).unwrap();
