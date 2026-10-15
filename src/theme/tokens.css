@@ -1,0 +1,98 @@
+/* AD-014: tokens copied from the design canvas (artboard `Tema`, `.specs/DESIGN.md`).
+   Hex appears only here; components read var(--token). */
+
+:root {
+  color-scheme: light;
+  --ground: #f4f0e8;
+  --side: #ece5d8;
+  --side-card: #e2dacb;
+  --side-line: #ddd3c2;
+  --surface: #fbf8f2;
+  --sunken: #ebe4d7;
+  --line: #e2dbcd;
+  --line-2: #ddd3c2;
+  --line-strong: #cfc5b3;
+  --ink: #1c1915;
+  --ink-2: #4f483f;
+  --muted: #5f574c;
+  --accent: #a8471f;
+  --accent-hover: #7d3416;
+  --accent-fill: #a8471f;
+  --warn-bg: #f7e6dc;
+  --warn-fg: #7d3416;
+  --ok-bg: #dfeadf;
+  --ok-fg: #2c5a37;
+  --ok-dot: #3d7a4f;
+  --neutral-bg: #e6e0d5;
+  --console: #1c1915;
+  --map: #e4ddd0;
+  --map-grid: #d8d0c1;
+  --map-land: #d4ccbb;
+  --shadow: rgba(28, 25, 21, 0.24);
+
+  --font: "Hanken Grotesk", "Segoe UI", system-ui, sans-serif;
+  --mono: "Cascadia Mono", Consolas, monospace;
+}
+
+/* The dark values, twice: chosen in Settings, or following Windows. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ground: #161513;
+  --side: #1b1a17;
+  --side-card: #26231f;
+  --side-line: #2a2723;
+  --surface: #201e1b;
+  --sunken: #2a2723;
+  --line: #2e2b27;
+  --line-2: #36322d;
+  --line-strong: #4a453e;
+  --ink: #f1ece3;
+  --ink-2: #cfc6b8;
+  --muted: #a89f91;
+  --accent: #ec9068;
+  --accent-hover: #f5b597;
+  --accent-fill: #e07a4c;
+  --warn-bg: #3a2419;
+  --warn-fg: #f3b593;
+  --ok-bg: #1e3326;
+  --ok-fg: #a9d8b5;
+  --ok-dot: #5fb07a;
+  --neutral-bg: #2e2b27;
+  --console: #0d0c0a;
+  --map: #1f1d1a;
+  --map-grid: #2a2723;
+  --map-land: #2b2824;
+  --shadow: rgba(0, 0, 0, 0.55);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --ground: #161513;
+    --side: #1b1a17;
+    --side-card: #26231f;
+    --side-line: #2a2723;
+    --surface: #201e1b;
+    --sunken: #2a2723;
+    --line: #2e2b27;
+    --line-2: #36322d;
+    --line-strong: #4a453e;
+    --ink: #f1ece3;
+    --ink-2: #cfc6b8;
+    --muted: #a89f91;
+    --accent: #ec9068;
+    --accent-hover: #f5b597;
+    --accent-fill: #e07a4c;
+    --warn-bg: #3a2419;
+    --warn-fg: #f3b593;
+    --ok-bg: #1e3326;
+    --ok-fg: #a9d8b5;
+    --ok-dot: #5fb07a;
+    --neutral-bg: #2e2b27;
+    --console: #0d0c0a;
+    --map: #1f1d1a;
+    --map-grid: #2a2723;
+    --map-land: #2b2824;
+    --shadow: rgba(0, 0, 0, 0.55);
+  }
+}

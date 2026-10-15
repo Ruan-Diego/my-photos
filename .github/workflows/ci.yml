@@ -17,5 +17,5 @@ jobs:
       - uses: ilammy/msvc-dev-cmd@v1
       - run: npm ci
       - run: npm run build
-      - run: node --experimental-strip-types --test src/health/view.test.ts
+      - run: node --experimental-strip-types --test src/health/view.test.ts src/shell/shell.test.ts
       - run: cargo test --manifest-path src-tauri/Cargo.toml
