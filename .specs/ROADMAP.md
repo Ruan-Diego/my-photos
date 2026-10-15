@@ -6,6 +6,10 @@
 
 ## Diretriz de UI/UX (todas as telas)
 
+> **O design já está pronto e tem prioridade (AD-014).** Toda tela segue o canvas
+> [MyPhotos — Telas](https://claude.ai/artifact/CDKz8D5PcgHkmGmkfbsmFp). Mapa de telas,
+> tokens e regras de tema em [`DESIGN.md`](DESIGN.md). Em conflito com este roadmap, vale o canvas.
+
 Toda interface segue **AD-006**. O visual é fluido e moderno; a fotografia é o protagonista. O que se evita é o visual genérico de interface gerada por IA (gradiente roxo padrão, glassmorphism de template, motion decorativo sem função).
 
 | Biblioteca | Papel |
@@ -77,7 +81,7 @@ Phase 5 ─ Pós-MVP (v1.1+)           Futuro
 ## Phase 2 — UI Foundation
 
 > Interface React com os componentes core: timeline, viewer, navegação.
-> Toda tela desta fase segue a diretriz de UI/UX (Motion, GSAP, anime.js, Three.js).
+> Toda tela desta fase implementa a artboard correspondente do canvas de design ([`DESIGN.md`](DESIGN.md), AD-014) e segue a diretriz de movimento (Motion, GSAP, anime.js, Three.js).
 
 | Feature ID | Nome | Descrição | RFs Relacionados | Prioridade |
 |------------|------|-----------|------------------|------------|
