@@ -1,19 +1,25 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { MotionConfig } from "motion/react";
 import { linkedMotionLibraries } from "./motion/libraries";
+import { failedCard, failureText, needsOnboarding, type IndexingFinished, type LibraryFolder } from "./onboarding/flow";
+import { IndexingScreen, TILES } from "./indexing/IndexingScreen";
 import {
-  failedCard,
-  failureText,
   FINISHED_EVENT,
   indexingCard,
-  needsOnboarding,
+  interrupted,
+  interruptedCard,
+  logLine,
+  PAUSED,
   PROGRESS_EVENT,
-  type IndexingFinished,
-  type LibraryFolder,
+  pushLines,
+  starting as startingProgress,
+  thumbnailLine,
+  type LogLine,
   type Progress,
-} from "./onboarding/flow";
+  type RecentThumbnail,
+} from "./indexing/progress";
 import { Onboarding } from "./onboarding/Onboarding";
 import { Appearance } from "./shell/Appearance";
 import { diskCard, type LibrarySummary } from "./shell/library";
@@ -74,6 +80,8 @@ function useLibrary(): [LibrarySummary | null | undefined, () => void] {
   return [summary, reload];
 }
 
+const THUMBNAIL_POLL_MS = 1500;
+
 function App() {
   const active = useSection();
   const [theme, setTheme] = useTheme();
@@ -84,6 +92,15 @@ function App() {
   const [indexError, setIndexError] = useState<string | null>(null);
   const [startError, setStartError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
+  // F17: a tela de progresso (artboard `Indexing`) ou o app com o cartão na lateral.
+  const [showProgress, setShowProgress] = useState(false);
+  const [paused, setPaused] = useState(false);
+  const [pausing, setPausing] = useState(false);
+  const [runStartedAt, setRunStartedAt] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
+  const [thumbnails, setThumbnails] = useState<RecentThumbnail[]>([]);
+  const [lines, setLines] = useState<LogLine[]>([]);
+  const seenThumbnails = useRef(new Set<number>());
 
   useEffect(() => {
     linkedMotionLibraries();
@@ -91,10 +108,22 @@ function App() {
 
   // A indexação roda no Rust; daqui só se ouve o progresso e o fim.
   useEffect(() => {
-    const progressOff = listen<Progress>(PROGRESS_EVENT, (event) => setProgress(event.payload));
+    const progressOff = listen<Progress>(PROGRESS_EVENT, (event) => {
+      setProgress(event.payload);
+      if (event.payload.recent.length > 0) {
+        setLines((current) => pushLines(current, event.payload.recent.map(logLine)));
+      }
+    });
     const finishedOff = listen<IndexingFinished>(FINISHED_EVENT, (event) => {
-      setProgress(null);
-      setIndexError(event.payload.error);
+      setPausing(false);
+      if (event.payload.error === PAUSED) {
+        setPaused(true);
+      } else {
+        setProgress(null);
+        setPaused(false);
+        setShowProgress(false);
+        setIndexError(event.payload.error);
+      }
       reloadSummary();
     });
     return () => {
@@ -102,6 +131,44 @@ function App() {
       void finishedOff.then((off) => off());
     };
   }, [reloadSummary]);
+
+  const running = progress !== null && !paused;
+
+  // Relógio do "cerca de N min restantes".
+  useEffect(() => {
+    if (!running) {
+      return;
+    }
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [running]);
+
+  // "Chegando agora": as miniaturas mais novas, enquanto a tela está aberta.
+  const watchThumbnails = showProgress && progress !== null;
+  const makingThumbnails = running && progress?.stage === "thumbnails";
+  useEffect(() => {
+    if (!watchThumbnails) {
+      return;
+    }
+    const fetchThumbnails = () => {
+      invoke<RecentThumbnail[]>("recent_thumbnails", { limit: TILES })
+        .then((recent) => {
+          setThumbnails(recent);
+          const fresh = recent.filter((thumbnail) => !seenThumbnails.current.has(thumbnail.mediaId)).reverse();
+          fresh.forEach((thumbnail) => seenThumbnails.current.add(thumbnail.mediaId));
+          if (makingThumbnails && fresh.length > 0) {
+            setLines((current) => pushLines(current, fresh.map(thumbnailLine)));
+          }
+        })
+        .catch(() => undefined);
+    };
+    fetchThumbnails();
+    if (!makingThumbnails) {
+      return;
+    }
+    const timer = window.setInterval(fetchThumbnails, THUMBNAIL_POLL_MS);
+    return () => window.clearInterval(timer);
+  }, [watchThumbnails, makingThumbnails]);
 
   const onboarding = summary !== undefined && needsOnboarding(summary) && progress === null && !starting;
 
@@ -120,11 +187,20 @@ function App() {
     setIndexError(null);
     invoke("start_indexing")
       .then(() => {
-        setProgress({ stage: "scanning", done: 0, total: 0 });
-        window.location.hash = "#/fotos";
+        setPaused(false);
+        setProgress((current) => current ?? startingProgress());
+        setLines([]);
+        setRunStartedAt(Date.now());
+        setNow(Date.now());
+        setShowProgress(true);
       })
       .catch((error) => setStartError(errorText(error)))
       .finally(() => setStarting(false));
+  }, []);
+
+  const pauseIndexing = useCallback(() => {
+    setPausing(true);
+    invoke("pause_indexing").catch(() => setPausing(false));
   }, []);
 
   if (summary === undefined) {
@@ -145,19 +221,46 @@ function App() {
     );
   }
 
-  const disk =
-    progress !== null
-      ? indexingCard(summary?.rootPath ?? folder?.rootPath ?? null, progress)
-      : indexError !== null
-        ? failedCard(indexError)
-        : startError !== null
-          ? { tone: "warn" as const, title: "A indexação não começou", detail: startError, action: null }
-        : diskCard(summary);
+  const root = summary?.rootPath ?? folder?.rootPath ?? null;
+
+  if (showProgress && progress !== null) {
+    return (
+      <MotionConfig reducedMotion="user">
+        <IndexingScreen
+          root={root}
+          progress={progress}
+          paused={paused}
+          pausing={pausing || starting}
+          elapsedMs={now - runStartedAt}
+          thumbnails={thumbnails}
+          lines={lines}
+          onPause={pauseIndexing}
+          onResume={startIndexing}
+          onBrowse={() => setShowProgress(false)}
+        />
+      </MotionConfig>
+    );
+  }
+
+  let disk = diskCard(summary);
+  let onDiskAction: (() => void) | undefined;
+  if (progress !== null) {
+    disk = indexingCard(root, progress, paused);
+    onDiskAction = paused ? startIndexing : () => setShowProgress(true);
+  } else if (indexError !== null) {
+    disk = failedCard(indexError);
+    onDiskAction = startIndexing;
+  } else if (startError !== null) {
+    disk = { tone: "warn", title: "A indexação não começou", detail: startError, action: null };
+  } else if (interrupted(summary)) {
+    disk = interruptedCard(summary?.mediaCount ?? 0);
+    onDiskAction = startIndexing;
+  }
   const section = sectionById(active);
   return (
     <MotionConfig reducedMotion="user">
       <div className="shell">
-        <Sidebar active={active} disk={disk} onDiskAction={indexError !== null && progress === null ? startIndexing : undefined} />
+        <Sidebar active={active} disk={disk} onDiskAction={onDiskAction} />
         <SectionPage key={section.id} section={section}>
           {section.id === "settings" ? (
             <div className="settings">

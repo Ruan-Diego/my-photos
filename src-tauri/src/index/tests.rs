@@ -11,7 +11,7 @@ use super::{index_with, IndexSummary, Progress, Sources, Stage};
 use crate::db::tests::Scratch;
 use crate::db::MIGRATIONS;
 use crate::photo_meta::{EmbeddedError, EmbeddedMetadata};
-use crate::scan::{absolute_path, RealFs};
+use crate::scan::{absolute_path, RealFs, ScanError};
 use crate::takeout::discover;
 
 const T1: &str = "2026-10-14T10:00:00.000Z";
@@ -54,23 +54,37 @@ impl Library {
     }
 
     fn index(&mut self, now: &str) -> (IndexSummary, Vec<Progress>) {
-        let mut seen = Vec::new();
+        let (summary, seen) = self.run(now, now, &|_| false);
+        (summary.expect("index"), seen)
+    }
+
+    /// `stop(progress so far)` is asked between files and batches (F17 pause).
+    fn run(
+        &mut self,
+        now: &str,
+        finished: &str,
+        stop: &dyn Fn(&[Progress]) -> bool,
+    ) -> (Result<IndexSummary, ScanError>, Vec<Progress>) {
+        let seen = RefCell::new(Vec::new());
         let reads = &self.exif_reads;
         let read_exif = |path: &Path| -> Result<EmbeddedMetadata, EmbeddedError> {
             let name = path.file_name().unwrap().to_string_lossy().into_owned();
             reads.borrow_mut().push(name.clone());
             fake_exif(&name)
         };
+        let clock = || finished.to_string();
+        let stopping = || stop(&seen.borrow());
         let sources = Sources {
             fs: &RealFs,
             discover: &discover,
             read_exif: &read_exif,
+            clock: &clock,
+            stop: &stopping,
         };
         let summary = index_with(&mut self.connection, &self.root, &sources, now, &mut |p| {
-            seen.push(p)
-        })
-        .expect("index");
-        (summary, seen)
+            seen.borrow_mut().push(p)
+        });
+        (summary, seen.into_inner())
     }
 
     fn row(&self, relative: &str) -> Row {
@@ -284,7 +298,17 @@ fn idx01_first_run_writes_every_source_to_the_database() {
     let stages: Vec<Stage> = progress.iter().map(|p| p.stage).collect();
     assert_eq!(
         stages,
-        [Stage::Scanning, Stage::Matching, Stage::Resolving, Stage::Resolving]
+        [
+            Stage::Scanning,
+            Stage::Hashing,
+            Stage::Hashing,
+            Stage::Hashing,
+            Stage::Hashing,
+            Stage::Hashing,
+            Stage::Matching,
+            Stage::Resolving,
+            Stage::Resolving
+        ]
     );
     assert_eq!(progress.last().map(|p| (p.done, p.total)), Some((4, 4)));
 }
@@ -460,4 +484,141 @@ fn idx07_re_resolving_a_video_keeps_the_size_f13_read() {
     let video = library.row("2022/clip.mp4");
     assert_eq!(video.source.as_deref(), Some("takeout_json"));
     assert_eq!((video.width, video.height), (Some(1080), Some(1920)));
+}
+
+// ---------------------------------------------------------------- PROG (F17)
+
+#[test]
+fn prog03_hashing_reports_each_file_with_its_bytes() {
+    let mut library = takeout_library("hash-progress");
+    let (_, progress) = library.index(T1);
+    let hashing: Vec<(u64, u64, u64, u64)> = progress
+        .iter()
+        .filter(|p| p.stage == Stage::Hashing)
+        .map(|p| (p.done, p.total, p.bytes_done, p.bytes_total))
+        .collect();
+    // Four one-byte files, in path order.
+    assert_eq!(hashing, [(0, 4, 0, 4), (1, 4, 1, 4), (2, 4, 2, 4), (3, 4, 3, 4), (4, 4, 4, 4)]);
+    let first = progress.iter().find(|p| p.stage == Stage::Hashing).unwrap();
+    assert_eq!((first.counts.photos, first.counts.videos), (3, 1));
+
+    // Nothing new: the hashing step has nothing to read.
+    let (_, progress) = library.index(T2);
+    let hashing: Vec<(u64, u64)> = progress
+        .iter()
+        .filter(|p| p.stage == Stage::Hashing)
+        .map(|p| (p.done, p.total))
+        .collect();
+    assert_eq!(hashing, [(0, 0)]);
+}
+
+#[test]
+fn prog04_the_run_ends_at_the_time_it_ends() {
+    let mut library = takeout_library("finished-at");
+    let (summary, _) = library.run(T1, T2, &|_| false);
+    let summary = summary.unwrap();
+    let run: (String, String) = library
+        .connection
+        .query_row(
+            "SELECT started_at, finished_at FROM indexing_runs WHERE id = ?1",
+            [summary.scan.run_id],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .unwrap();
+    assert_eq!(run, (T1.to_string(), T2.to_string()));
+    assert_eq!(library.strings("SELECT last_indexed_at FROM libraries"), [T2]);
+}
+
+#[test]
+fn prog05_pause_keeps_what_was_done_and_the_next_run_picks_up() {
+    let mut library = takeout_library("pause");
+    // Pause after two files are hashed.
+    let (result, progress) = library.run(T1, T1, &|seen| {
+        seen.iter().any(|p| p.stage == Stage::Hashing && p.done == 2)
+    });
+    assert_eq!(result.unwrap_err(), ScanError::Cancelled);
+    assert!(progress.iter().all(|p| p.stage != Stage::Matching));
+    assert_eq!(
+        library.strings("SELECT status FROM indexing_runs"),
+        ["cancelled"]
+    );
+    assert_eq!(
+        library.strings("SELECT CAST(count(*) AS TEXT) FROM media_items WHERE file_hash_sha256 IS NOT NULL"),
+        ["2"]
+    );
+    assert_eq!(
+        library.strings("SELECT coalesce(last_indexed_at, '-') FROM libraries"),
+        ["-"]
+    );
+
+    // "Continuar": only the two files left are read, and everything is resolved.
+    let (summary, progress) = library.index(T2);
+    assert_eq!(summary.scan.run_type, "full");
+    assert_eq!(summary.scan.hashed, 2);
+    assert_eq!(summary.resolved, 4);
+    assert_eq!(progress.iter().filter(|p| p.stage == Stage::Hashing).last().map(|p| p.total), Some(2));
+
+    // Pausing between metadata batches works too.
+    library.write(&format!("{PHOTOS}/c.jpg"), b"c");
+    let (result, progress) = library.run(T3, T3, &|seen| seen.iter().any(|p| p.stage == Stage::Resolving));
+    assert_eq!(result.unwrap_err(), ScanError::Cancelled);
+    assert_eq!(progress.iter().filter(|p| p.stage == Stage::Resolving).count(), 1);
+}
+
+#[test]
+fn prog06_counters_and_log_lines_follow_the_library() {
+    let mut library = takeout_library("counts");
+    // A sidecar in another part of the same export (F08 pairs it).
+    library.write("Ruan/takeout-20260921T183943Z-1-001/Takeout/Google Fotos/X/far.jpg", b"f");
+    library.write(
+        "Ruan/takeout-20260921T183943Z-1-002/Takeout/Google Fotos/X/far.jpg.supplemental-metadata.json",
+        &sidecar(1660142300, &["Carla"]),
+    );
+    let (summary, progress) = library.index(T1);
+    let last = progress.last().unwrap();
+    assert_eq!(last.stage, Stage::Resolving);
+    assert_eq!(
+        (last.counts.photos, last.counts.videos, last.counts.date_from_json, last.counts.date_from_exif),
+        (4, 1, 3, 1)
+    );
+    assert_eq!(last.counts.json_in_other_part, 1);
+    assert_eq!(last.counts.people, 3);
+    assert_eq!(last.counts.problems, summary.scan.errors);
+
+    // The last three media of the batch, in path order.
+    assert_eq!(
+        lines(last),
+        [
+            "Paired far.jpg far.jpg.supplemental-metadata.json -",
+            "Paired a.jpg a.jpg.supplemental-metadata.json -",
+            "Paired b.jpg b.jpg.json -",
+        ]
+    );
+
+    let mut plain = takeout_library("lines");
+    let (_, progress) = plain.index(T1);
+    assert_eq!(
+        lines(progress.last().unwrap()),
+        [
+            "NoJson IMG_local.jpg - exif",
+            "Paired a.jpg a.jpg.supplemental-metadata.json -",
+            "Paired b.jpg b.jpg.json -",
+        ]
+    );
+}
+
+fn lines(progress: &Progress) -> Vec<String> {
+    progress
+        .recent
+        .iter()
+        .map(|line| {
+            format!(
+                "{:?} {} {} {}",
+                line.kind,
+                line.relative_path.rsplit('/').next().unwrap(),
+                line.json_name.as_deref().unwrap_or("-"),
+                line.date_source.as_deref().unwrap_or("-")
+            )
+        })
+        .collect()
 }

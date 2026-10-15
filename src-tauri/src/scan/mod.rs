@@ -33,6 +33,8 @@ pub enum ScanError {
     RootMissing,
     RootNotDirectory,
     DbWriteFailed,
+    /// F17: the user paused the run; what was committed stays.
+    Cancelled,
 }
 
 impl ScanError {
@@ -42,6 +44,7 @@ impl ScanError {
             Self::RootMissing => "root_missing",
             Self::RootNotDirectory => "root_not_directory",
             Self::DbWriteFailed => "db_write_failed",
+            Self::Cancelled => "cancelled",
         }
     }
 
@@ -51,6 +54,7 @@ impl ScanError {
             Self::RootMissing => "pasta da biblioteca não encontrada",
             Self::RootNotDirectory => "a biblioteca não é uma pasta",
             Self::DbWriteFailed => "falha ao gravar no banco",
+            Self::Cancelled => "indexação pausada",
         }
     }
 }
@@ -105,7 +109,7 @@ pub(crate) fn scan_with(
 ) -> Result<ScanSummary, ScanError> {
     check_root(root)?;
     let (library_id, mut summary) = start_run(connection, &root.to_string_lossy(), now)?;
-    let outcome = scan_run(connection, root, fs, now, library_id, &mut summary);
+    let outcome = scan_run(connection, root, fs, now, library_id, &mut summary, &mut |_| {}, &|| false);
     let status = if outcome.is_ok() {
         "completed"
     } else {
@@ -128,7 +132,21 @@ pub(crate) fn check_root(root: &Path) -> Result<(), ScanError> {
     }
 }
 
-/// Returns the ids of the media rows read (hashed or failed) in this run.
+/// F17: where the hashing stands, sent after each file read.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub(crate) struct HashProgress {
+    pub files_done: u64,
+    pub files_total: u64,
+    pub bytes_done: u64,
+    pub bytes_total: u64,
+    /// Media on disk by type.
+    pub photos: u64,
+    pub videos: u64,
+}
+
+/// Returns the ids of the media rows read (hashed or failed) in this run. `on_hash` is
+/// called once before the first file and after each one; `stop()` is checked between
+/// files and ends the run with `Cancelled`.
 pub(crate) fn scan_run(
     connection: &mut Connection,
     root: &Path,
@@ -136,12 +154,31 @@ pub(crate) fn scan_run(
     now: &str,
     library_id: i64,
     summary: &mut ScanSummary,
+    on_hash: &mut dyn FnMut(HashProgress),
+    stop: &dyn Fn() -> bool,
 ) -> Result<Vec<i64>, ScanError> {
     let found = walk(root, fs).map_err(|_| ScanError::RootMissing)?;
     summary.folders = found.folders.len() as u64;
     summary.media = found.files.len() as u64;
     let queue = reconcile(connection, library_id, &found, now, summary)?;
-    hash_queue(connection, root, fs, now, summary, &queue)?;
+    let sizes: HashMap<String, u64> = found
+        .files
+        .iter()
+        .map(|file| (key(&file.relative_path), file.size))
+        .collect();
+    let bytes_total = queue
+        .iter()
+        .map(|(_, path)| sizes.get(&key(path)).copied().unwrap_or(0))
+        .sum();
+    let photos = found.files.iter().filter(|file| file.media_type == "photo").count() as u64;
+    let start = HashProgress {
+        files_total: queue.len() as u64,
+        bytes_total,
+        photos,
+        videos: summary.media - photos,
+        ..HashProgress::default()
+    };
+    hash_queue(connection, root, fs, now, summary, &queue, start, on_hash, stop)?;
     Ok(queue.into_iter().map(|(id, _)| id).collect())
 }
 
@@ -443,6 +480,7 @@ pub(crate) fn insert_error(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn hash_queue(
     connection: &mut Connection,
     root: &Path,
@@ -450,11 +488,21 @@ fn hash_queue(
     now: &str,
     summary: &mut ScanSummary,
     queue: &Queue,
+    mut progress: HashProgress,
+    on_hash: &mut dyn FnMut(HashProgress),
+    stop: &dyn Fn() -> bool,
 ) -> Result<(), ScanError> {
+    let bytes_before = summary.bytes_hashed;
+    on_hash(progress);
     for batch in queue.chunks(HASH_BATCH) {
         let transaction = connection.transaction()?;
         let mut vanished = false;
+        let mut stopped = false;
         for (id, relative_path) in batch {
+            if stop() {
+                stopped = true;
+                break;
+            }
             let digest = fs.open(&absolute(root, relative_path)).and_then(|reader| {
                 hash_reader(CountingReader::new(reader, &mut summary.bytes_hashed))
             });
@@ -480,6 +528,9 @@ fn hash_queue(
                     insert_error(&transaction, summary, relative_path, "unreadable", now)?;
                 }
             }
+            progress.files_done += 1;
+            progress.bytes_done = summary.bytes_hashed - bytes_before;
+            on_hash(progress);
         }
         // The database usually lives on the vanished disk too; report the disk, not SQLite.
         let committed = transaction.commit();
@@ -487,6 +538,9 @@ fn hash_queue(
             return Err(ScanError::RootMissing);
         }
         committed?;
+        if stopped {
+            return Err(ScanError::Cancelled);
+        }
     }
     Ok(())
 }

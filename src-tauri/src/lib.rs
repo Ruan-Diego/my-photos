@@ -30,7 +30,9 @@ pub fn run() {
             commands::health::app_health,
             commands::library::library_summary,
             commands::onboarding::library_folder,
-            commands::onboarding::start_indexing
+            commands::onboarding::start_indexing,
+            commands::onboarding::pause_indexing,
+            commands::onboarding::recent_thumbnails
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application");

@@ -16,11 +16,11 @@ use crate::db;
 use crate::photo_meta::{read_embedded, EmbeddedError, EmbeddedMetadata};
 use crate::resolve::{resolve, DateSource, FsTimes, ResolvedMetadata, DEFAULT_FALLBACK_OFFSET_MINUTES};
 use crate::scan::{
-    check_root, finish_run, insert_error, scan_run, start_run, FileSystem, RealFs, ScanError,
-    ScanSummary,
+    check_root, finish_run, insert_error, scan_run, start_run, FileSystem, HashProgress, RealFs,
+    ScanError, ScanSummary,
 };
 use crate::takeout::{
-    discover, normalized_person_name, Confidence, DiscoveryReport, MediaHit, MediaMetadata,
+    discover, takeout_export, normalized_person_name, Confidence, DiscoveryReport, MediaHit, MediaMetadata,
     ProblemKind,
 };
 use crate::time::iso_utc;
@@ -34,19 +34,71 @@ const APP_FOLDER: &str = ".myphotos";
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Stage {
+    /// Walking the disk and reconciling with the database.
     Scanning,
+    /// F17: reading and hashing new or changed files; `done`/`total` are files.
+    Hashing,
+    /// Reading and pairing the Takeout JSON.
     Matching,
+    /// EXIF, F09 and the writes; `done`/`total` are media.
     Resolving,
+    /// F17: small thumbnails (F12/F13); `done`/`total` are thumbnails.
+    Thumbnails,
 }
 
-/// Sent before each stage and after each resolved batch.
+/// F17: the counters on the progress screen (artboard `Indexing`), for the whole library.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Counts {
+    pub photos: u64,
+    pub videos: u64,
+    pub date_from_json: u64,
+    pub date_from_exif: u64,
+    /// The sidecar was found in another part (`-1-002`) of the export (F08).
+    pub json_in_other_part: u64,
+    pub people: u64,
+    /// Rows written to `indexing_errors` in this run.
+    pub problems: u64,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum RecentKind {
+    /// Paired with its Takeout JSON.
+    Paired,
+    /// No JSON: the date came from EXIF or the file.
+    NoJson,
+}
+
+/// F17: one line of the log under "Chegando agora".
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Recent {
+    pub kind: RecentKind,
+    pub relative_path: String,
+    /// The sidecar's file name when paired.
+    pub json_name: Option<String>,
+    /// `exif`, `filesystem` or `None` when no date was found; only for `NoJson`.
+    pub date_source: Option<String>,
+}
+
+/// Sent before each stage, after each hashed file and after each resolved batch.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Progress {
     pub stage: Stage,
     pub done: u64,
     pub total: u64,
+    /// Hashing only: bytes read of the bytes to read.
+    pub bytes_done: u64,
+    pub bytes_total: u64,
+    pub counts: Counts,
+    /// The last media of the batch just written, oldest first.
+    pub recent: Vec<Recent>,
 }
+
+/// Log lines sent with each resolved batch.
+const RECENT: usize = 3;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -69,18 +121,29 @@ pub(crate) struct Sources<'a> {
     pub fs: &'a dyn FileSystem,
     pub discover: &'a dyn Fn(&Path) -> Result<DiscoveryReport, String>,
     pub read_exif: &'a dyn Fn(&Path) -> Result<EmbeddedMetadata, EmbeddedError>,
+    /// F17: the time the run ends, read when it ends.
+    pub clock: &'a dyn Fn() -> String,
+    /// F17: pause; checked between files and batches.
+    pub stop: &'a dyn Fn() -> bool,
+}
+
+fn utc_now() -> String {
+    iso_utc(SystemTime::now()).unwrap_or_default()
 }
 
 pub fn index_library(
     connection: &mut Connection,
     root: &Path,
     progress: &mut dyn FnMut(Progress),
+    stop: &dyn Fn() -> bool,
 ) -> Result<IndexSummary, ScanError> {
-    let now = iso_utc(SystemTime::now()).unwrap_or_default();
+    let now = utc_now();
     let sources = Sources {
         fs: &RealFs,
         discover: &discover,
         read_exif: &read_embedded,
+        clock: &utc_now,
+        stop,
     };
     index_with(connection, root, &sources, &now, progress)
 }
@@ -90,9 +153,53 @@ pub fn index_default_library(
     progress: &mut dyn FnMut(Progress),
 ) -> Result<IndexSummary, &'static str> {
     let (root, mut connection) = db::open_located().map_err(|error| error.as_code())?;
-    let result = index_library(&mut connection, &root, progress);
+    let result = index_library(&mut connection, &root, progress, &|| false);
     db::close(connection);
     result.map_err(|error| error.as_code())
+}
+
+/// F17: the app's run. Indexes the library disk, then makes the missing small
+/// thumbnails (F12/F13) with the last counters. `stop()` pauses either step; a paused
+/// run returns `cancelled`.
+pub fn index_and_thumbnail_default_library(
+    progress: &mut dyn FnMut(Progress),
+    stop: &dyn Fn() -> bool,
+) -> Result<IndexSummary, &'static str> {
+    let (root, mut connection) = db::open_located().map_err(|error| error.as_code())?;
+    let mut last = Counts::default();
+    let result = index_library(
+        &mut connection,
+        &root,
+        &mut |update: Progress| {
+            last = update.counts.clone();
+            progress(update);
+        },
+        stop,
+    );
+    let connection = if result.is_ok() {
+        let mut on_thumb = |done: u64, total: u64| {
+            progress(Progress {
+                stage: Stage::Thumbnails,
+                done,
+                total,
+                bytes_done: 0,
+                bytes_total: 0,
+                counts: last.clone(),
+                recent: Vec::new(),
+            })
+        };
+        // A thumbnail that fails is recorded or retried next run; the index stands.
+        let workers = crate::thumbs::default_workers();
+        crate::thumbs::generate_library(connection, &root, crate::thumbs::ThumbSize::Small, workers, &mut on_thumb, stop).0
+    } else {
+        connection
+    };
+    db::close(connection);
+    let summary = result.map_err(|error| error.as_code())?;
+    if stop() {
+        return Err(ScanError::Cancelled.as_code());
+    }
+    Ok(summary)
 }
 
 pub(crate) fn index_with(
@@ -109,12 +216,13 @@ pub(crate) fn index_with(
         ..IndexSummary::default()
     };
     let outcome = index_run(connection, root, sources, now, library_id, &mut summary, progress);
-    let status = if outcome.is_ok() {
-        "completed"
-    } else {
-        "failed"
+    let status = match outcome {
+        Ok(()) => "completed",
+        Err(ScanError::Cancelled) => "cancelled",
+        Err(_) => "failed",
     };
-    let finished = finish_run(connection, library_id, &summary.scan, status, now).and_then(|()| {
+    let finished_at = (sources.clock)();
+    let finished = finish_run(connection, library_id, &summary.scan, status, &finished_at).and_then(|()| {
         connection
             .execute(
                 "UPDATE indexing_runs SET files_indexed = ?2 WHERE id = ?1",
@@ -137,20 +245,35 @@ fn index_run(
     summary: &mut IndexSummary,
     progress: &mut dyn FnMut(Progress),
 ) -> Result<(), ScanError> {
-    progress(Progress {
-        stage: Stage::Scanning,
-        done: 0,
-        total: 0,
-    });
-    let read = scan_run(connection, root, sources.fs, now, library_id, &mut summary.scan)?;
+    let mut counts = Counts::default();
+    progress(update(Stage::Scanning, 0, 0, &counts, Vec::new()));
+    let read = {
+        let progress = &mut *progress;
+        let mut on_hash = |hash: HashProgress| {
+            // Photos and videos are known once the walk is reconciled, before any hashing.
+            let counts = Counts {
+                photos: hash.photos,
+                videos: hash.videos,
+                ..Counts::default()
+            };
+            progress(Progress {
+                stage: Stage::Hashing,
+                done: hash.files_done,
+                total: hash.files_total,
+                bytes_done: hash.bytes_done,
+                bytes_total: hash.bytes_total,
+                counts,
+                recent: Vec::new(),
+            })
+        };
+        scan_run(connection, root, sources.fs, now, library_id, &mut summary.scan, &mut on_hash, sources.stop)?
+    };
+    counts = library_counts(connection, library_id, 0, summary.scan.errors)?;
 
-    progress(Progress {
-        stage: Stage::Matching,
-        done: 0,
-        total: 0,
-    });
+    progress(update(Stage::Matching, 0, 0, &counts, Vec::new()));
     let report = (sources.discover)(root).map_err(|_| ScanError::RootMissing)?;
     record_problems(connection, &report, &mut summary.scan, now)?;
+    let other_part = report.media.iter().filter(|hit| json_in_other_part(hit)).count() as u64;
     let hits: HashMap<String, &MediaHit> = report
         .media
         .iter()
@@ -159,14 +282,15 @@ fn index_run(
 
     let pending = pending_rows(connection, library_id, &read, &hits)?;
     let total = pending.len() as u64;
-    progress(Progress {
-        stage: Stage::Resolving,
-        done: 0,
-        total,
-    });
+    counts = library_counts(connection, library_id, other_part, summary.scan.errors)?;
+    progress(update(Stage::Resolving, 0, total, &counts, Vec::new()));
     for batch in pending.chunks(RESOLVE_BATCH) {
+        if (sources.stop)() {
+            return Err(ScanError::Cancelled);
+        }
         let transaction = connection.transaction()?;
         let mut vanished = false;
+        let mut recent = Vec::new();
         for row in batch {
             let hit = hits.get(&key(&row.relative_path)).copied();
             let exif = if row.media_type == "photo" {
@@ -192,6 +316,7 @@ fn index_run(
             let resolved = resolve(json, exif.as_ref(), fs, DEFAULT_FALLBACK_OFFSET_MINUTES);
             write_media(&transaction, library_id, row.id, hit, json, exif.as_ref(), &resolved, now)?;
             count(summary, json.is_some(), &resolved);
+            recent.push(recent_line(&row.relative_path, json.and(hit), &resolved));
         }
         // The database usually lives on the vanished disk too; report the disk, not SQLite.
         let committed = transaction.commit();
@@ -199,13 +324,92 @@ fn index_run(
             return Err(ScanError::RootMissing);
         }
         committed?;
-        progress(Progress {
-            stage: Stage::Resolving,
-            done: summary.resolved,
-            total,
-        });
+        counts = library_counts(connection, library_id, other_part, summary.scan.errors)?;
+        let keep = recent.len().saturating_sub(RECENT);
+        progress(update(Stage::Resolving, summary.resolved, total, &counts, recent.split_off(keep)));
     }
     Ok(())
+}
+
+fn update(stage: Stage, done: u64, total: u64, counts: &Counts, recent: Vec<Recent>) -> Progress {
+    Progress {
+        stage,
+        done,
+        total,
+        bytes_done: 0,
+        bytes_total: 0,
+        counts: counts.clone(),
+        recent,
+    }
+}
+
+fn recent_line(relative_path: &str, paired: Option<&MediaHit>, resolved: &ResolvedMetadata) -> Recent {
+    match paired {
+        Some(hit) => Recent {
+            kind: RecentKind::Paired,
+            relative_path: relative_path.to_string(),
+            json_name: hit
+                .json_relative_path
+                .as_deref()
+                .map(|path| path.rsplit('/').next().unwrap_or(path).to_string()),
+            date_source: None,
+        },
+        None => Recent {
+            kind: RecentKind::NoJson,
+            relative_path: relative_path.to_string(),
+            json_name: None,
+            date_source: resolved
+                .taken_at_source
+                .map(|source| source.as_column().to_string()),
+        },
+    }
+}
+
+/// The export part (`takeout-<stamp>-1-002`) a path sits in, if any.
+fn export_part(path: &str) -> Option<&str> {
+    path.split('/').find(|segment| takeout_export(segment).is_some())
+}
+
+/// F08 pairs across parts of one export (STATE: 169 of 4247 on the real Takeout).
+fn json_in_other_part(hit: &MediaHit) -> bool {
+    match (hit.metadata.as_ref(), hit.json_relative_path.as_deref()) {
+        (Some(_), Some(json)) => {
+            let media = export_part(&hit.relative_path).map(str::to_ascii_lowercase);
+            let sidecar = export_part(json).map(str::to_ascii_lowercase);
+            media.is_some() && sidecar.is_some() && media != sidecar
+        }
+        _ => false,
+    }
+}
+
+/// The counters for the whole library, read from the database.
+fn library_counts(
+    connection: &Connection,
+    library_id: i64,
+    json_in_other_part: u64,
+    problems: u64,
+) -> Result<Counts, ScanError> {
+    let (photos, videos, date_from_json, date_from_exif): (i64, i64, i64, i64) = connection.query_row(
+        "SELECT coalesce(sum(media_type = 'photo'), 0), coalesce(sum(media_type = 'video'), 0),
+                coalesce(sum(taken_at_source = 'takeout_json'), 0), coalesce(sum(taken_at_source = 'exif'), 0)
+         FROM media_items WHERE library_id = ?1 AND is_hidden = 0 AND indexing_status != 'missing_file'",
+        [library_id],
+        |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+    )?;
+    let people: i64 = connection.query_row(
+        "SELECT count(*) FROM people WHERE library_id = ?1",
+        [library_id],
+        |row| row.get(0),
+    )?;
+    Ok(Counts {
+        photos: photos as u64,
+        videos: videos as u64,
+        date_from_json: date_from_json as u64,
+        date_from_exif: date_from_exif as u64,
+        json_in_other_part,
+        people: people as u64,
+        problems,
+    })
 }
 
 /// `COLLATE NOCASE` folds ASCII only; the in-memory key does the same.

@@ -36,6 +36,10 @@
   --photo-3: #c7b49b;
   --photo-4: #8e9a86;
 
+  /* Console da indexação (artboard `Indexing`): fundo --console, igual nos dois temas. */
+  --console-ink: #d9d1c3;
+  --console-warn: #e9a585;
+
   --font: "Hanken Grotesk", "Segoe UI", system-ui, sans-serif;
   --mono: "Cascadia Mono", Consolas, monospace;
 }

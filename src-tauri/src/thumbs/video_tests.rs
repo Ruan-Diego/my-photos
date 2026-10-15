@@ -146,7 +146,7 @@ impl Library {
 
     fn generate(&mut self, size: ThumbSize, tool: Option<Arc<dyn VideoTool>>) -> ThumbSummary {
         let connection = self.connection.take().unwrap();
-        let (connection, summary) = generate_with(connection, &self.root, size, 2, tool, &mut |_, _| {});
+        let (connection, summary) = generate_with(connection, &self.root, size, 2, tool, &mut |_, _| {}, &|| false);
         self.connection = Some(connection);
         summary.unwrap()
     }

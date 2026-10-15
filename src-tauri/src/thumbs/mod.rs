@@ -435,18 +435,20 @@ pub fn default_workers() -> usize {
 }
 
 /// Makes every missing `size` thumbnail of the library at `root`, newest first, and
-/// hands the connection back. Videos too when ffmpeg is found (F13).
+/// hands the connection back. Videos too when ffmpeg is found (F13). When `stop()` says
+/// so (F17 pause), the jobs in progress finish and the queued ones wait for next time.
 pub fn generate_library(
     connection: Connection,
     root: &Path,
     size: ThumbSize,
     workers: usize,
     progress: &mut dyn FnMut(u64, u64),
+    stop: &dyn Fn() -> bool,
 ) -> (Connection, Result<ThumbSummary, rusqlite::Error>) {
     let ffmpeg = locate_ffmpeg();
     let dir = video::describe(ffmpeg.as_ref());
     let tool = ffmpeg.map(|tool| Arc::new(tool) as Arc<dyn VideoTool>);
-    let (connection, result) = generate_with(connection, root, size, workers, tool, progress);
+    let (connection, result) = generate_with(connection, root, size, workers, tool, progress, stop);
     let result = result.map(|summary| ThumbSummary {
         ffmpeg_dir: dir,
         ..summary
@@ -461,6 +463,7 @@ pub(crate) fn generate_with(
     workers: usize,
     video: Option<Arc<dyn VideoTool>>,
     progress: &mut dyn FnMut(u64, u64),
+    stop: &dyn Fn() -> bool,
 ) -> (Connection, Result<ThumbSummary, rusqlite::Error>) {
     let prepared = pending(&connection, root, size, video.is_some()).and_then(|jobs| {
         let skipped = if video.is_some() {
@@ -476,7 +479,7 @@ pub(crate) fn generate_with(
     };
     let service = ThumbService::start_with(connection, root.to_path_buf(), workers, limit, video);
     service.enqueue(jobs);
-    service.wait_idle(progress);
+    service.wait_idle_until(stop, progress);
     let (connection, summary) = service.shutdown();
     (
         connection,
@@ -493,7 +496,7 @@ pub fn generate_default_library(
     progress: &mut dyn FnMut(u64, u64),
 ) -> Result<ThumbSummary, &'static str> {
     let (root, connection) = db::open_located().map_err(|error| error.as_code())?;
-    let (connection, result) = generate_library(connection, &root, size, default_workers(), progress);
+    let (connection, result) = generate_library(connection, &root, size, default_workers(), progress, &|| false);
     db::close(connection);
     result.map_err(|_| "thumbnail_database_failed")
 }
