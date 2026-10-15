@@ -23,11 +23,14 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             app.manage(DbState(db::open_library().map(|c| Mutex::new(Some(c)))));
+            app.manage(commands::onboarding::IndexingState::default());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             commands::health::app_health,
-            commands::library::library_summary
+            commands::library::library_summary,
+            commands::onboarding::library_folder,
+            commands::onboarding::start_indexing
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application");

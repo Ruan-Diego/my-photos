@@ -32,7 +32,16 @@ export function Logo({ size = 26 }: { size?: number }) {
   );
 }
 
-export function Sidebar({ active, disk }: { active: SectionId; disk: DiskCard | null }) {
+export function Sidebar({
+  active,
+  disk,
+  onDiskAction,
+}: {
+  active: SectionId;
+  disk: DiskCard | null;
+  /** Quando dado, o link do cartão vira botão (tentar a indexação de novo). */
+  onDiskAction?: () => void;
+}) {
   const main = SECTIONS.filter((section) => section.group === "main");
   const care = SECTIONS.filter((section) => section.group === "care");
   return (
@@ -62,8 +71,14 @@ export function Sidebar({ active, disk }: { active: SectionId; disk: DiskCard | 
             {disk.title}
           </div>
           <span className="side-card-detail">{disk.detail}</span>
-          {/* Indexação (F17) e disco desconectado (F11) ainda não têm tela: o texto já é o do canvas. */}
-          <span className="side-card-action">{disk.action}</span>
+          {disk.action === null ? null : onDiskAction ? (
+            <button type="button" className="side-card-action" onClick={onDiskAction}>
+              {disk.action}
+            </button>
+          ) : (
+            // Indexação (F17) e disco desconectado (F11) ainda não têm tela: o texto já é o do canvas.
+            <span className="side-card-action">{disk.action}</span>
+          )}
         </div>
       ) : null}
     </nav>

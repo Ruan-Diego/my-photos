@@ -30,6 +30,12 @@
   --map-land: #d4ccbb;
   --shadow: rgba(28, 25, 21, 0.24);
 
+  /* Lugar de foto (onboarding, artboard `Main`): igual nos dois temas, a foto não muda. */
+  --photo-1: #6f8190;
+  --photo-2: #b89f7c;
+  --photo-3: #c7b49b;
+  --photo-4: #8e9a86;
+
   --font: "Hanken Grotesk", "Segoe UI", system-ui, sans-serif;
   --mono: "Cascadia Mono", Consolas, monospace;
 }
