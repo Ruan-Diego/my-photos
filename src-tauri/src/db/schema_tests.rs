@@ -48,8 +48,8 @@ fn count(connection: &Connection, sql: &str, id: i64) -> i64 {
 #[test]
 fn v1_has_exactly_the_spec_tables_and_indexes() {
     let (_scratch, connection) = library();
-    // v2 (F12) adds the thumbnail tables.
-    assert_eq!(latest_version(), 2);
+    // v2 (F12) adds the thumbnail tables, v3 (F14) the search index and its shadow tables.
+    assert_eq!(latest_version(), 3);
     let mut expected = vec![
         "libraries",
         "folders",
@@ -69,6 +69,12 @@ fn v1_has_exactly_the_spec_tables_and_indexes() {
         "app_settings",
         "thumbnails",
         "thumbnail_failures",
+        "media_search",
+        "media_search_config",
+        "media_search_content",
+        "media_search_data",
+        "media_search_docsize",
+        "media_search_idx",
     ];
     expected.sort_unstable();
     assert_eq!(names(&connection, "table"), expected);
@@ -76,6 +82,7 @@ fn v1_has_exactly_the_spec_tables_and_indexes() {
         names(&connection, "index"),
         vec![
             "idx_media_hash",
+            "idx_media_people_person",
             "idx_media_taken_at",
             "idx_media_type",
             "idx_thumbnails_lru",
