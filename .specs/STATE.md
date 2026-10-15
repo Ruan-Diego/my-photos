@@ -107,13 +107,21 @@
 - **Date**: 2026-10-14
 - **Status**: proposed
 
+### AD-014
+- **Decision**: O design de todas as telas já está pronto no canvas [MyPhotos — Telas](https://claude.ai/artifact/CDKz8D5PcgHkmGmkfbsmFp) (claro e escuro). Ele é a fonte da verdade e a prioridade de toda UI (F15 em diante): layout, textos, tokens, estados e navegação saem de lá. Resumo e mapa de telas em `.specs/DESIGN.md`.
+- **Reason**: Definido pelo stakeholder antes de começar as telas.
+- **Trade-off**: Em conflito com o ROADMAP ou um spec, vale o canvas; divergência necessária é registrada no spec da feature e levada ao Ruan. Mudança de design entra no canvas primeiro. Movimento continua em AD-006.
+- **Scope**: F11 (UI), F15–F26, F28, F29, F31, F48, lixeira (AD-009) e qualquer tela futura.
+- **Date**: 2026-10-15
+- **Status**: active
+
 ## Handoff
 
 - **Feature**: F07 EXIF Parser — concluída (Verifier PASS na iteração 4: EXIF-01..06; 71/77 mutantes mortos, os 6 sobreviventes sem efeito visível no spec). F06 concluída (PASS iteração 3). F05 concluída (PASS iteração 3; SCAN-07 no `E:` PASS em 2026-10-12: 6132 mídias, 38 pastas, 2ª varredura 6132 `unchanged`, 0 hash)
 - **Phase / Task**: Phase 1. F07 em `src-tauri/src/photo_meta/` (`read_embedded`): data de captura local + UTC quando o fuso é conhecido (OffsetTime* ou relógio do GPS), GPS validado, dimensões pelo conteúdo (cabeçalho em JPEG/PNG/GIF/WebP; EXIF em HEIF e TIFF/RAW), orientação 1–8, `raw_json` do EXIF, `exif_corrupt`, `unreadable`. Dependências novas, Rust puro: `kamadak-exif` 0.6.1, `imagesize` 0.15.0; `rust-version = "1.87"`
 - **Completed**: F01–F07. Defaults da F05/F06/F07 confirmados pelo stakeholder em 2026-10-06 ("continue with defaults"). CI `windows-latest` verde desde o run 4. Relatórios em `.specs/features/f0{5,6,7}-*/validation.md`
 - **In-progress**: F14 Search Engine em `src-tauri/src/search/` (migração v3: FTS5 `media_search` com gatilhos; ano/mês/tipo da caixa viram filtros). F13 no PR #9 (ffmpeg do `PATH`/pasta do app)
-- **Next step**: Fechar F13 e F14 (CI, merge com o ok do Ruan). Manual no `E:`: `f12-thumbs` (HEIC `unsupported`, `videosSkipped`), `libraries.volume_id` (F11). Decidir empacotamento do ffmpeg. Phase 1 completa depois disso; próxima é F15 App Shell
+- **Next step**: Fechar F13 e F14 (CI, merge com o ok do Ruan). Manual no `E:`: `f12-thumbs` (HEIC `unsupported`, `videosSkipped`), `libraries.volume_id` (F11). Decidir empacotamento do ffmpeg. Phase 1 completa depois disso; próxima é F15 App Shell, seguindo o canvas de design (AD-014, `.specs/DESIGN.md`)
 - **Blockers**: nenhum (`C:` com ~38 GB livres em 2026-10-12). `E:` deu "erro fatal de hardware" uma vez em 2026-10-02 — vigiar
 - **Open questions**: riscos da F07 a medir na varredura real (F10): WebP com EXIF prefixado por `Exif\0\0` vira `exif_corrupt`; o crate lê TIFF/RAW inteiro e percorre JPEG sem EXIF até o fim (ler junto com o hash na F10/F32); HEIC/WebP/RAW reais nunca testados; hora EXIF sem fuso fica só local (a F09 decide). Mídia movida fora do app vira nova + `missing_file` (F10/F48). Anomalia do baseline HDD. Lições candidatas da F04 aguardam Python
 - **Uncommitted files**: PRD HTML, `.specs/LESSONS.md`, `.specs/lessons.json` (só na máquina local)
