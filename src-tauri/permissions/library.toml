@@ -1,0 +1,17 @@
+# F15/F16: the disk card and the first indexing run. With any app permission
+# defined here, Tauri denies every app command no capability allows.
+
+[[permission]]
+identifier = "allow-library-summary"
+description = "Enables the library_summary command."
+commands.allow = ["library_summary"]
+
+[[permission]]
+identifier = "allow-library-folder"
+description = "Enables the library_folder command."
+commands.allow = ["library_folder"]
+
+[[permission]]
+identifier = "allow-start-indexing"
+description = "Enables the start_indexing command."
+commands.allow = ["start_indexing"]

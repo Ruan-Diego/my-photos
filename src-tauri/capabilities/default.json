@@ -6,6 +6,9 @@
   "permissions": [
     "core:default",
     "opener:default",
-    "allow-app-health"
+    "allow-app-health",
+    "allow-library-summary",
+    "allow-library-folder",
+    "allow-start-indexing"
   ]
 }
