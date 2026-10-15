@@ -25,7 +25,10 @@ pub fn run() {
             app.manage(DbState(db::open_library().map(|c| Mutex::new(Some(c)))));
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![commands::health::app_health])
+        .invoke_handler(tauri::generate_handler![
+            commands::health::app_health,
+            commands::library::library_summary
+        ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application");
 
