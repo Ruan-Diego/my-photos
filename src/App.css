@@ -175,9 +175,18 @@ a:hover {
 }
 
 .side-card-action {
+  align-self: flex-start;
   padding: 4px 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 13px;
   font-weight: 600;
   color: var(--warn-fg);
+}
+
+button.side-card-action {
+  cursor: pointer;
 }
 
 /* Área de conteúdo */
@@ -299,4 +308,257 @@ a:hover {
 
 .choice input {
   accent-color: var(--accent);
+}
+
+/* F16 Onboarding (artboard `Main`) */
+
+.welcome {
+  min-height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-wrap: wrap;
+  background: var(--ground);
+}
+
+.welcome-text {
+  flex: 1 1 520px;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 64px clamp(24px, 6vw, 96px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 36px;
+}
+
+.welcome-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.welcome-lead,
+.welcome-folder,
+.welcome-promises {
+  max-width: 560px;
+}
+
+.welcome-lead {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.welcome-lead h1 {
+  margin: 0;
+  font-size: 52px;
+  line-height: 1.04;
+  letter-spacing: -0.03em;
+  font-weight: 700;
+}
+
+.welcome-lead p {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.welcome-folder {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.welcome-label {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.welcome-folder-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 20px;
+  background: var(--surface);
+  border: 1px solid var(--line-2);
+  border-radius: 14px;
+}
+
+.welcome-folder-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.welcome-folder-text strong {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.welcome-folder-text span {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.welcome-change {
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.welcome-change:disabled {
+  color: var(--muted);
+  cursor: default;
+}
+
+.welcome-promises {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.welcome-promises li {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.welcome-promises strong {
+  font-weight: 600;
+}
+
+.welcome-promise-icon {
+  flex: none;
+  margin-top: 1px;
+  color: var(--accent);
+}
+
+.welcome-promises code {
+  font-family: var(--mono);
+  font-size: 13px;
+  background: var(--sunken);
+  padding: 2px 6px;
+  border-radius: 5px;
+}
+
+.welcome-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.welcome-start {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 0 24px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--ink);
+  color: var(--ground);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.welcome-start:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+.welcome-hint {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.welcome-failure {
+  margin: 0;
+  max-width: 560px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: var(--warn-bg);
+  color: var(--warn-fg);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.welcome-art {
+  flex: 1 1 520px;
+  min-width: 0;
+  min-height: 520px;
+  position: relative;
+  overflow: hidden;
+  background: var(--console);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.welcome-stack {
+  position: relative;
+  width: 460px;
+  height: 460px;
+  max-width: 90%;
+}
+
+.welcome-photo {
+  position: absolute;
+  border-radius: 10px;
+  box-shadow: 0 30px 60px var(--shadow);
+}
+
+.stack-1 {
+  left: 6%;
+  top: 18%;
+  width: 54%;
+  height: 62%;
+  background: var(--photo-1);
+}
+
+.stack-2 {
+  left: 40%;
+  top: 6%;
+  width: 50%;
+  height: 44%;
+  background: var(--photo-2);
+}
+
+.stack-3 {
+  left: 22%;
+  top: 30%;
+  width: 58%;
+  height: 52%;
+  background: var(--photo-3);
+  box-shadow: 0 40px 80px var(--shadow);
+}
+
+.stack-4 {
+  left: 58%;
+  top: 58%;
+  width: 36%;
+  height: 34%;
+  background: var(--photo-4);
 }

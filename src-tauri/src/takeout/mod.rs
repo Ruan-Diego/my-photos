@@ -280,7 +280,7 @@ fn logical_dir(directory: &str) -> String {
 }
 
 /// `takeout-20260921T183943Z-1-002` → `takeout-20260921T183943Z`.
-fn takeout_export(component: &str) -> Option<&str> {
+pub(crate) fn takeout_export(component: &str) -> Option<&str> {
     let prefix = component.get(..8)?;
     if !prefix.eq_ignore_ascii_case("takeout-") {
         return None;

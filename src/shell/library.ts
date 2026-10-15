@@ -13,7 +13,8 @@ export interface DiskCard {
   tone: "ok" | "warn";
   title: string;
   detail: string;
-  action: string;
+  /** Link no rodapé do cartão; `null` quando não há o que fazer. */
+  action: string | null;
 }
 
 const count = new Intl.NumberFormat("pt-BR");
