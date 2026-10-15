@@ -63,6 +63,10 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         version: 2,
         sql: include_str!("migrations/0002_thumbnails.sql"),
     },
+    Migration {
+        version: 3,
+        sql: include_str!("migrations/0003_search.sql"),
+    },
 ];
 
 // Read by F05 and later; today only the schema tests use it.
