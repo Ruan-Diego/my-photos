@@ -34,7 +34,7 @@ No primeiro uso o app abre direto na moldura vazia. O usuário precisa ver qual 
 ## Requirements
 
 ### ONB-01 — Pasta
-1. Mostra a raiz encontrada pelo F11 (`E:\`), o nome do volume e "N exports do Takeout encontrados" (ou "nenhum export do Takeout na raiz").
+1. Mostra a raiz encontrada pelo F11 (`E:\`), o nome do volume e "N exports do Takeout encontrados" (ou "nenhum export do Takeout encontrado"). F17: também um nível abaixo da raiz (`E:\Ruan\takeout-…`).
 
 ### ONB-02 — Quando aparece
 1. Só com disco conectado, nunca indexado e sem mídias. Depois da primeira indexação, nunca mais.

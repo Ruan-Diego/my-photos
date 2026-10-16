@@ -76,7 +76,7 @@ export function Sidebar({
               {disk.action}
             </button>
           ) : (
-            // Indexação (F17) e disco desconectado (F11) ainda não têm tela: o texto já é o do canvas.
+            // Disco desconectado (F11) ainda não tem tela: o texto já é o do canvas.
             <span className="side-card-action">{disk.action}</span>
           )}
         </div>

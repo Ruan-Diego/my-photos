@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { failedCard, folderDetail, indexingCard, needsOnboarding } from "./flow.ts";
+import { failedCard, folderDetail, needsOnboarding } from "./flow.ts";
 
 const fresh = {
   connected: true,
@@ -25,16 +25,7 @@ test("ONB-01 folder line names the volume and counts the exports", () => {
     "FOTOS · 3 exports do Takeout encontrados",
   );
   assert.equal(folderDetail({ rootPath: "E:\\", volumeLabel: null, takeoutExports: 1 }), "1 export do Takeout encontrado");
-  assert.equal(folderDetail({ rootPath: "E:\\", volumeLabel: "", takeoutExports: 0 }), "nenhum export do Takeout na raiz");
-});
-
-test("ONB-03 sidebar card follows the run", () => {
-  assert.equal(indexingCard("E:\\", { stage: "scanning", done: 0, total: 0 }).detail, "procurando arquivos");
-  assert.equal(indexingCard("E:\\", { stage: "matching", done: 0, total: 0 }).detail, "lendo os JSONs do Takeout");
-  const resolving = indexingCard("E:\\", { stage: "resolving", done: 1200, total: 6132 });
-  assert.equal(resolving.title, "Indexando E:\\");
-  assert.equal(resolving.detail, "1.200 de 6.132 mídias");
-  assert.equal(resolving.action, null);
+  assert.equal(folderDetail({ rootPath: "E:\\", volumeLabel: "", takeoutExports: 0 }), "nenhum export do Takeout encontrado");
 });
 
 test("ONB-04 a failed run explains itself and offers to try again", () => {

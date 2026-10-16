@@ -9,6 +9,8 @@
     "allow-app-health",
     "allow-library-summary",
     "allow-library-folder",
-    "allow-start-indexing"
+    "allow-start-indexing",
+    "allow-pause-indexing",
+    "allow-recent-thumbnails"
   ]
 }

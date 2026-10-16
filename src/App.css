@@ -562,3 +562,273 @@ button.side-card-action {
   height: 34%;
   background: var(--photo-4);
 }
+
+/* F17 Progresso da indexação (artboard `Indexing`) */
+
+.indexing {
+  min-height: 100%;
+  box-sizing: border-box;
+  padding: 48px clamp(20px, 5vw, 80px);
+  background: var(--ground);
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.indexing-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.indexing-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.button-line,
+.button-solid {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 18px;
+  box-sizing: border-box;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.button-line {
+  border: 1px solid var(--line-strong);
+  background: transparent;
+  color: var(--ink);
+}
+
+.button-line:disabled {
+  cursor: progress;
+  color: var(--muted);
+}
+
+.button-solid,
+.button-solid:hover {
+  border: 0;
+  background: var(--ink);
+  color: var(--ground);
+}
+
+.indexing-run {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.indexing-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.indexing-title {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.indexing-title h1 {
+  margin: 0;
+  font-size: 44px;
+  letter-spacing: -0.03em;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.indexing-percent {
+  font-size: 16px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.indexing-bar {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.indexing-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent-fill);
+}
+
+.indexing-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.indexing-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.indexing-step-done {
+  background: var(--line);
+  color: var(--ink);
+}
+
+.indexing-step-current {
+  background: var(--ink);
+  color: var(--ground);
+}
+
+.indexing-step-todo {
+  background: transparent;
+  color: var(--muted);
+}
+
+.indexing-step-mark {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  box-sizing: border-box;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  border: 1.5px solid currentColor;
+}
+
+.indexing-detail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.indexing-counts {
+  flex: 1 1 380px;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.indexing-count {
+  padding: 18px 20px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.indexing-count span {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.indexing-count strong {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.indexing-problems,
+.indexing-problems:hover {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px;
+  border-radius: 14px;
+  background: var(--warn-bg);
+  color: var(--warn-fg);
+  text-decoration: none;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.indexing-arrivals {
+  flex: 1 1 460px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.indexing-arrivals-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.indexing-arrivals-head h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.indexing-arrivals-head span {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.indexing-tiles {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.indexing-tile {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+.indexing-tile-empty {
+  background: var(--sunken);
+}
+
+.indexing-console {
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: var(--console);
+  color: var(--console-ink);
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.7;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.indexing-console-warn {
+  color: var(--console-warn);
+}
+
+.indexing-console-quiet {
+  opacity: 0.6;
+}

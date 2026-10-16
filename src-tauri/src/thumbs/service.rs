@@ -136,6 +136,12 @@ impl ThumbService {
 
     /// Blocks until nothing is queued or in progress. `progress(done, queued)`.
     pub fn wait_idle(&self, progress: &mut dyn FnMut(u64, u64)) {
+        self.wait_idle_until(&|| false, progress);
+    }
+
+    /// `wait_idle` that also returns, `false`, as soon as `stop()` says so (checked at
+    /// least every 500 ms). `true` when the queue ran dry.
+    pub fn wait_idle_until(&self, stop: &dyn Fn() -> bool, progress: &mut dyn FnMut(u64, u64)) -> bool {
         let mut reported = None;
         let mut state = self.shared.lock();
         loop {
@@ -145,7 +151,10 @@ impl ThumbService {
                 progress(now.0, now.1);
             }
             if state.queue.is_empty() && state.busy == 0 {
-                return;
+                return true;
+            }
+            if stop() {
+                return false;
             }
             state = self
                 .shared

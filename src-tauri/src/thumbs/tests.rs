@@ -84,7 +84,7 @@ impl Library {
             root,
             connection,
         } = self;
-        let (connection, summary) = generate_with(connection, &root, size, workers, None, &mut |_, _| {});
+        let (connection, summary) = generate_with(connection, &root, size, workers, None, &mut |_, _| {}, &|| false);
         (
             Self {
                 _scratch,
