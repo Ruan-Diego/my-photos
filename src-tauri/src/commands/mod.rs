@@ -1,6 +1,7 @@
 pub mod health;
 pub mod library;
 pub mod onboarding;
+pub mod timeline;
 
 #[cfg(test)]
 mod tests {

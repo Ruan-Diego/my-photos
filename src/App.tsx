@@ -26,6 +26,8 @@ import { diskCard, type LibrarySummary } from "./shell/library";
 import { SectionPage } from "./shell/SectionPage";
 import { sectionById, sectionFromHash, type SectionId } from "./shell/sections";
 import { Sidebar } from "./shell/Sidebar";
+import { TimelineScreen } from "./timeline/TimelineScreen";
+import type { TimelineData } from "./timeline/timeline";
 import { applyTheme, loadTheme, saveTheme, type ThemeChoice } from "./theme/theme";
 import "@fontsource/hanken-grotesk/400.css";
 import "@fontsource/hanken-grotesk/500.css";
@@ -80,6 +82,34 @@ function useLibrary(): [LibrarySummary | null | undefined, () => void] {
   return [summary, reload];
 }
 
+/** F18: as mídias da linha do tempo, relidas quando o resumo do disco muda (fim da indexação). */
+function useTimeline(enabled: boolean, summary: LibrarySummary | null | undefined): [TimelineData | null, string | null] {
+  const [data, setData] = useState<TimelineData | null>(null);
+  const [failure, setFailure] = useState<string | null>(null);
+  useEffect(() => {
+    if (!enabled || summary === undefined) {
+      return;
+    }
+    let current = true;
+    invoke<TimelineData>("timeline")
+      .then((timeline) => {
+        if (current) {
+          setData(timeline);
+          setFailure(null);
+        }
+      })
+      .catch((error) => {
+        if (current) {
+          setFailure(errorText(error));
+        }
+      });
+    return () => {
+      current = false;
+    };
+  }, [enabled, summary]);
+  return [data, failure];
+}
+
 const THUMBNAIL_POLL_MS = 1500;
 
 function App() {
@@ -101,6 +131,7 @@ function App() {
   const [thumbnails, setThumbnails] = useState<RecentThumbnail[]>([]);
   const [lines, setLines] = useState<LogLine[]>([]);
   const seenThumbnails = useRef(new Set<number>());
+  const [timeline, timelineFailure] = useTimeline(active === "timeline", summary);
 
   useEffect(() => {
     linkedMotionLibraries();
@@ -261,13 +292,17 @@ function App() {
     <MotionConfig reducedMotion="user">
       <div className="shell">
         <Sidebar active={active} disk={disk} onDiskAction={onDiskAction} />
-        <SectionPage key={section.id} section={section}>
-          {section.id === "settings" ? (
-            <div className="settings">
-              <Appearance theme={theme} onChange={setTheme} />
-            </div>
-          ) : undefined}
-        </SectionPage>
+        {section.id === "timeline" ? (
+          <TimelineScreen data={timeline} failure={timelineFailure} />
+        ) : (
+          <SectionPage key={section.id} section={section}>
+            {section.id === "settings" ? (
+              <div className="settings">
+                <Appearance theme={theme} onChange={setTheme} />
+              </div>
+            ) : undefined}
+          </SectionPage>
+        )}
       </div>
     </MotionConfig>
   );

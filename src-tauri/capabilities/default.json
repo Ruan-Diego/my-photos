@@ -11,6 +11,7 @@
     "allow-library-folder",
     "allow-start-indexing",
     "allow-pause-indexing",
-    "allow-recent-thumbnails"
+    "allow-recent-thumbnails",
+    "allow-timeline"
   ]
 }
