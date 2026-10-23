@@ -40,6 +40,17 @@
   --console-ink: #d9d1c3;
   --console-warn: #e9a585;
 
+  /* Visualizador (artboard `Viewer`): sempre escuro, nos dois temas (regra 2). */
+  --viewer-ground: #12110f;
+  --viewer-ink: #f1ece3;
+  --viewer-soft: #d4ccbe;
+  --viewer-muted: #a39a8c;
+  --viewer-group: #24221e;
+  --viewer-pressed: #3a3631;
+  --viewer-button: #2b2824;
+  --viewer-arrow: rgba(36, 34, 30, 0.85);
+  --viewer-accent: #e07a4c;
+
   --font: "Hanken Grotesk", "Segoe UI", system-ui, sans-serif;
   --mono: "Cascadia Mono", Consolas, monospace;
 }

@@ -34,6 +34,9 @@ export interface Item {
   favorite: boolean;
   /** ms, só de vídeo com duração conhecida. */
   duration: number | null;
+  /** Segundos Unix e fuso, como no `TimelineData`. */
+  time: number | null;
+  offset: number | null;
 }
 
 export interface Day {
@@ -50,25 +53,41 @@ export interface Month {
   days: Day[];
 }
 
-const MONTHS = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
-const WEEKDAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+export const MONTHS = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+export const WEEKDAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const count = new Intl.NumberFormat("pt-BR");
 
-interface Calendar {
+export interface Calendar {
   year: number;
   month: number;
   day: number;
   weekday: number;
+  hour: number;
+  minute: number;
 }
 
 /** O dia em que a foto foi tirada: no fuso dela quando conhecido, senão no do PC. */
 export function calendar(time: number, offset: number | null): Calendar {
   if (offset !== null) {
     const date = new Date((time + offset * 60) * 1000);
-    return { year: date.getUTCFullYear(), month: date.getUTCMonth(), day: date.getUTCDate(), weekday: date.getUTCDay() };
+    return {
+      year: date.getUTCFullYear(),
+      month: date.getUTCMonth(),
+      day: date.getUTCDate(),
+      weekday: date.getUTCDay(),
+      hour: date.getUTCHours(),
+      minute: date.getUTCMinutes(),
+    };
   }
   const date = new Date(time * 1000);
-  return { year: date.getFullYear(), month: date.getMonth(), day: date.getDate(), weekday: date.getDay() };
+  return {
+    year: date.getFullYear(),
+    month: date.getMonth(),
+    day: date.getDate(),
+    weekday: date.getDay(),
+    hour: date.getHours(),
+    minute: date.getMinutes(),
+  };
 }
 
 /** "Agosto de 2022" */
@@ -149,6 +168,8 @@ export function group(data: TimelineData, filter: Filter): Month[] {
       video: (flags & VIDEO) !== 0,
       favorite: (flags & FAVORITE) !== 0,
       duration: data.durations[index],
+      time,
+      offset: data.offsets[index],
     });
   }
   return months;

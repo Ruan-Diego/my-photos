@@ -19,6 +19,8 @@ import {
   type Line,
   type TimelineData,
 } from "./timeline";
+import { Viewer } from "../viewer/Viewer";
+import { indexOf, openedId, order, viewerHash } from "../viewer/viewer";
 
 const SIZE_KEY = "myphotos.timeline.size";
 
@@ -48,10 +50,11 @@ function Tile({ item, height, grow }: { item: Item; height: number; grow: boolea
   const [loaded, setLoaded] = useState(false);
   const size = basis(item.ratio, height);
   return (
-    <div
+    <a
       className="tile"
-      role="img"
+      href={viewerHash(item.id)}
       aria-label={item.video ? "Vídeo" : "Foto"}
+      draggable={false}
       style={{ flex: `${grow ? clampRatio(item.ratio) : 0} 1 ${size}px`, height }}
     >
       <img
@@ -75,7 +78,7 @@ function Tile({ item, height, grow }: { item: Item; height: number; grow: boolea
           <path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" />
         </svg>
       ) : null}
-    </div>
+    </a>
   );
 }
 
@@ -106,7 +109,19 @@ function TimelineLine({ line, height }: { line: Line; height: number }) {
   }
 }
 
+/** F19: `#/fotos/<id>` abre o visualizador por cima da grade, que fica onde estava. */
+function useOpened(): number | null {
+  const [opened, setOpened] = useState(() => openedId(window.location.hash));
+  useEffect(() => {
+    const follow = () => setOpened(openedId(window.location.hash));
+    window.addEventListener("hashchange", follow);
+    return () => window.removeEventListener("hashchange", follow);
+  }, []);
+  return opened;
+}
+
 export function TimelineScreen({ data, failure }: { data: TimelineData | null; failure: string | null }) {
+  const opened = useOpened();
   const [filter, setFilter] = useState<Filter>("all");
   const [size, setSize] = useState(loadSize);
   const scroller = useRef<HTMLDivElement>(null);
@@ -166,6 +181,9 @@ export function TimelineScreen({ data, failure }: { data: TimelineData | null; f
       }
     });
   };
+
+  const entries = useMemo(() => order(months), [months]);
+  const openedIndex = opened === null ? -1 : indexOf(entries, opened);
 
   const empty = data !== null && months.length === 0 ? emptyText(filter, data.ids.length) : null;
 
@@ -241,6 +259,7 @@ export function TimelineScreen({ data, failure }: { data: TimelineData | null; f
           </nav>
         ) : null}
       </div>
+      {openedIndex >= 0 ? <Viewer entries={entries} index={openedIndex} /> : null}
     </main>
   );
 }
