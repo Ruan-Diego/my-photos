@@ -32,8 +32,13 @@ pub fn run() {
             commands::onboarding::library_folder,
             commands::onboarding::start_indexing,
             commands::onboarding::pause_indexing,
-            commands::onboarding::recent_thumbnails
+            commands::onboarding::recent_thumbnails,
+            commands::timeline::timeline
         ])
+        .register_asynchronous_uri_scheme_protocol(
+            commands::timeline::THUMB_SCHEME,
+            commands::timeline::serve_thumbnail,
+        )
         .build(tauri::generate_context!())
         .expect("error while building tauri application");
 
