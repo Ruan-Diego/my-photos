@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { group, type TimelineData } from "../timeline/timeline.ts";
-import { dateLine, fallbackNote, indexOf, openedId, order, positionLine, stripWindow, viewerHash } from "./viewer.ts";
+import { dateLine, fallbackNote, indexOf, openedId, order, positionLine, stripWindow, viewerHash } from "./navigation.ts";
 
 // 2022-08-10T14:37Z e 09:00Z no mesmo dia (UTC), 2021-07-23T18:00Z, e uma sem data.
 const DATA: TimelineData = {

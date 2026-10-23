@@ -9,7 +9,7 @@ import {
   viewerHash,
   type Entry,
   type Zoom,
-} from "./viewer";
+} from "./navigation";
 
 interface MediaInfo {
   id: number;

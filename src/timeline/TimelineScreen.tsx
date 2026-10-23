@@ -20,7 +20,7 @@ import {
   type TimelineData,
 } from "./timeline";
 import { Viewer } from "../viewer/Viewer";
-import { indexOf, openedId, order, viewerHash } from "../viewer/viewer";
+import { indexOf, openedId, order, viewerHash } from "../viewer/navigation";
 
 const SIZE_KEY = "myphotos.timeline.size";
 

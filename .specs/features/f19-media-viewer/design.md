@@ -8,7 +8,7 @@
 
 ## React
 
-- `src/viewer/viewer.ts`: `order` (a grade em fila, com "N de M" no dia), `dateLine`, `stripWindow`, `openedId`/`viewerHash`, `fallbackNote`.
+- `src/viewer/navigation.ts`: `order` (a grade em fila, com "N de M" no dia), `dateLine`, `stripWindow`, `openedId`/`viewerHash`, `fallbackNote`.
 - `src/viewer/Viewer.tsx`: sobreposição fixa sobre a tela; cabeçalho, palco, setas e tira. No modo Ajustar, a foto ocupa o maior retângulo na proporção da miniatura (já girada), com a miniatura por baixo e o original por cima (opacidade 180 ms; sem animação com reduzir movimento). No modo 100% o palco rola e se arrasta com o ponteiro.
 - `TimelineScreen.tsx`: as miniaturas viram links `#/fotos/<id>`; com o endereço de uma mídia, o `Viewer` abre por cima.
 - Tokens próprios (`--viewer-*` em `tokens.css`), iguais nos dois temas: o canvas só tem o visualizador escuro.
