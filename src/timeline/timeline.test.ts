@@ -41,7 +41,7 @@ test("TL-01 groups by month and day in the photo's own time zone", () => {
     ],
   );
   assert.deepEqual(years(months), [2022, 2021]);
-  assert.deepEqual(months[0].days[1].items[1], { id: 2, ratio: 1.78, video: true, favorite: false, duration: 138000 });
+  assert.deepEqual(months[0].days[1].items[1], { id: 2, ratio: 1.78, video: true, favorite: false, duration: 138000, time: 1660122000, offset: 0 });
 });
 
 test("TL-02 filters keep photos, videos or favorites", () => {
@@ -63,7 +63,7 @@ test("TL-03 labels and durations read like the canvas", () => {
 });
 
 function item(id: number, ratio: number): Item {
-  return { id, ratio, video: false, favorite: false, duration: null };
+  return { id, ratio, video: false, favorite: false, duration: null, time: null, offset: null };
 }
 
 test("TL-04 rows wrap like the canvas flex-wrap", () => {

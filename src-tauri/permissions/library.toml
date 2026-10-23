@@ -1,4 +1,4 @@
-# F15/F16/F17/F18: the disk card, the indexing run, its progress screen and the timeline. With any app
+# F15–F19: the disk card, the indexing run, its progress screen, the timeline and the viewer. With any app
 # permission defined here, Tauri denies every app command no capability allows.
 
 [[permission]]
@@ -30,3 +30,8 @@ commands.allow = ["recent_thumbnails"]
 identifier = "allow-timeline"
 description = "Enables the timeline command."
 commands.allow = ["timeline"]
+
+[[permission]]
+identifier = "allow-media-details"
+description = "Enables the media_details command."
+commands.allow = ["media_details"]

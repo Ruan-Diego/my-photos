@@ -998,6 +998,7 @@ button.side-card-action {
 /* Placeholder até a miniatura chegar; a foto nunca muda de cor com o tema. */
 .tile {
   position: relative;
+  display: block;
   min-width: 0;
   border-radius: 4px;
   overflow: hidden;
@@ -1085,4 +1086,230 @@ button.side-card-action {
   font-weight: 700;
   color: var(--ground);
   background: var(--accent-fill);
+}
+
+/* F19: visualizador (artboard `Viewer`), sempre escuro. */
+
+.viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  background: var(--viewer-ground);
+  color: var(--viewer-ink);
+  color-scheme: dark;
+}
+
+.viewer-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+}
+
+.viewer-icon {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border: 0;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--viewer-ink);
+  cursor: pointer;
+}
+
+.viewer-icon:hover:not(:disabled) {
+  background: var(--viewer-button);
+}
+
+.viewer-icon[aria-pressed="true"] {
+  color: var(--viewer-accent);
+}
+
+.viewer-icon:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.viewer-title {
+  flex: 1 1 200px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.viewer-title span:first-child {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.viewer-title span:last-child {
+  font-size: 13px;
+  color: var(--viewer-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.viewer-zoom {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--viewer-group);
+}
+
+.viewer-zoom button {
+  min-height: 38px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--viewer-soft);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.viewer-zoom button[aria-pressed="true"] {
+  background: var(--viewer-pressed);
+  color: var(--viewer-ink);
+}
+
+.viewer-zoom button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.viewer-stage {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 72px;
+}
+
+.viewer-stage-actual {
+  display: block;
+  overflow: auto;
+  padding: 0;
+  cursor: grab;
+}
+
+.viewer-stage-actual:active {
+  cursor: grabbing;
+}
+
+.viewer-actual {
+  display: block;
+  margin: auto;
+  max-width: none;
+  user-select: none;
+}
+
+.viewer-photo {
+  position: relative;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+/* A foto nunca muda (regra 1): sem filtro nem tinta, só a miniatura por baixo até o original chegar. */
+.viewer-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  user-select: none;
+}
+
+.viewer-layer-loading {
+  opacity: 0;
+}
+
+.viewer-layer-ready {
+  opacity: 1;
+  transition: opacity 180ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .viewer-layer-ready {
+    transition: none;
+  }
+}
+
+.viewer-note {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  max-width: calc(100% - 32px);
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(241, 236, 227, 0.85);
+  color: #1c1915;
+  font-size: 13px;
+}
+
+.viewer-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--viewer-arrow);
+  color: var(--viewer-ink);
+}
+
+.viewer-stage-actual .viewer-arrow {
+  position: fixed;
+}
+
+.viewer-arrow-previous {
+  left: 14px;
+}
+
+.viewer-arrow-next {
+  right: 14px;
+}
+
+.viewer-strip {
+  display: flex;
+  gap: 4px;
+  padding: 12px 20px 18px;
+  overflow-x: auto;
+  justify-content: center;
+}
+
+.viewer-strip-tile {
+  flex: none;
+  width: 56px;
+  height: 56px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--viewer-button);
+  opacity: 0.6;
+  outline-offset: 2px;
+}
+
+.viewer-strip-tile[aria-current="true"] {
+  opacity: 1;
+  outline: 2px solid var(--viewer-ink);
+}
+
+.viewer-strip-tile img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
