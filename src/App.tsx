@@ -25,6 +25,8 @@ import { Appearance } from "./shell/Appearance";
 import { diskCard, type LibrarySummary } from "./shell/library";
 import { SectionPage } from "./shell/SectionPage";
 import { sectionById, sectionFromHash, type SectionId } from "./shell/sections";
+import { SearchScreen } from "./search/SearchScreen";
+import { SEARCH_HASH } from "./search/query";
 import { Sidebar } from "./shell/Sidebar";
 import { TimelineScreen } from "./timeline/TimelineScreen";
 import type { TimelineData } from "./timeline/timeline";
@@ -131,10 +133,27 @@ function App() {
   const [thumbnails, setThumbnails] = useState<RecentThumbnail[]>([]);
   const [lines, setLines] = useState<LogLine[]>([]);
   const seenThumbnails = useRef(new Set<number>());
-  const [timeline, timelineFailure] = useTimeline(active === "timeline", summary);
+  // A busca (F22) monta os resultados com os itens da linha do tempo.
+  const [timeline, timelineFailure] = useTimeline(active === "timeline" || active === "search", summary);
 
   useEffect(() => {
     linkedMotionLibraries();
+  }, []);
+
+  // Ctrl F abre a busca (F22) de qualquer tela; nela, só volta o foco à caixa.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === "f") {
+        event.preventDefault();
+        if (!window.location.hash.startsWith(SEARCH_HASH)) {
+          window.location.hash = SEARCH_HASH;
+        } else {
+          document.querySelector<HTMLInputElement>(".search-box input")?.focus();
+        }
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, []);
 
   // A indexação roda no Rust; daqui só se ouve o progresso e o fim.
@@ -297,6 +316,8 @@ function App() {
         <Sidebar active={active} disk={disk} onDiskAction={onDiskAction} />
         {section.id === "timeline" ? (
           <TimelineScreen data={timeline} failure={timelineFailure} />
+        ) : section.id === "search" ? (
+          <SearchScreen data={timeline} />
         ) : (
           <SectionPage key={section.id} section={section}>
             {section.id === "settings" ? (

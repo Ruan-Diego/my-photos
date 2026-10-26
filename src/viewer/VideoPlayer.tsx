@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Item } from "../timeline/timeline";
 import { DetailsPanel, useDetailsOpen } from "./DetailsPanel";
 import { fit, icon, originalUrl, thumbnailUrl, useMediaInfo } from "./media";
-import { clock, dateLine, seek, SEEK_STEP, TIMELINE_HASH, videoLine, videoProblem } from "./navigation";
+import { backHash, backLabel, clock, dateLine, seek, SEEK_STEP, videoLine, videoProblem, type ViewerBase } from "./navigation";
 
 const VOLUME_KEY = "myphotos.player.volume";
 /** Largura máxima do quadro no canvas. */
@@ -37,7 +37,7 @@ function bufferedEnd(video: HTMLVideoElement): number {
 }
 
 /** F20: player do artboard `Video`. Toca o original direto do disco, em trechos. */
-export function VideoPlayer({ item }: { item: Item }) {
+export function VideoPlayer({ item, base = "fotos" }: { item: Item; base?: ViewerBase }) {
   const info = useMediaInfo(item.id);
   const video = useRef<HTMLVideoElement>(null);
   const frame = useRef<HTMLDivElement>(null);
@@ -124,7 +124,7 @@ export function VideoPlayer({ item }: { item: Item }) {
         if (document.fullscreenElement !== null) {
           return;
         }
-        window.location.hash = TIMELINE_HASH;
+        window.location.hash = backHash(base);
       } else if (!ready || element === null) {
         return;
       } else if (event.key === " ") {
@@ -151,7 +151,7 @@ export function VideoPlayer({ item }: { item: Item }) {
     <div className="viewer player" role="dialog" aria-modal="true" aria-label="Reproduzir vídeo">
       <div className="viewer-main">
         <header className="viewer-header">
-          <a className="viewer-icon" href={TIMELINE_HASH} aria-label="Voltar para Fotos">
+          <a className="viewer-icon" href={backHash(base)} aria-label={backLabel(base)}>
             <svg width="22" height="22" viewBox="0 0 24 24" {...icon} aria-hidden="true">
               <path d="M19 12H5M11 6l-6 6 6 6" />
             </svg>
