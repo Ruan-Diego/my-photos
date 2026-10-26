@@ -286,6 +286,9 @@ function App() {
   } else if (interrupted(summary)) {
     disk = interruptedCard(summary?.mediaCount ?? 0);
     onDiskAction = startIndexing;
+  } else if (summary?.connected === true) {
+    // "Procurar arquivos novos": varredura incremental.
+    onDiskAction = startIndexing;
   }
   const section = sectionById(active);
   return (

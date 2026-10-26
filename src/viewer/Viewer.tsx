@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { convertFileSrc, invoke } from "@tauri-apps/api/core";
+import { fit, icon, originalUrl, thumbnailUrl, useMediaInfo } from "./media";
+import { VideoPlayer } from "./VideoPlayer";
 import {
   dateLine,
   fallbackNote,
@@ -11,56 +12,13 @@ import {
   type Zoom,
 } from "./navigation";
 
-interface MediaInfo {
-  id: number;
-  filename: string;
-  relativePath: string;
-  extension: string;
-  video: boolean;
-  viewable: boolean;
-  width: number | null;
-  height: number | null;
-}
-
-function thumbnailUrl(id: number): string {
-  return convertFileSrc(String(id), "thumb");
-}
-
-/** `http://media.localhost/1066` no Windows: o original, pelo protocolo `media` do Rust. */
-function originalUrl(id: number): string {
-  return convertFileSrc(String(id), "media");
-}
-
-/** O maior retângulo na proporção da foto que cabe na área. */
-function fit(ratio: number, width: number, height: number): { width: number; height: number } {
-  if (width <= 0 || height <= 0) {
-    return { width: 0, height: 0 };
-  }
-  return width / height > ratio ? { width: height * ratio, height } : { width, height: width / ratio };
-}
-
-function useMediaInfo(id: number): MediaInfo | null {
-  const [info, setInfo] = useState<MediaInfo | null>(null);
-  useEffect(() => {
-    let current = true;
-    setInfo(null);
-    invoke<MediaInfo | null>("media_details", { id })
-      .then((found) => {
-        if (current) {
-          setInfo(found);
-        }
-      })
-      .catch(() => undefined);
-    return () => {
-      current = false;
-    };
-  }, [id]);
-  return info;
-}
-
-const icon = { fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round" } as const;
-
+/** Foto no visualizador (F19); vídeo no player (F20, artboard `Video`). */
 export function Viewer({ entries, index }: { entries: Entry[]; index: number }) {
+  const item = entries[index].item;
+  return item.video ? <VideoPlayer key={item.id} item={item} /> : <PhotoViewer entries={entries} index={index} />;
+}
+
+function PhotoViewer({ entries, index }: { entries: Entry[]; index: number }) {
   const entry = entries[index];
   const item = entry.item;
   const info = useMediaInfo(item.id);

@@ -1313,3 +1313,185 @@ button.side-card-action {
   height: 100%;
   object-fit: cover;
 }
+
+/* F20: player de vídeo (artboard `Video`), sempre escuro. */
+
+.player-stage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 20px;
+}
+
+.player-frame {
+  position: relative;
+  flex: none;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--viewer-button);
+}
+
+.player-frame-full {
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+  background: var(--viewer-ground);
+}
+
+.player-video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: var(--viewer-ground);
+}
+
+.player-note {
+  top: 16px;
+  bottom: auto;
+}
+
+.player-big {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  border: 0;
+  background: rgba(18, 17, 15, 0.7);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.player-controls {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 40px 18px 14px;
+  background: linear-gradient(transparent, rgba(18, 17, 15, 0.85));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  color: #fff;
+}
+
+.player-track {
+  position: relative;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(241, 236, 227, 0.25);
+}
+
+.player-loaded,
+.player-played {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  border-radius: 999px;
+}
+
+.player-loaded {
+  background: rgba(241, 236, 227, 0.35);
+}
+
+.player-played {
+  background: var(--viewer-accent);
+}
+
+.player-knob {
+  position: absolute;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border-radius: 50%;
+  background: #fff;
+  pointer-events: none;
+}
+
+/* O controle real fica por cima da trilha desenhada, invisível, para mouse e teclado. */
+.player-seek {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -9px;
+  width: 100%;
+  height: 24px;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.player-track:focus-within {
+  outline: 2px solid var(--viewer-ink);
+  outline-offset: 4px;
+}
+
+.player-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.player-button {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.player-time {
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.player-spacer {
+  flex: 1;
+}
+
+.player-volume {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.player-volume input {
+  width: 96px;
+  accent-color: var(--viewer-accent);
+}
+
+.player-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px 20px;
+  padding: 14px 24px 22px;
+  font-size: 13px;
+  color: var(--viewer-muted);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
