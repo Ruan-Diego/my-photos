@@ -35,3 +35,8 @@ commands.allow = ["timeline"]
 identifier = "allow-media-details"
 description = "Enables the media_details command."
 commands.allow = ["media_details"]
+
+[[permission]]
+identifier = "allow-media-panel-details"
+description = "Enables the media_panel_details command."
+commands.allow = ["media_panel_details"]

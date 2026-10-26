@@ -34,7 +34,8 @@ pub fn run() {
             commands::onboarding::pause_indexing,
             commands::onboarding::recent_thumbnails,
             commands::timeline::timeline,
-            commands::viewer::media_details
+            commands::viewer::media_details,
+            commands::details::media_panel_details
         ])
         .register_asynchronous_uri_scheme_protocol(
             commands::timeline::THUMB_SCHEME,

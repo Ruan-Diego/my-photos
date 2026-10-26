@@ -13,6 +13,7 @@
     "allow-pause-indexing",
     "allow-recent-thumbnails",
     "allow-timeline",
-    "allow-media-details"
+    "allow-media-details",
+    "allow-media-panel-details"
   ]
 }
