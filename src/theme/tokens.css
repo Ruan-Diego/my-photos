@@ -50,6 +50,13 @@
   --viewer-button: #2b2824;
   --viewer-arrow: rgba(36, 34, 30, 0.85);
   --viewer-accent: #e07a4c;
+  /* F21: painel Detalhes, escuro como o visualizador. */
+  --viewer-panel: #1b1a17;
+  --viewer-grid: #34312c;
+  --viewer-ok-bg: #2e3a31;
+  --viewer-ok-fg: #b9dcc1;
+  --viewer-warn-bg: #3a2419;
+  --viewer-warn-fg: #f3b593;
 
   --font: "Hanken Grotesk", "Segoe UI", system-ui, sans-serif;
   --mono: "Cascadia Mono", Consolas, monospace;

@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Item } from "../timeline/timeline";
+import { DetailsPanel, useDetailsOpen } from "./DetailsPanel";
 import { fit, icon, originalUrl, thumbnailUrl, useMediaInfo } from "./media";
 import { clock, dateLine, seek, SEEK_STEP, TIMELINE_HASH, videoLine, videoProblem } from "./navigation";
 
@@ -49,6 +50,7 @@ export function VideoPlayer({ item }: { item: Item }) {
   const [volume, setVolume] = useState(loadVolume);
   const [failed, setFailed] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
+  const [detailsOpen, toggleDetails] = useDetailsOpen();
 
   const problem = videoProblem(info, failed);
   const ready = info !== null && info.id === item.id && problem === null;
@@ -147,126 +149,135 @@ export function VideoPlayer({ item }: { item: Item }) {
 
   return (
     <div className="viewer player" role="dialog" aria-modal="true" aria-label="Reproduzir vídeo">
-      <header className="viewer-header">
-        <a className="viewer-icon" href={TIMELINE_HASH} aria-label="Voltar para Fotos">
-          <svg width="22" height="22" viewBox="0 0 24 24" {...icon} aria-hidden="true">
-            <path d="M19 12H5M11 6l-6 6 6 6" />
-          </svg>
-        </a>
-        <div className="viewer-title">
-          <span>{dateLine(item)}</span>
-          <span>{info === null ? " " : videoLine(info)}</span>
-        </div>
-        <button type="button" className="viewer-icon" aria-label="Favoritar" aria-pressed={item.favorite} disabled title="Favoritar chega com a F26">
-          <svg width="22" height="22" viewBox="0 0 24 24" {...icon} fill={item.favorite ? "currentColor" : "none"} aria-hidden="true">
-            <path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" />
-          </svg>
-        </button>
-        <button type="button" className="viewer-icon" aria-label="Mostrar detalhes" disabled title="O painel de detalhes chega com a F21">
-          <svg width="22" height="22" viewBox="0 0 24 24" {...icon} aria-hidden="true">
-            <circle cx="12" cy="12" r="9" />
-            <path d="M12 11v6M12 7.5v.01" />
-          </svg>
-        </button>
-      </header>
+      <div className="viewer-main">
+        <header className="viewer-header">
+          <a className="viewer-icon" href={TIMELINE_HASH} aria-label="Voltar para Fotos">
+            <svg width="22" height="22" viewBox="0 0 24 24" {...icon} aria-hidden="true">
+              <path d="M19 12H5M11 6l-6 6 6 6" />
+            </svg>
+          </a>
+          <div className="viewer-title">
+            <span>{dateLine(item)}</span>
+            <span>{info === null ? " " : videoLine(info)}</span>
+          </div>
+          <button type="button" className="viewer-icon" aria-label="Favoritar" aria-pressed={item.favorite} disabled title="Favoritar chega com a F26">
+            <svg width="22" height="22" viewBox="0 0 24 24" {...icon} fill={item.favorite ? "currentColor" : "none"} aria-hidden="true">
+              <path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            className="viewer-icon viewer-toggle"
+            aria-label={detailsOpen ? "Ocultar detalhes" : "Mostrar detalhes"}
+            aria-pressed={detailsOpen}
+            onClick={toggleDetails}
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" {...icon} aria-hidden="true">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 11v6M12 7.5v.01" />
+            </svg>
+          </button>
+        </header>
 
-      <div ref={stage} className="player-stage">
-        <div
-          ref={frame}
-          className={fullscreen ? "player-frame player-frame-full" : "player-frame"}
-          style={fullscreen ? undefined : { width: box.width, height: box.height }}
-        >
-          {ready ? (
-            <video
-              ref={video}
-              className="player-video"
-              src={originalUrl(item.id)}
-              poster={thumbnailUrl(item.id)}
-              preload="metadata"
-              playsInline
-              onClick={toggle}
-              onPlay={() => setPaused(false)}
-              onPause={() => setPaused(true)}
-              onTimeUpdate={(event) => setTime(event.currentTarget.currentTime)}
-              onDurationChange={(event) => {
-                if (Number.isFinite(event.currentTarget.duration)) {
-                  setDuration(event.currentTarget.duration);
-                }
-              }}
-              onProgress={(event) => setBuffered(bufferedEnd(event.currentTarget))}
-              onError={() => setFailed(true)}
-            />
-          ) : (
-            <img className="player-video" src={thumbnailUrl(item.id)} alt="" draggable={false} />
-          )}
-          {problem !== null ? <span className="viewer-note player-note">{problem}</span> : null}
-          {ready && paused ? (
-            <button type="button" className="player-big" aria-label="Reproduzir" onClick={toggle}>
-              <svg width="34" height="34" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                <path d="M8 5l12 7-12 7z" />
-              </svg>
-            </button>
-          ) : null}
-          {ready ? (
-            <div className="player-controls">
-              <div className="player-track">
-                <div className="player-loaded" style={{ width: `${loaded * 100}%` }} />
-                <div className="player-played" style={{ width: `${progress * 100}%` }} />
-                <span className="player-knob" style={{ left: `${progress * 100}%` }} />
-                <input
-                  type="range"
-                  className="player-seek"
-                  aria-label="Progresso"
-                  aria-valuetext={`${clock(time)} de ${clock(duration)}`}
-                  min={0}
-                  max={duration || 0}
-                  step={0.1}
-                  value={Math.min(time, duration || 0)}
-                  onChange={(event) => jump(Number(event.target.value))}
-                />
-              </div>
-              <div className="player-row">
-                <button type="button" className="player-button" aria-label={paused ? "Reproduzir" : "Pausar"} onClick={toggle}>
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                    <path d={paused ? "M8 5l12 7-12 7z" : "M7 5h4v14H7zM13 5h4v14h-4z"} />
-                  </svg>
-                </button>
-                <span className="player-time">
-                  {clock(time)} / {clock(duration)}
-                </span>
-                <span className="player-spacer" />
-                <label className="player-volume">
-                  <svg width="20" height="20" viewBox="0 0 24 24" {...icon} aria-hidden="true">
-                    <path d="M4 9h4l5-4v14l-5-4H4zM17 9a4 4 0 0 1 0 6" />
-                  </svg>
-                  <span className="visually-hidden">Volume</span>
+        <div ref={stage} className="player-stage">
+          <div
+            ref={frame}
+            className={fullscreen ? "player-frame player-frame-full" : "player-frame"}
+            style={fullscreen ? undefined : { width: box.width, height: box.height }}
+          >
+            {ready ? (
+              <video
+                ref={video}
+                className="player-video"
+                src={originalUrl(item.id)}
+                poster={thumbnailUrl(item.id)}
+                preload="metadata"
+                playsInline
+                onClick={toggle}
+                onPlay={() => setPaused(false)}
+                onPause={() => setPaused(true)}
+                onTimeUpdate={(event) => setTime(event.currentTarget.currentTime)}
+                onDurationChange={(event) => {
+                  if (Number.isFinite(event.currentTarget.duration)) {
+                    setDuration(event.currentTarget.duration);
+                  }
+                }}
+                onProgress={(event) => setBuffered(bufferedEnd(event.currentTarget))}
+                onError={() => setFailed(true)}
+              />
+            ) : (
+              <img className="player-video" src={thumbnailUrl(item.id)} alt="" draggable={false} />
+            )}
+            {problem !== null ? <span className="viewer-note player-note">{problem}</span> : null}
+            {ready && paused ? (
+              <button type="button" className="player-big" aria-label="Reproduzir" onClick={toggle}>
+                <svg width="34" height="34" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M8 5l12 7-12 7z" />
+                </svg>
+              </button>
+            ) : null}
+            {ready ? (
+              <div className="player-controls">
+                <div className="player-track">
+                  <div className="player-loaded" style={{ width: `${loaded * 100}%` }} />
+                  <div className="player-played" style={{ width: `${progress * 100}%` }} />
+                  <span className="player-knob" style={{ left: `${progress * 100}%` }} />
                   <input
                     type="range"
+                    className="player-seek"
+                    aria-label="Progresso"
+                    aria-valuetext={`${clock(time)} de ${clock(duration)}`}
                     min={0}
-                    max={100}
-                    value={volume}
-                    onChange={(event) => {
-                      const next = Number(event.target.value);
-                      setVolume(next);
-                      saveVolume(next);
-                    }}
+                    max={duration || 0}
+                    step={0.1}
+                    value={Math.min(time, duration || 0)}
+                    onChange={(event) => jump(Number(event.target.value))}
                   />
-                </label>
-                <button type="button" className="player-button" aria-label={fullscreen ? "Sair da tela cheia" : "Tela cheia"} onClick={toggleFullscreen}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" {...icon} aria-hidden="true">
-                    <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
-                  </svg>
-                </button>
+                </div>
+                <div className="player-row">
+                  <button type="button" className="player-button" aria-label={paused ? "Reproduzir" : "Pausar"} onClick={toggle}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                      <path d={paused ? "M8 5l12 7-12 7z" : "M7 5h4v14H7zM13 5h4v14h-4z"} />
+                    </svg>
+                  </button>
+                  <span className="player-time">
+                    {clock(time)} / {clock(duration)}
+                  </span>
+                  <span className="player-spacer" />
+                  <label className="player-volume">
+                    <svg width="20" height="20" viewBox="0 0 24 24" {...icon} aria-hidden="true">
+                      <path d="M4 9h4l5-4v14l-5-4H4zM17 9a4 4 0 0 1 0 6" />
+                    </svg>
+                    <span className="visually-hidden">Volume</span>
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      value={volume}
+                      onChange={(event) => {
+                        const next = Number(event.target.value);
+                        setVolume(next);
+                        saveVolume(next);
+                      }}
+                    />
+                  </label>
+                  <button type="button" className="player-button" aria-label={fullscreen ? "Sair da tela cheia" : "Tela cheia"} onClick={toggleFullscreen}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" {...icon} aria-hidden="true">
+                      <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
+                    </svg>
+                  </button>
+                </div>
               </div>
-            </div>
-          ) : null}
+            ) : null}
+          </div>
         </div>
-      </div>
 
-      <footer className="player-footer">
-        <span>Espaço: reproduzir/pausar · ← →: voltar/avançar 5 s · F: tela cheia · Esc: fechar</span>
-        <span>{ready ? "Tocando o original direto do disco" : " "}</span>
-      </footer>
+        <footer className="player-footer">
+          <span>Espaço: reproduzir/pausar · ← →: voltar/avançar 5 s · F: tela cheia · Esc: fechar</span>
+          <span>{ready ? "Tocando o original direto do disco" : " "}</span>
+        </footer>
+      </div>
+      {detailsOpen ? <DetailsPanel item={item} info={info} /> : null}
     </div>
   );
 }
