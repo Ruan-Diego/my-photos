@@ -73,3 +73,61 @@ export function fallbackNote(info: { video: boolean; extension: string } | null)
   }
   return `Arquivos .${info.extension.toUpperCase()} ainda não abrem no app. Esta é a miniatura.`;
 }
+
+const decimal = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 });
+
+/** "3,4 MB", "84 MB", "1,2 GB". */
+export function fileSize(bytes: number): string {
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let value = bytes;
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit += 1;
+  }
+  const rounded = value >= 10 || unit === 0 ? Math.round(value) : Math.round(value * 10) / 10;
+  return `${decimal.format(rounded)} ${units[unit]}`;
+}
+
+/** "VID_20220810_170512.mp4 · 1920 × 1080 · 84 MB": o que se sabe, nessa ordem. */
+export function videoLine(info: { filename: string; width: number | null; height: number | null; sizeBytes: number | null }): string {
+  const parts = [info.filename];
+  if (info.width !== null && info.height !== null) {
+    parts.push(`${info.width} × ${info.height}`);
+  }
+  if (info.sizeBytes !== null) {
+    parts.push(fileSize(info.sizeBytes));
+  }
+  return parts.join(" · ");
+}
+
+/** Segundos do player → "0:42", "1:02:03". */
+export function clock(seconds: number): string {
+  const total = Number.isFinite(seconds) && seconds > 0 ? Math.floor(seconds) : 0;
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const rest = String(total % 60).padStart(2, "0");
+  return hours > 0 ? `${hours}:${String(minutes).padStart(2, "0")}:${rest}` : `${minutes}:${rest}`;
+}
+
+/** Passo das setas no player (canvas: "← →: voltar/avançar 5 s"). */
+export const SEEK_STEP = 5;
+
+export function seek(current: number, delta: number, duration: number): number {
+  const end = Number.isFinite(duration) && duration > 0 ? duration : Math.max(0, current + delta);
+  return Math.min(end, Math.max(0, current + delta));
+}
+
+/** Por que o vídeo não toca; `null` enquanto pode tocar. */
+export function videoProblem(info: { playable: boolean; extension: string } | null, failed: boolean): string | null {
+  if (info === null) {
+    return null;
+  }
+  if (!info.playable) {
+    return `Vídeos .${info.extension.toUpperCase()} ainda não tocam no app. Esta é a capa.`;
+  }
+  if (failed) {
+    return "O Windows não tem o codec deste vídeo (às vezes HEVC/H.265). Esta é a capa.";
+  }
+  return null;
+}
