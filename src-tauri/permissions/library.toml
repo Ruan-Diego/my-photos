@@ -50,3 +50,8 @@ commands.allow = ["search_media"]
 identifier = "allow-search-filters"
 description = "Enables the search_filters command."
 commands.allow = ["search_filters"]
+
+[[permission]]
+identifier = "allow-people-list"
+description = "Enables the people_list command."
+commands.allow = ["people_list"]

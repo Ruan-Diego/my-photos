@@ -2,6 +2,7 @@ pub mod details;
 pub mod health;
 pub mod library;
 pub mod onboarding;
+pub mod people;
 pub mod search;
 pub mod timeline;
 pub mod viewer;
