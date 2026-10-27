@@ -1,6 +1,7 @@
 pub mod albums;
 pub mod favorites;
 pub mod bench;
+pub mod duplicates;
 mod commands;
 mod db;
 pub mod scan;
@@ -58,7 +59,8 @@ pub fn run() {
             commands::favorites::favorite_set,
             commands::problems::problems_overview,
             commands::problems::database_check,
-            commands::problems::problems_export
+            commands::problems::problems_export,
+            commands::duplicates::duplicates_list
         ])
         .register_asynchronous_uri_scheme_protocol(
             commands::timeline::THUMB_SCHEME,
