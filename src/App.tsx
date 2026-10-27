@@ -34,6 +34,9 @@ import { SearchScreen } from "./search/SearchScreen";
 import { SEARCH_HASH } from "./search/query";
 import { Sidebar } from "./shell/Sidebar";
 import { TimelineScreen } from "./timeline/TimelineScreen";
+import { FavoritesScreen } from "./favorites/FavoritesScreen";
+import { FavoriteContext, type ToggleFavorite } from "./favorites/FavoriteContext";
+import { withFavorite } from "./favorites/favorites";
 import type { TimelineData } from "./timeline/timeline";
 import { applyTheme, loadTheme, saveTheme, type ThemeChoice } from "./theme/theme";
 import "@fontsource/hanken-grotesk/400.css";
@@ -90,7 +93,10 @@ function useLibrary(): [LibrarySummary | null | undefined, () => void] {
 }
 
 /** F18: as mídias da linha do tempo, relidas quando o resumo do disco muda (fim da indexação). */
-function useTimeline(enabled: boolean, summary: LibrarySummary | null | undefined): [TimelineData | null, string | null] {
+function useTimeline(
+  enabled: boolean,
+  summary: LibrarySummary | null | undefined,
+): [TimelineData | null, string | null, ToggleFavorite] {
   const [data, setData] = useState<TimelineData | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   useEffect(() => {
@@ -114,7 +120,14 @@ function useTimeline(enabled: boolean, summary: LibrarySummary | null | undefine
       current = false;
     };
   }, [enabled, summary]);
-  return [data, failure];
+  // F26: o coração muda na hora e volta atrás se o banco recusar.
+  const toggleFavorite = useCallback<ToggleFavorite>((id, favorite) => {
+    setData((before) => (before === null ? before : withFavorite(before, id, favorite)));
+    invoke<boolean>("favorite_set", { id, favorite }).catch(() =>
+      setData((before) => (before === null ? before : withFavorite(before, id, !favorite))),
+    );
+  }, []);
+  return [data, failure, toggleFavorite];
 }
 
 const THUMBNAIL_POLL_MS = 1500;
@@ -139,7 +152,10 @@ function App() {
   const [lines, setLines] = useState<LogLine[]>([]);
   const seenThumbnails = useRef(new Set<number>());
   // A busca (F22) monta os resultados com os itens da linha do tempo.
-  const [timeline, timelineFailure] = useTimeline(active === "timeline" || active === "search", summary);
+  const [timeline, timelineFailure, toggleFavorite] = useTimeline(
+    active === "timeline" || active === "search" || active === "favorites",
+    summary,
+  );
 
   useEffect(() => {
     linkedMotionLibraries();
@@ -320,6 +336,7 @@ function App() {
   const section = sectionById(active);
   return (
     <MotionConfig reducedMotion="user">
+      <FavoriteContext.Provider value={summary?.connected === true ? toggleFavorite : null}>
       <div className="shell">
         <Sidebar active={active} disk={disk} onDiskAction={onDiskAction} />
         {section.id === "timeline" ? (
@@ -332,6 +349,8 @@ function App() {
           <LocationsScreen />
         ) : section.id === "albums" ? (
           <AlbumsScreen />
+        ) : section.id === "favorites" ? (
+          <FavoritesScreen data={timeline} failure={timelineFailure} />
         ) : (
           <SectionPage key={section.id} section={section}>
             {section.id === "settings" ? (
@@ -342,6 +361,7 @@ function App() {
           </SectionPage>
         )}
       </div>
+      </FavoriteContext.Provider>
     </MotionConfig>
   );
 }

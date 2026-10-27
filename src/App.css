@@ -2433,3 +2433,44 @@ a.timeline-search:hover {
     transition: none;
   }
 }
+
+/* F26: Favoritos (artboard `Favorites`): anos e grade quadrada. */
+.favorites-body {
+  padding: 8px 28px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.favorites-year {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.favorites-year h2 {
+  margin: 18px 0 0;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.favorites-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 6px;
+}
+
+.favorites-tile {
+  position: relative;
+  display: block;
+  aspect-ratio: 1;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--sunken);
+}
+
+.favorites-tile:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

@@ -1,4 +1,5 @@
 pub mod albums;
+pub mod favorites;
 pub mod bench;
 mod commands;
 mod db;
@@ -31,6 +32,8 @@ pub fn run() {
                 let _ = scan::close_orphan_runs(connection, &now);
                 // F24: places for photos indexed before place names existed.
                 let _ = places::fill_place_labels(connection);
+                // F26: Google Photos favorites of items indexed before favorites existed.
+                let _ = favorites::import_takeout_favorites(connection);
             }
             app.manage(DbState(library.map(|c| Mutex::new(Some(c)))));
             app.manage(commands::onboarding::IndexingState::default());
@@ -50,7 +53,8 @@ pub fn run() {
             commands::search::search_filters,
             commands::people::people_list,
             commands::locations::locations_overview,
-            commands::albums::albums_list
+            commands::albums::albums_list,
+            commands::favorites::favorite_set
         ])
         .register_asynchronous_uri_scheme_protocol(
             commands::timeline::THUMB_SCHEME,

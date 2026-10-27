@@ -1,4 +1,5 @@
 pub mod albums;
+pub mod favorites;
 pub mod details;
 pub mod health;
 pub mod library;
