@@ -70,3 +70,18 @@ commands.allow = ["albums_list"]
 identifier = "allow-favorite-set"
 description = "Enables the favorite_set command."
 commands.allow = ["favorite_set"]
+
+[[permission]]
+identifier = "allow-problems-overview"
+description = "Enables the problems_overview command."
+commands.allow = ["problems_overview"]
+
+[[permission]]
+identifier = "allow-database-check"
+description = "Enables the database_check command."
+commands.allow = ["database_check"]
+
+[[permission]]
+identifier = "allow-problems-export"
+description = "Enables the problems_export command."
+commands.allow = ["problems_export"]

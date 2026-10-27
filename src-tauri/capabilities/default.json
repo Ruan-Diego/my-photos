@@ -20,6 +20,9 @@
     "allow-people-list",
     "allow-locations-overview",
     "allow-albums-list",
-    "allow-favorite-set"
+    "allow-favorite-set",
+    "allow-problems-overview",
+    "allow-database-check",
+    "allow-problems-export"
   ]
 }

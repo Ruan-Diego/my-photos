@@ -35,6 +35,7 @@ import { SEARCH_HASH } from "./search/query";
 import { Sidebar } from "./shell/Sidebar";
 import { TimelineScreen } from "./timeline/TimelineScreen";
 import { FavoritesScreen } from "./favorites/FavoritesScreen";
+import { ProblemsScreen } from "./problems/ProblemsScreen";
 import { FavoriteContext, type ToggleFavorite } from "./favorites/FavoriteContext";
 import { withFavorite } from "./favorites/favorites";
 import type { TimelineData } from "./timeline/timeline";
@@ -351,6 +352,8 @@ function App() {
           <AlbumsScreen />
         ) : section.id === "favorites" ? (
           <FavoritesScreen data={timeline} failure={timelineFailure} />
+        ) : section.id === "problems" ? (
+          <ProblemsScreen />
         ) : (
           <SectionPage key={section.id} section={section}>
             {section.id === "settings" ? (
