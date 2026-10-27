@@ -10,6 +10,8 @@ import {
   indexingCard,
   interrupted,
   interruptedCard,
+  missingThumbnails,
+  thumbnailsCard,
   logLine,
   PAUSED,
   PROGRESS_EVENT,
@@ -304,6 +306,9 @@ function App() {
     disk = { tone: "warn", title: "A indexação não começou", detail: startError, action: null };
   } else if (interrupted(summary)) {
     disk = interruptedCard(summary?.mediaCount ?? 0);
+    onDiskAction = startIndexing;
+  } else if (missingThumbnails(summary ?? null) > 0) {
+    disk = thumbnailsCard(missingThumbnails(summary ?? null));
     onDiskAction = startIndexing;
   } else if (summary?.connected === true) {
     // "Procurar arquivos novos": varredura incremental.

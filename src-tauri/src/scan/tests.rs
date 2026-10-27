@@ -1139,3 +1139,31 @@ fn names_that_differ_only_in_case_keep_the_first_and_report_the_rest() {
     assert_eq!(library.run(second.run_id).1, "completed");
     assert_eq!(second.unchanged, 2);
 }
+
+#[test]
+fn orphan_running_runs_are_closed_at_startup() {
+    let library = Library::new("orphans");
+    let connection = &library.connection;
+    connection
+        .execute(
+            "INSERT INTO libraries (name, root_path, status, created_at) VALUES ('E', 'E:\\', 'active', ?1)",
+            [T1],
+        )
+        .unwrap();
+    for status in ["completed", "running", "running"] {
+        connection
+            .execute(
+                "INSERT INTO indexing_runs (library_id, started_at, run_type, status) VALUES (1, ?1, 'full', ?2)",
+                [T1, status],
+            )
+            .unwrap();
+    }
+    assert_eq!(super::close_orphan_runs(connection, T3).unwrap(), 2);
+    assert_eq!(library.run(1).1, "completed");
+    assert_eq!(library.run(1).2, None, "a finished run is left as it was");
+    for run_id in [2, 3] {
+        let (_, status, finished_at, ..) = library.run(run_id);
+        assert_eq!((status.as_str(), finished_at.as_deref()), ("cancelled", Some(T3)));
+    }
+    assert_eq!(super::close_orphan_runs(connection, T3).unwrap(), 0, "nothing left running");
+}

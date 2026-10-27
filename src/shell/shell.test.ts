@@ -72,6 +72,7 @@ const connected: LibrarySummary = {
   volumeLabel: "FOTOS",
   mediaCount: 4247,
   lastIndexedAt: "2026-10-15T17:02:00Z",
+  missingThumbnails: 0,
   problem: null,
 };
 
