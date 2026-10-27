@@ -3,6 +3,7 @@ import { fit, icon, originalUrl, thumbnailUrl, useMediaInfo } from "./media";
 import { DetailsPanel, useDetailsOpen } from "./DetailsPanel";
 import { useToggleFavorite } from "../favorites/FavoriteContext";
 import { VideoPlayer } from "./VideoPlayer";
+import { typing, viewerAction } from "../shortcuts/shortcuts";
 import {
   dateLine,
   fallbackNote,
@@ -31,6 +32,7 @@ function PhotoViewer({ entries, index, base }: { entries: Entry[]; index: number
   const [originalReady, setOriginalReady] = useState(false);
   const [detailsOpen, toggleDetails] = useDetailsOpen();
   const stage = useRef<HTMLDivElement>(null);
+  const frame = useRef<HTMLDivElement>(null);
   const [area, setArea] = useState({ width: 0, height: 0 });
   const drag = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
 
@@ -62,15 +64,25 @@ function PhotoViewer({ entries, index, base }: { entries: Entry[]; index: number
     return () => observer.disconnect();
   }, []);
 
-  // Setas andam, Esc volta para a grade.
+  // Setas andam, Esc volta para a grade, F alterna a tela cheia (F30).
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "ArrowLeft" && previous !== null) {
+      if (typing(event.target)) {
+        return;
+      }
+      const action = viewerAction(event.key, event.ctrlKey || event.metaKey || event.altKey, document.fullscreenElement !== null);
+      if (action === "previous" && previous !== null) {
         window.location.hash = viewerHash(previous, base);
-      } else if (event.key === "ArrowRight" && next !== null) {
+      } else if (action === "next" && next !== null) {
         window.location.hash = viewerHash(next, base);
-      } else if (event.key === "Escape") {
+      } else if (action === "back") {
         window.location.hash = backHash(base);
+      } else if (action === "fullscreen") {
+        if (document.fullscreenElement !== null) {
+          void document.exitFullscreen();
+        } else {
+          void frame.current?.requestFullscreen();
+        }
       } else {
         return;
       }
@@ -97,7 +109,7 @@ function PhotoViewer({ entries, index, base }: { entries: Entry[]; index: number
   const [stripStart, stripEnd] = stripWindow(index, entries.length);
 
   return (
-    <div className="viewer" role="dialog" aria-modal="true" aria-label="Visualizar foto">
+    <div ref={frame} className="viewer" role="dialog" aria-modal="true" aria-label="Visualizar foto">
       <div className="viewer-main">
         <header className="viewer-header">
           <a className="viewer-icon" href={backHash(base)} aria-label={backLabel(base)}>

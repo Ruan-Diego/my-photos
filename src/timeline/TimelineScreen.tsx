@@ -21,6 +21,7 @@ import {
 } from "./timeline";
 import { Viewer } from "../viewer/Viewer";
 import { SEARCH_HASH } from "../search/query";
+import { WHEEL_STEP_MS, wheelSize } from "../shortcuts/shortcuts";
 import { indexOf, openedId, order, viewerHash } from "../viewer/navigation";
 
 const SIZE_KEY = "myphotos.timeline.size";
@@ -183,6 +184,35 @@ export function TimelineScreen({ data, failure }: { data: TimelineData | null; f
     });
   };
 
+  // Ctrl + roda do mouse muda o tamanho, como o controle "Tamanho" (F30).
+  const wheelAt = useRef(0);
+  const resize = useRef(changeSize);
+  resize.current = changeSize;
+  const sizeNow = useRef(size);
+  sizeNow.current = size;
+  useEffect(() => {
+    const element = scroller.current;
+    if (element === null) {
+      return;
+    }
+    const onWheel = (event: WheelEvent) => {
+      if (!event.ctrlKey) {
+        return;
+      }
+      event.preventDefault();
+      if (event.timeStamp - wheelAt.current < WHEEL_STEP_MS) {
+        return;
+      }
+      const value = wheelSize(sizeNow.current, event.deltaY);
+      if (value !== sizeNow.current) {
+        wheelAt.current = event.timeStamp;
+        resize.current(value);
+      }
+    };
+    element.addEventListener("wheel", onWheel, { passive: false });
+    return () => element.removeEventListener("wheel", onWheel);
+  }, []);
+
   const entries = useMemo(() => order(months), [months]);
   const openedIndex = opened === null ? -1 : indexOf(entries, opened);
 
@@ -206,7 +236,7 @@ export function TimelineScreen({ data, failure }: { data: TimelineData | null; f
             </button>
           ))}
         </div>
-        <label className="timeline-size">
+        <label className="timeline-size" title="Também com Ctrl + roda do mouse">
           Tamanho
           <input type="range" min={1} max={5} step={1} value={size} onChange={(event) => changeSize(Number(event.target.value))} />
         </label>
