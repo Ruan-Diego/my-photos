@@ -1,6 +1,7 @@
 pub mod albums;
 pub mod duplicates;
 pub mod favorites;
+pub mod fileops;
 pub mod problems;
 pub mod details;
 pub mod health;

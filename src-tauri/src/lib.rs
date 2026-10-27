@@ -1,5 +1,6 @@
 pub mod albums;
 pub mod favorites;
+pub mod fileops;
 pub mod bench;
 pub mod duplicates;
 mod commands;
@@ -37,6 +38,12 @@ pub fn run() {
                 let _ = places::fill_place_labels(connection);
                 // F26: Google Photos favorites of items indexed before favorites existed.
                 let _ = favorites::import_takeout_favorites(connection);
+                // F48: what has been in the app's trash for 30 days goes for good (AD-009).
+                let root: Option<String> =
+                    connection.query_row("SELECT root_path FROM libraries ORDER BY id LIMIT 1", [], |row| row.get(0)).ok();
+                if let Some(root) = root {
+                    let _ = fileops::purge_expired(connection, std::path::Path::new(&root), &now);
+                }
             }
             app.manage(DbState(library.map(|c| Mutex::new(Some(c)))));
             app.manage(commands::onboarding::IndexingState::default());
@@ -65,7 +72,17 @@ pub fn run() {
             commands::settings::settings_overview,
             commands::settings::settings_set_flag,
             commands::settings::settings_set_cache_limit,
-            commands::settings::thumbnails_clear
+            commands::settings::thumbnails_clear,
+            commands::fileops::folder_tree,
+            commands::fileops::folder_items,
+            commands::fileops::folder_create,
+            commands::fileops::folder_rename,
+            commands::fileops::folder_trash,
+            commands::fileops::media_move,
+            commands::fileops::media_trash,
+            commands::fileops::trash_list,
+            commands::fileops::trash_restore,
+            commands::fileops::trash_restore_all
         ])
         .register_asynchronous_uri_scheme_protocol(
             commands::timeline::THUMB_SCHEME,

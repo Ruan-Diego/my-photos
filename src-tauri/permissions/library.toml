@@ -110,3 +110,53 @@ commands.allow = ["settings_set_cache_limit"]
 identifier = "allow-thumbnails-clear"
 description = "Enables the thumbnails_clear command."
 commands.allow = ["thumbnails_clear"]
+
+[[permission]]
+identifier = "allow-folder-tree"
+description = "Enables the folder_tree command."
+commands.allow = ["folder_tree"]
+
+[[permission]]
+identifier = "allow-folder-items"
+description = "Enables the folder_items command."
+commands.allow = ["folder_items"]
+
+[[permission]]
+identifier = "allow-folder-create"
+description = "Enables the folder_create command."
+commands.allow = ["folder_create"]
+
+[[permission]]
+identifier = "allow-folder-rename"
+description = "Enables the folder_rename command."
+commands.allow = ["folder_rename"]
+
+[[permission]]
+identifier = "allow-folder-trash"
+description = "Enables the folder_trash command."
+commands.allow = ["folder_trash"]
+
+[[permission]]
+identifier = "allow-media-move"
+description = "Enables the media_move command."
+commands.allow = ["media_move"]
+
+[[permission]]
+identifier = "allow-media-trash"
+description = "Enables the media_trash command."
+commands.allow = ["media_trash"]
+
+[[permission]]
+identifier = "allow-trash-list"
+description = "Enables the trash_list command."
+commands.allow = ["trash_list"]
+
+[[permission]]
+identifier = "allow-trash-restore"
+description = "Enables the trash_restore command."
+commands.allow = ["trash_restore"]
+
+[[permission]]
+identifier = "allow-trash-restore-all"
+description = "Enables the trash_restore_all command."
+commands.allow = ["trash_restore_all"]

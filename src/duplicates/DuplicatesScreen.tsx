@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { folderHash, parentOf } from "../folders/folders";
 import { invoke } from "@tauri-apps/api/core";
 import { thumbnailUrl } from "../viewer/media";
 import { Viewer } from "../viewer/Viewer";
@@ -55,9 +56,9 @@ function CopyCard({ kind, copy }: { kind: Kind; copy: Copy }) {
         <strong>{fileName(copy.path)}</strong>
         <span>{folderLabel(copy.path)}</span>
         <span>{copyMeta(kind, copy)}</span>
-        <button type="button" className="duplicate-folder" disabled title="A tela Pastas chega com a F48">
+        <a className="duplicate-folder" href={folderHash(parentOf(copy.path))}>
           Mostrar na pasta
-        </button>
+        </a>
       </div>
     </div>
   );

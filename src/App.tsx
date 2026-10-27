@@ -34,6 +34,8 @@ import { SEARCH_HASH } from "./search/query";
 import { Sidebar } from "./shell/Sidebar";
 import { TimelineScreen } from "./timeline/TimelineScreen";
 import { SettingsScreen } from "./settings/SettingsScreen";
+import { FoldersScreen } from "./folders/FoldersScreen";
+import { TrashScreen } from "./folders/TrashScreen";
 import { loadMotion, reducedMotion, saveMotion, type MotionChoice, type Settings } from "./settings/settings";
 import { FavoritesScreen } from "./favorites/FavoritesScreen";
 import { ProblemsScreen } from "./problems/ProblemsScreen";
@@ -378,6 +380,8 @@ function App() {
     // "Procurar arquivos novos": varredura incremental.
     onDiskAction = () => startIndexing();
   }
+  // F48: escrever no disco só com ele conectado e sem indexação rodando.
+  const writable = summary?.connected === true && progress === null && !starting;
   const section = sectionById(active);
   return (
     <MotionConfig reducedMotion={reducedMotion(motion)}>
@@ -400,6 +404,10 @@ function App() {
           <ProblemsScreen />
         ) : section.id === "duplicates" ? (
           <DuplicatesScreen data={timeline} />
+        ) : section.id === "folders" ? (
+          <FoldersScreen rootLabel={root ?? "E:\\"} writable={writable} onChanged={reloadSummary} />
+        ) : section.id === "trash" ? (
+          <TrashScreen rootLabel={root ?? "E:\\"} writable={writable} onChanged={reloadSummary} />
         ) : section.id === "settings" ? (
           <SettingsScreen
             theme={theme}

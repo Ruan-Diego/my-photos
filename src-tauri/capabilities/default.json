@@ -28,6 +28,16 @@
     "allow-settings-overview",
     "allow-settings-set-flag",
     "allow-settings-set-cache-limit",
-    "allow-thumbnails-clear"
+    "allow-thumbnails-clear",
+    "allow-folder-tree",
+    "allow-folder-items",
+    "allow-folder-create",
+    "allow-folder-rename",
+    "allow-folder-trash",
+    "allow-media-move",
+    "allow-media-trash",
+    "allow-trash-list",
+    "allow-trash-restore",
+    "allow-trash-restore-all"
   ]
 }
