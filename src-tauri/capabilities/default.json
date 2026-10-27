@@ -23,6 +23,7 @@
     "allow-favorite-set",
     "allow-problems-overview",
     "allow-database-check",
-    "allow-problems-export"
+    "allow-problems-export",
+    "allow-duplicates-list"
   ]
 }

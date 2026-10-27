@@ -36,6 +36,7 @@ import { Sidebar } from "./shell/Sidebar";
 import { TimelineScreen } from "./timeline/TimelineScreen";
 import { FavoritesScreen } from "./favorites/FavoritesScreen";
 import { ProblemsScreen } from "./problems/ProblemsScreen";
+import { DuplicatesScreen } from "./duplicates/DuplicatesScreen";
 import { FavoriteContext, type ToggleFavorite } from "./favorites/FavoriteContext";
 import { withFavorite } from "./favorites/favorites";
 import type { TimelineData } from "./timeline/timeline";
@@ -154,7 +155,7 @@ function App() {
   const seenThumbnails = useRef(new Set<number>());
   // A busca (F22) monta os resultados com os itens da linha do tempo.
   const [timeline, timelineFailure, toggleFavorite] = useTimeline(
-    active === "timeline" || active === "search" || active === "favorites",
+    active === "timeline" || active === "search" || active === "favorites" || active === "duplicates",
     summary,
   );
 
@@ -354,6 +355,8 @@ function App() {
           <FavoritesScreen data={timeline} failure={timelineFailure} />
         ) : section.id === "problems" ? (
           <ProblemsScreen />
+        ) : section.id === "duplicates" ? (
+          <DuplicatesScreen data={timeline} />
         ) : (
           <SectionPage key={section.id} section={section}>
             {section.id === "settings" ? (

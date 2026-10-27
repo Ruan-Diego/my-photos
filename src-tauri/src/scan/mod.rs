@@ -518,7 +518,8 @@ fn hash_queue(
             match digest {
                 Ok(digest) => {
                     transaction.execute(
-                        "UPDATE media_items SET file_hash_sha256 = ?2, indexing_status = 'ok', indexing_error = NULL,
+                        "UPDATE media_items SET perceptual_hash = CASE WHEN file_hash_sha256 IS ?2 THEN perceptual_hash END,
+                           file_hash_sha256 = ?2, indexing_status = 'ok', indexing_error = NULL,
                            updated_at = ?3 WHERE id = ?1",
                         params![id, to_hex(&digest), now],
                     )?;

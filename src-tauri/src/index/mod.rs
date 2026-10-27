@@ -190,7 +190,11 @@ pub fn index_and_thumbnail_default_library(
         };
         // A thumbnail that fails is recorded or retried next run; the index stands.
         let workers = crate::thumbs::default_workers();
-        crate::thumbs::generate_library(connection, &root, crate::thumbs::ThumbSize::Small, workers, &mut on_thumb, stop).0
+        let connection =
+            crate::thumbs::generate_library(connection, &root, crate::thumbs::ThumbSize::Small, workers, &mut on_thumb, stop).0;
+        // F29: perceptual hashes from the new thumbnails; missing ones wait for next run.
+        let _ = crate::duplicates::fill_perceptual_hashes(&connection, &root, stop);
+        connection
     } else {
         connection
     };

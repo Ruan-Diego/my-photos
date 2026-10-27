@@ -50,7 +50,7 @@ export function stripWindow(index: number, total: number, size = 12): [number, n
 }
 
 /** Onde o visualizador foi aberto: a grade (`fotos`), a busca (`buscar`, F22) ou os favoritos (F26). */
-export type ViewerBase = "fotos" | "buscar" | "favoritos";
+export type ViewerBase = "fotos" | "buscar" | "favoritos" | "duplicatas";
 
 /** `#/fotos/1066` → 1066; `#/buscar/1066` com `base` `buscar`. */
 export function openedId(hash: string, base: ViewerBase = "fotos"): number | null {
@@ -70,7 +70,16 @@ export function backHash(base: ViewerBase): string {
 }
 
 export function backLabel(base: ViewerBase): string {
-  return base === "buscar" ? "Voltar para a busca" : base === "favoritos" ? "Voltar para Favoritos" : "Voltar para Fotos";
+  switch (base) {
+    case "buscar":
+      return "Voltar para a busca";
+    case "favoritos":
+      return "Voltar para Favoritos";
+    case "duplicatas":
+      return "Voltar para Duplicatas";
+    default:
+      return "Voltar para Fotos";
+  }
 }
 
 export type Zoom = "fit" | "actual";

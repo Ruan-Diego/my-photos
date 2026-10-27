@@ -85,3 +85,8 @@ commands.allow = ["database_check"]
 identifier = "allow-problems-export"
 description = "Enables the problems_export command."
 commands.allow = ["problems_export"]
+
+[[permission]]
+identifier = "allow-duplicates-list"
+description = "Enables the duplicates_list command."
+commands.allow = ["duplicates_list"]
