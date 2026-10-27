@@ -19,8 +19,11 @@ test("SRCHUI-01 the filters become the F14 query", () => {
     people: [7],
     folder: "Takeout/Viagem",
     place: null,
+    album: null,
     favoritesOnly: false,
   });
+  assert.equal(toQuery("", { ...NO_FILTERS, album: 5 }).album, 5);
+  assert.ok(!isBlank("", { ...NO_FILTERS, album: 5 }));
   assert.equal(toQuery("", { ...NO_FILTERS, place: "  Lisbon, Portugal " }).place, "Lisbon, Portugal");
   assert.ok(!isBlank("", { ...NO_FILTERS, place: "porto" }));
   assert.equal(toQuery("", NO_FILTERS).mediaType, null);
@@ -46,6 +49,10 @@ test("SRCHUI-02 chips read like the canvas and remove one filter each", () => {
     { key: "folder", label: "Ruan\\2020" },
   ]);
   assert.equal(removeChip(placed, "place").place, "");
+  const inAlbum = { ...NO_FILTERS, album: 5 };
+  assert.deepEqual(chips(inAlbum, PEOPLE, [{ id: 5, name: "Viagem Europa 2022" }]), [{ key: "album", label: "Viagem Europa 2022" }]);
+  assert.deepEqual(chips(inAlbum, PEOPLE), [{ key: "album", label: "Álbum" }], "names not loaded yet");
+  assert.equal(removeChip(inAlbum, "album").album, null);
   assert.equal(folderLabel("Ruan/2020"), "Ruan\\2020");
   assert.equal(resultsTitle(48), "48 resultados");
   assert.equal(resultsTitle(1), "1 resultado");

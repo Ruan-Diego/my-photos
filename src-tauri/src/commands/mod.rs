@@ -1,3 +1,4 @@
+pub mod albums;
 pub mod details;
 pub mod health;
 pub mod library;

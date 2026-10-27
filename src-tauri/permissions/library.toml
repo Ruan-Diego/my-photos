@@ -60,3 +60,8 @@ commands.allow = ["people_list"]
 identifier = "allow-locations-overview"
 description = "Enables the locations_overview command."
 commands.allow = ["locations_overview"]
+
+[[permission]]
+identifier = "allow-albums-list"
+description = "Enables the albums_list command."
+commands.allow = ["albums_list"]

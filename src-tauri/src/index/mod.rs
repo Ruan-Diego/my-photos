@@ -273,6 +273,8 @@ fn index_run(
     progress(update(Stage::Matching, 0, 0, &counts, Vec::new()));
     let report = (sources.discover)(root).map_err(|_| ScanError::RootMissing)?;
     record_problems(connection, &report, &mut summary.scan, now)?;
+    // F25: Takeout album folders, rebuilt from what this run found.
+    crate::albums::rebuild_takeout_albums(connection, library_id, &report, now)?;
     let other_part = report.media.iter().filter(|hit| json_in_other_part(hit)).count() as u64;
     let hits: HashMap<String, &MediaHit> = report
         .media

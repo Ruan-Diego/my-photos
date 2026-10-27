@@ -366,3 +366,15 @@ fn srch11_place_filter_is_one_phrase_without_accents() {
     assert_eq!(by("say \"hi\""), Vec::<i64>::new(), "quotes are text, not FTS syntax");
     assert_eq!(by("  ").len(), 3, "a blank place filters nothing");
 }
+
+#[test]
+fn srch12_album_filter() {
+    let db = Db::new("album-filter");
+    let inside = db.media("Viagem/a.jpg", "photo", None);
+    db.media("Outra/b.jpg", "photo", None);
+    db.sql("INSERT INTO albums (id, library_id, name, source, created_at) VALUES (5, 1, 'Viagem', 'takeout_folder', 't')");
+    db.connection.execute("INSERT INTO media_albums (media_id, album_id) VALUES (?1, 5)", [inside]).unwrap();
+    assert_eq!(db.find(&SearchQuery { album: Some(5), ..SearchQuery::default() }), [inside]);
+    assert_eq!(db.find(&SearchQuery { album: Some(6), ..SearchQuery::default() }), Vec::<i64>::new());
+    assert_eq!(search_options(&db.connection).unwrap().albums, [AlbumOption { id: 5, name: "Viagem".into() }]);
+}

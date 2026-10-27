@@ -49,6 +49,8 @@ pub struct SearchQuery {
     /// F24: in this place (`media_locations.place_label`, or part of it), accents and
     /// case ignored: "São Paulo, SP, Brasil", "lisbon".
     pub place: Option<String>,
+    /// F25: in this album.
+    pub album: Option<i64>,
     pub has_location: Option<bool>,
     pub favorites_only: bool,
     pub limit: Option<u32>,
@@ -253,6 +255,13 @@ fn where_clause(query: &SearchQuery, with_type: bool) -> (String, Vec<Value>) {
             Value::Text(format!("place : \"{}\"", place.replace('"', "\"\""))),
         );
     }
+    if let Some(album) = query.album {
+        bind(
+            &mut conditions,
+            "m.id IN (SELECT media_id FROM media_albums WHERE album_id = ?)",
+            Value::Integer(album),
+        );
+    }
     if query.favorites_only {
         conditions.push("m.is_favorite = 1".into());
     }
@@ -350,6 +359,15 @@ pub struct SearchOptions {
     pub people: Vec<PersonOption>,
     /// Relative paths, `/` separated, in name order.
     pub folders: Vec<String>,
+    /// F25: albums, by name, for the chip of an album opened from Álbuns.
+    pub albums: Vec<AlbumOption>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AlbumOption {
+    pub id: i64,
+    pub name: String,
 }
 
 pub fn search_options(connection: &Connection) -> rusqlite::Result<SearchOptions> {
@@ -380,7 +398,11 @@ pub fn search_options(connection: &Connection) -> rusqlite::Result<SearchOptions
         )?
         .query_map([], |row| row.get(0))?
         .collect::<rusqlite::Result<Vec<String>>>()?;
-    Ok(SearchOptions { people, folders })
+    let albums = connection
+        .prepare("SELECT id, name FROM albums ORDER BY name COLLATE NOCASE")?
+        .query_map([], |row| Ok(AlbumOption { id: row.get(0)?, name: row.get(1)? }))?
+        .collect::<rusqlite::Result<Vec<_>>>()?;
+    Ok(SearchOptions { people, folders, albums })
 }
 
 /// Rebuilds the index from the tables (after a restore or if it ever drifts).
