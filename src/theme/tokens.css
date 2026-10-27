@@ -18,6 +18,8 @@
   --accent: #a8471f;
   --accent-hover: #7d3416;
   --accent-fill: #a8471f;
+  /* F33: texto sobre --accent-fill; o canvas usa branco, que no escuro fica abaixo de AA. */
+  --on-accent: #ffffff;
   --warn-bg: #f7e6dc;
   --warn-fg: #7d3416;
   --ok-bg: #dfeadf;
@@ -80,6 +82,7 @@
   --accent: #ec9068;
   --accent-hover: #f5b597;
   --accent-fill: #e07a4c;
+  --on-accent: #161513;
   --warn-bg: #3a2419;
   --warn-fg: #f3b593;
   --ok-bg: #1e3326;
@@ -111,6 +114,7 @@
     --accent: #ec9068;
     --accent-hover: #f5b597;
     --accent-fill: #e07a4c;
+    --on-accent: #161513;
     --warn-bg: #3a2419;
     --warn-fg: #f3b593;
     --ok-bg: #1e3326;

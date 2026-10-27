@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { thumbnailUrl } from "../viewer/media";
 import { Viewer } from "../viewer/Viewer";
 import { indexOf, openedId, viewerHash, type Entry } from "../viewer/navigation";
-import { duration, type Item, type TimelineData } from "../timeline/timeline";
+import { duration, tileLabel, type Item, type TimelineData } from "../timeline/timeline";
 import { emptyFavorites, favoriteCount, favoritesByYear, favoritesSubtitle, FAVORITES_FILTERS, type FavoritesFilter } from "./favorites";
 
 const HEART = "M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z";
@@ -20,7 +20,7 @@ function useOpened(): number | null {
 function Tile({ item }: { item: Item }) {
   const [loaded, setLoaded] = useState(false);
   return (
-    <a className="favorites-tile" href={viewerHash(item.id, "favoritos")} aria-label={item.video ? "Vídeo favorito" : "Foto favorita"} draggable={false}>
+    <a className="favorites-tile" href={viewerHash(item.id, "favoritos")} aria-label={tileLabel(item)} draggable={false}>
       <img
         src={thumbnailUrl(item.id)}
         alt=""

@@ -10,6 +10,7 @@ import {
   rowHeight,
   visible,
   scrollSpace,
+  tileLabel,
   yearAt,
   years as yearsOf,
   basis,
@@ -57,7 +58,7 @@ const Tile = memo(function Tile({ item, height, grow }: { item: Item; height: nu
     <a
       className="tile"
       href={viewerHash(item.id)}
-      aria-label={item.video ? "Vídeo" : "Foto"}
+      aria-label={tileLabel(item)}
       draggable={false}
       style={{ flex: `${grow ? clampRatio(item.ratio) : 0} 1 ${size}px`, height }}
     >

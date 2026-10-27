@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { fit, icon, originalUrl, thumbnailUrl, useMediaInfo } from "./media";
 import { DetailsPanel, useDetailsOpen } from "./DetailsPanel";
 import { useToggleFavorite } from "../favorites/FavoriteContext";
+import { useDialogFocus } from "../a11y/useDialogFocus";
 import { VideoPlayer } from "./VideoPlayer";
 import { typing, viewerAction } from "../shortcuts/shortcuts";
 import {
@@ -33,6 +34,7 @@ function PhotoViewer({ entries, index, base }: { entries: Entry[]; index: number
   const [detailsOpen, toggleDetails] = useDetailsOpen();
   const stage = useRef<HTMLDivElement>(null);
   const frame = useRef<HTMLDivElement>(null);
+  useDialogFocus(frame, { trap: true });
   const [area, setArea] = useState({ width: 0, height: 0 });
   const drag = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
 

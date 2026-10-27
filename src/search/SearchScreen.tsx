@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { duration, FAVORITE, VIDEO, type Item, type TimelineData } from "../timeline/timeline";
+import { duration, tileLabel, FAVORITE, VIDEO, type Item, type TimelineData } from "../timeline/timeline";
 import { thumbnailUrl } from "../viewer/media";
 import { indexOf, openedId, TIMELINE_HASH, viewerHash, type Entry } from "../viewer/navigation";
 import { Viewer } from "../viewer/Viewer";
@@ -82,7 +82,7 @@ function useSearchOptions(): SearchOptions {
 
 function Tile({ item }: { item: Item }) {
   return (
-    <a className="search-tile" href={viewerHash(item.id, "buscar")} aria-label={item.video ? "Vídeo" : "Foto"} draggable={false}>
+    <a className="search-tile" href={viewerHash(item.id, "buscar")} aria-label={tileLabel(item)} draggable={false}>
       <img src={thumbnailUrl(item.id)} alt="" loading="lazy" decoding="async" draggable={false} />
       {item.video ? (
         <span className="tile-duration">

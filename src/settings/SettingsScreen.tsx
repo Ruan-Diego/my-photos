@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { THEME_OPTIONS, type ThemeChoice } from "../theme/theme";
 import { fileSize } from "../viewer/navigation";
@@ -32,6 +32,18 @@ export function SettingsScreen({ theme, onTheme, motion, onMotion, onScan, index
   const [settings, setSettings] = useState<Settings | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
+  // F33: o botão clicado some ao confirmar; o foco vai para "Cancelar" e volta depois.
+  const cancelClear = useRef<HTMLButtonElement>(null);
+  const askClear = useRef<HTMLButtonElement>(null);
+  const confirmed = useRef(false);
+  useEffect(() => {
+    if (confirming) {
+      cancelClear.current?.focus();
+    } else if (confirmed.current) {
+      askClear.current?.focus();
+    }
+    confirmed.current = confirming;
+  }, [confirming]);
   const [clearing, setClearing] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [current, setCurrent] = useState<string>(SECTIONS[0].id);
@@ -170,12 +182,13 @@ export function SettingsScreen({ theme, onTheme, motion, onMotion, onScan, index
                     <button type="button" className="button-danger" disabled={clearing} onClick={clear}>
                       {clearing ? "Apagando…" : `Apagar ${fileSize(settings?.thumbnailBytes ?? 0)} de miniaturas`}
                     </button>
-                    <button type="button" className="button-line" disabled={clearing} onClick={() => setConfirming(false)}>
+                    <button ref={cancelClear} type="button" className="button-line" disabled={clearing} onClick={() => setConfirming(false)}>
                       Cancelar
                     </button>
                   </>
                 ) : (
                   <button
+                    ref={askClear}
                     type="button"
                     className="button-line"
                     disabled={settings === null || indexing || settings.thumbnailBytes === 0}
