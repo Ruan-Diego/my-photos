@@ -370,7 +370,7 @@ fn recent_line(relative_path: &str, paired: Option<&MediaHit>, resolved: &Resolv
 }
 
 /// The export part (`takeout-<stamp>-1-002`) a path sits in, if any.
-fn export_part(path: &str) -> Option<&str> {
+pub(crate) fn export_part(path: &str) -> Option<&str> {
     path.split('/').find(|segment| takeout_export(segment).is_some())
 }
 

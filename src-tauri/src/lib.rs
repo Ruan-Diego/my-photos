@@ -7,6 +7,7 @@ pub mod scan;
 mod time;
 mod photo_meta;
 pub mod places;
+pub mod problems;
 mod resolve;
 pub mod search;
 pub mod volume;
@@ -54,7 +55,10 @@ pub fn run() {
             commands::people::people_list,
             commands::locations::locations_overview,
             commands::albums::albums_list,
-            commands::favorites::favorite_set
+            commands::favorites::favorite_set,
+            commands::problems::problems_overview,
+            commands::problems::database_check,
+            commands::problems::problems_export
         ])
         .register_asynchronous_uri_scheme_protocol(
             commands::timeline::THUMB_SCHEME,
