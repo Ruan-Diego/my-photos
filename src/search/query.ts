@@ -15,6 +15,8 @@ export interface SearchQuery {
   folder: string | null;
   /** F24: nome do lugar, ou parte dele. */
   place: string | null;
+  /** F25: só deste álbum. */
+  album: number | null;
   favoritesOnly: boolean;
 }
 
@@ -31,9 +33,15 @@ export interface PersonOption {
   count: number;
 }
 
+export interface AlbumOption {
+  id: number;
+  name: string;
+}
+
 export interface SearchOptions {
   people: PersonOption[];
   folders: string[];
+  albums: AlbumOption[];
 }
 
 /** O que a coluna de filtros guarda, como o usuário digitou. */
@@ -48,9 +56,11 @@ export interface Filters {
   folder: string | null;
   /** Campo Local, como digitado, ou o lugar clicado em Locais (F24). */
   place: string;
+  /** O álbum clicado em Álbuns (F25); não tem campo, só o chip. */
+  album: number | null;
 }
 
-export const NO_FILTERS: Filters = { from: "", until: "", photos: true, videos: true, favoritesOnly: false, people: [], folder: null, place: "" };
+export const NO_FILTERS: Filters = { from: "", until: "", photos: true, videos: true, favoritesOnly: false, people: [], folder: null, place: "", album: null };
 
 /** "01/08/2022" ou "1/8/2022" → "2022-08-01"; `null` se não for uma data. */
 export function parseDate(text: string): string | null {
@@ -94,6 +104,7 @@ export function toQuery(text: string, filters: Filters): SearchQuery {
     people: filters.people,
     folder: filters.folder,
     place: filters.place.trim() === "" ? null : filters.place.trim(),
+    album: filters.album,
     favoritesOnly: filters.favoritesOnly,
   };
 }
@@ -110,6 +121,7 @@ export function isBlank(text: string, filters: Filters): boolean {
     query.people.length === 0 &&
     query.folder === null &&
     query.place === null &&
+    query.album === null &&
     !query.favoritesOnly
   );
 }
@@ -142,11 +154,14 @@ export function dateChip(filters: Filters): string | null {
   return null;
 }
 
-export type ChipKey = "date" | "type" | "favorites" | "folder" | "place" | `person:${number}`;
+export type ChipKey = "date" | "type" | "favorites" | "folder" | "place" | "album" | `person:${number}`;
 
 /** Um chip por filtro ativo, na ordem da coluna; o X tira só aquele filtro. */
-export function chips(filters: Filters, people: PersonOption[]): { key: ChipKey; label: string }[] {
+export function chips(filters: Filters, people: PersonOption[], albums: AlbumOption[] = []): { key: ChipKey; label: string }[] {
   const result: { key: ChipKey; label: string }[] = [];
+  if (filters.album !== null) {
+    result.push({ key: "album", label: albums.find((album) => album.id === filters.album)?.name ?? "Álbum" });
+  }
   const date = dateChip(filters);
   if (date !== null) {
     result.push({ key: "date", label: date });
@@ -183,6 +198,8 @@ export function removeChip(filters: Filters, key: ChipKey): Filters {
       return { ...filters, folder: null };
     case "place":
       return { ...filters, place: "" };
+    case "album":
+      return { ...filters, album: null };
     default: {
       const id = Number(key.slice("person:".length));
       return { ...filters, people: filters.people.filter((person) => person !== id) };

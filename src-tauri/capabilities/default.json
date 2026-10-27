@@ -18,6 +18,7 @@
     "allow-search-media",
     "allow-search-filters",
     "allow-people-list",
-    "allow-locations-overview"
+    "allow-locations-overview",
+    "allow-albums-list"
   ]
 }

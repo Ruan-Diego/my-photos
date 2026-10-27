@@ -271,7 +271,7 @@ fn read_tree(
     Ok(())
 }
 
-fn logical_dir(directory: &str) -> String {
+pub(crate) fn logical_dir(directory: &str) -> String {
     directory
         .split('/')
         .map(|part| takeout_export(part).unwrap_or(part))

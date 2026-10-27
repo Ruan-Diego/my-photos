@@ -6,6 +6,7 @@ import { indexOf, openedId, TIMELINE_HASH, viewerHash, type Entry } from "../vie
 import { Viewer } from "../viewer/Viewer";
 import { personFromHash } from "../people/people";
 import { placeFromHash } from "../locations/locations";
+import { albumFromHash } from "../albums/albums";
 import {
   chips,
   folderLabel,
@@ -45,11 +46,15 @@ function itemsById(data: TimelineData | null): Map<number, Item> {
   return map;
 }
 
-/** Os filtros com que a tela abre: só a pessoa (de Pessoas) ou só o lugar (de Locais). */
+/** Os filtros com que a tela abre: só a pessoa (de Pessoas), o lugar (de Locais) ou o álbum (de Álbuns). */
 function fromHash(hash: string): Filters {
   const person = personFromHash(hash);
   if (person !== null) {
     return { ...NO_FILTERS, people: [person] };
+  }
+  const album = albumFromHash(hash);
+  if (album !== null) {
+    return { ...NO_FILTERS, album };
   }
   const place = placeFromHash(hash);
   return place === null ? NO_FILTERS : { ...NO_FILTERS, place };
@@ -66,7 +71,7 @@ function useOpenedResult(): number | null {
 }
 
 function useSearchOptions(): SearchOptions {
-  const [options, setOptions] = useState<SearchOptions>({ people: [], folders: [] });
+  const [options, setOptions] = useState<SearchOptions>({ people: [], folders: [], albums: [] });
   useEffect(() => {
     invoke<SearchOptions>("search_filters")
       .then(setOptions)
@@ -107,11 +112,11 @@ export function SearchScreen({ data }: { data: TimelineData | null }) {
   const blank = isBlank(text, filters);
   const query = useMemo(() => toQuery(text, filters), [text, filters]);
 
-  // Uma pessoa (F23) ou um lugar (F24) clicado chega como `#/buscar?pessoa=7` ou `?local=`.
+  // Uma pessoa (F23), um lugar (F24) ou um álbum (F25) chega como `#/buscar?pessoa=7`, `?local=` ou `?album=`.
   useEffect(() => {
     const follow = () => {
       const hash = window.location.hash;
-      if (personFromHash(hash) !== null || placeFromHash(hash) !== null) {
+      if (personFromHash(hash) !== null || placeFromHash(hash) !== null || albumFromHash(hash) !== null) {
         setText("");
         setFilters(fromHash(hash));
       }
@@ -180,7 +185,7 @@ export function SearchScreen({ data }: { data: TimelineData | null }) {
     return () => observer.disconnect();
   }, [shown, results.length]);
 
-  const active = chips(filters, options.people);
+  const active = chips(filters, options.people, options.albums);
   const set = (change: Partial<Filters>) => setFilters((current) => ({ ...current, ...change }));
   const togglePerson = (id: number) =>
     set({ people: filters.people.includes(id) ? filters.people.filter((person) => person !== id) : [...filters.people, id] });

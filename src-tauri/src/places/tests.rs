@@ -1,6 +1,6 @@
 use rusqlite::Connection;
 
-use super::{distance_km, fill_place_labels, label, nearest};
+use super::{distance_km, fill_place_labels, label};
 use crate::db::MIGRATIONS;
 
 #[test]
