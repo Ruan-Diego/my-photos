@@ -551,14 +551,15 @@ fn write_media(
     transaction.execute("DELETE FROM media_locations WHERE media_id = ?1", [id])?;
     if let Some(location) = resolved.location {
         transaction.execute(
-            "INSERT INTO media_locations (media_id, latitude, longitude, altitude, source)
-             VALUES (?1, ?2, ?3, ?4, ?5)",
+            "INSERT INTO media_locations (media_id, latitude, longitude, altitude, source, place_label)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
             params![
                 id,
                 location.latitude,
                 location.longitude,
                 location.altitude,
-                location.source
+                location.source,
+                crate::places::label(location.latitude, location.longitude)
             ],
         )?;
     }

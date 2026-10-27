@@ -342,3 +342,27 @@ fn srch10_screen_filters_people_folders_and_counts() {
     );
     assert_eq!(options.folders, ["Ruan", "Takeout/Google Fotos/Praia_2022"], "folders without media are left out");
 }
+
+#[test]
+fn srch11_place_filter_is_one_phrase_without_accents() {
+    let db = Db::new("place-filter");
+    let place = |label: &str| {
+        let photo = db.media(&format!("{label}.jpg"), "photo", None);
+        db.connection
+            .execute(
+                "INSERT INTO media_locations (media_id, latitude, longitude, source, place_label) VALUES (?1, 0, 0, 'exif', ?2)",
+                params![photo, label],
+            )
+            .unwrap();
+        photo
+    };
+    let porto = place("Porto, Portugal");
+    let alegre = place("Porto Alegre, RS, Brasil");
+    let sao_paulo = place("São Paulo, SP, Brasil");
+    let by = |place: &str| db.find(&SearchQuery { place: Some(place.into()), ..SearchQuery::default() });
+    assert_eq!(by("Porto, Portugal"), [porto]);
+    assert_eq!(by("porto"), [alegre, porto], "part of a name finds every place with it, newest id first");
+    assert_eq!(by("sao paulo"), [sao_paulo]);
+    assert_eq!(by("say \"hi\""), Vec::<i64>::new(), "quotes are text, not FTS syntax");
+    assert_eq!(by("  ").len(), 3, "a blank place filters nothing");
+}

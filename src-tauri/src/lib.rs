@@ -4,6 +4,7 @@ mod db;
 pub mod scan;
 mod time;
 mod photo_meta;
+pub mod places;
 mod resolve;
 pub mod search;
 pub mod volume;
@@ -22,11 +23,13 @@ pub fn run() {
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
-            let library = db::open_library();
-            if let Ok(connection) = &library {
+            let mut library = db::open_library();
+            if let Ok(connection) = &mut library {
                 // Nothing indexes yet: a run still `running` was cut off by a close.
                 let now = time::iso_utc(std::time::SystemTime::now()).unwrap_or_default();
                 let _ = scan::close_orphan_runs(connection, &now);
+                // F24: places for photos indexed before place names existed.
+                let _ = places::fill_place_labels(connection);
             }
             app.manage(DbState(library.map(|c| Mutex::new(Some(c)))));
             app.manage(commands::onboarding::IndexingState::default());
@@ -44,7 +47,8 @@ pub fn run() {
             commands::details::media_panel_details,
             commands::search::search_media,
             commands::search::search_filters,
-            commands::people::people_list
+            commands::people::people_list,
+            commands::locations::locations_overview
         ])
         .register_asynchronous_uri_scheme_protocol(
             commands::timeline::THUMB_SCHEME,

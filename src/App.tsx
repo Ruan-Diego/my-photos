@@ -27,6 +27,7 @@ import { Appearance } from "./shell/Appearance";
 import { diskCard, type LibrarySummary } from "./shell/library";
 import { SectionPage } from "./shell/SectionPage";
 import { sectionById, sectionFromHash, type SectionId } from "./shell/sections";
+import { LocationsScreen } from "./locations/LocationsScreen";
 import { PeopleScreen } from "./people/PeopleScreen";
 import { SearchScreen } from "./search/SearchScreen";
 import { SEARCH_HASH } from "./search/query";
@@ -326,6 +327,8 @@ function App() {
           <SearchScreen data={timeline} />
         ) : section.id === "people" ? (
           <PeopleScreen />
+        ) : section.id === "locations" ? (
+          <LocationsScreen />
         ) : (
           <SectionPage key={section.id} section={section}>
             {section.id === "settings" ? (

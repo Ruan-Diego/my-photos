@@ -55,3 +55,8 @@ commands.allow = ["search_filters"]
 identifier = "allow-people-list"
 description = "Enables the people_list command."
 commands.allow = ["people_list"]
+
+[[permission]]
+identifier = "allow-locations-overview"
+description = "Enables the locations_overview command."
+commands.allow = ["locations_overview"]

@@ -5,6 +5,7 @@ import { thumbnailUrl } from "../viewer/media";
 import { indexOf, openedId, TIMELINE_HASH, viewerHash, type Entry } from "../viewer/navigation";
 import { Viewer } from "../viewer/Viewer";
 import { personFromHash } from "../people/people";
+import { placeFromHash } from "../locations/locations";
 import {
   chips,
   folderLabel,
@@ -44,10 +45,14 @@ function itemsById(data: TimelineData | null): Map<number, Item> {
   return map;
 }
 
-/** Os filtros com que a tela abre: só a pessoa, quando vem de Pessoas. */
-function fromPerson(hash: string): Filters {
+/** Os filtros com que a tela abre: só a pessoa (de Pessoas) ou só o lugar (de Locais). */
+function fromHash(hash: string): Filters {
   const person = personFromHash(hash);
-  return person === null ? NO_FILTERS : { ...NO_FILTERS, people: [person] };
+  if (person !== null) {
+    return { ...NO_FILTERS, people: [person] };
+  }
+  const place = placeFromHash(hash);
+  return place === null ? NO_FILTERS : { ...NO_FILTERS, place };
 }
 
 function useOpenedResult(): number | null {
@@ -91,7 +96,7 @@ export function SearchScreen({ data }: { data: TimelineData | null }) {
   const opened = useOpenedResult();
   const options = useSearchOptions();
   const [text, setText] = useState("");
-  const [filters, setFilters] = useState<Filters>(() => fromPerson(window.location.hash));
+  const [filters, setFilters] = useState<Filters>(() => fromHash(window.location.hash));
   const [found, setFound] = useState<SearchIds | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const [shown, setShown] = useState(PAGE);
@@ -102,12 +107,13 @@ export function SearchScreen({ data }: { data: TimelineData | null }) {
   const blank = isBlank(text, filters);
   const query = useMemo(() => toQuery(text, filters), [text, filters]);
 
-  // Uma pessoa clicada em Pessoas (F23) chega como `#/buscar?pessoa=7`.
+  // Uma pessoa (F23) ou um lugar (F24) clicado chega como `#/buscar?pessoa=7` ou `?local=`.
   useEffect(() => {
     const follow = () => {
-      if (personFromHash(window.location.hash) !== null) {
+      const hash = window.location.hash;
+      if (personFromHash(hash) !== null || placeFromHash(hash) !== null) {
         setText("");
-        setFilters(fromPerson(window.location.hash));
+        setFilters(fromHash(hash));
       }
     };
     window.addEventListener("hashchange", follow);
@@ -277,7 +283,7 @@ export function SearchScreen({ data }: { data: TimelineData | null }) {
 
           <label className="search-field">
             Local
-            <input type="text" disabled placeholder="Nome do lugar" title="Busca por nome de lugar chega com a F24" />
+            <input type="text" placeholder="Nome do lugar" value={filters.place} onChange={(event) => set({ place: event.target.value })} />
           </label>
 
           <label className="search-field">
