@@ -20,6 +20,7 @@ import {
   type TimelineData,
 } from "./timeline";
 import { Viewer } from "../viewer/Viewer";
+import { SEARCH_HASH } from "../search/query";
 import { indexOf, openedId, order, viewerHash } from "../viewer/navigation";
 
 const SIZE_KEY = "myphotos.timeline.size";
@@ -191,13 +192,13 @@ export function TimelineScreen({ data, failure }: { data: TimelineData | null; f
     <main className="page timeline" aria-labelledby="page-title">
       <header className="page-header">
         <h1 id="page-title">Fotos</h1>
-        <div className="timeline-search" aria-disabled="true" title="A busca chega com a F22">
+        <a className="timeline-search" href={SEARCH_HASH}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
             <path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-4-4" />
           </svg>
           <span>Buscar por pessoa, local, data, pasta…</span>
           <kbd>Ctrl F</kbd>
-        </div>
+        </a>
         <div role="group" aria-label="Mostrar" className="segmented">
           {FILTERS.map((option) => (
             <button key={option.id} type="button" aria-pressed={filter === option.id} onClick={() => setFilter(option.id)}>

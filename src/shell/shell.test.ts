@@ -23,6 +23,7 @@ test("SHELL-03 every section has its own hash and comes back from it", () => {
   }
   assert.equal(sectionFromHash("#/Pessoas"), "people");
   assert.equal(sectionFromHash("#/pessoas/12"), "people");
+  assert.equal(sectionFromHash("#/buscar/12"), "search");
 });
 
 test("SHELL-03 empty or unknown hash opens Fotos", () => {

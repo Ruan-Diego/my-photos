@@ -42,6 +42,10 @@ pub struct SearchQuery {
     /// Exclusive, same format.
     pub until: Option<String>,
     pub person_id: Option<i64>,
+    /// F22: every one of these people is in the media.
+    pub people: Vec<i64>,
+    /// F22: under this folder (relative path, `/` separated), subfolders included.
+    pub folder: Option<String>,
     pub has_location: Option<bool>,
     pub favorites_only: bool,
     pub limit: Option<u32>,
@@ -162,9 +166,9 @@ fn next_month(year: i32, month: u32) -> (i32, u32) {
     }
 }
 
-/// Media of every library in the database (there is one per disk, AD-011), hidden and
-/// missing files left out.
-pub fn search(connection: &Connection, query: &SearchQuery) -> rusqlite::Result<SearchPage> {
+/// The WHERE clause and its values. `with_type` off leaves the type out, for the
+/// photo and video counts next to the type boxes (F22).
+fn where_clause(query: &SearchQuery, with_type: bool) -> (String, Vec<Value>) {
     let parsed = parse_text(&query.text);
     let mut conditions = vec![
         "m.is_hidden = 0".to_string(),
@@ -183,7 +187,7 @@ pub fn search(connection: &Connection, query: &SearchQuery) -> rusqlite::Result<
             Value::Text(fts.clone()),
         );
     }
-    if let Some(kind) = query.media_type.or(parsed.media_type) {
+    if let Some(kind) = query.media_type.or(parsed.media_type).filter(|_| with_type) {
         bind(&mut conditions, "m.media_type = ?", Value::Text(kind.as_column().into()));
     }
     match (parsed.year, parsed.month) {
@@ -223,11 +227,32 @@ pub fn search(connection: &Connection, query: &SearchQuery) -> rusqlite::Result<
         ),
         None => {}
     }
+    for person in &query.people {
+        bind(
+            &mut conditions,
+            "m.id IN (SELECT media_id FROM media_people WHERE person_id = ?)",
+            Value::Integer(*person),
+        );
+    }
+    if let Some(folder) = query.folder.as_deref().map(|folder| folder.trim_matches('/')).filter(|folder| !folder.is_empty()) {
+        // Prefix compare, not LIKE: folder names carry `_` and `%`.
+        bind(
+            &mut conditions,
+            "lower(substr(m.relative_path, 1, length(?))) = lower(?)",
+            Value::Text(format!("{folder}/")),
+        );
+    }
     if query.favorites_only {
         conditions.push("m.is_favorite = 1".into());
     }
+    (conditions.join(" AND "), values)
+}
 
-    let filter = conditions.join(" AND ");
+/// Media of every library in the database (there is one per disk, AD-011), hidden and
+/// missing files left out.
+pub fn search(connection: &Connection, query: &SearchQuery) -> rusqlite::Result<SearchPage> {
+    let (filter, values) = where_clause(query, true);
+
     let total: i64 = connection.query_row(
         &format!("SELECT count(*) FROM media_items m WHERE {filter}"),
         params_from_iter(values.iter()),
@@ -261,6 +286,90 @@ pub fn search(connection: &Connection, query: &SearchQuery) -> rusqlite::Result<
         total: total.max(0) as u64,
         hits,
     })
+}
+
+/// F22: every match at once, as ids in timeline order; the screen already has the rest
+/// of each item from the `timeline` command. With the photo and video counts.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SearchIds {
+    pub ids: Vec<i64>,
+    /// Matches of each type with every other filter applied.
+    pub photos: u64,
+    pub videos: u64,
+}
+
+pub fn search_ids(connection: &Connection, query: &SearchQuery) -> rusqlite::Result<SearchIds> {
+    let (filter, values) = where_clause(query, true);
+    let ids = connection
+        .prepare(&format!(
+            "SELECT m.id FROM media_items m WHERE {filter}
+             ORDER BY m.taken_at IS NULL, m.taken_at DESC, m.id DESC"
+        ))?
+        .query_map(params_from_iter(values.iter()), |row| row.get(0))?
+        .collect::<rusqlite::Result<Vec<i64>>>()?;
+    let (filter, values) = where_clause(query, false);
+    let (photos, videos): (i64, i64) = connection.query_row(
+        &format!(
+            "SELECT coalesce(sum(m.media_type = 'photo'), 0), coalesce(sum(m.media_type = 'video'), 0)
+             FROM media_items m WHERE {filter}"
+        ),
+        params_from_iter(values.iter()),
+        |row| Ok((row.get(0)?, row.get(1)?)),
+    )?;
+    Ok(SearchIds {
+        ids,
+        photos: photos.max(0) as u64,
+        videos: videos.max(0) as u64,
+    })
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PersonOption {
+    pub id: i64,
+    pub name: String,
+    pub count: u64,
+}
+
+/// What the filter column offers: people (most photos first) and folders with media.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SearchOptions {
+    pub people: Vec<PersonOption>,
+    /// Relative paths, `/` separated, in name order.
+    pub folders: Vec<String>,
+}
+
+pub fn search_options(connection: &Connection) -> rusqlite::Result<SearchOptions> {
+    let people = connection
+        .prepare(
+            "SELECT p.id, p.name, count(*) FROM people p
+             JOIN media_people mp ON mp.person_id = p.id
+             JOIN media_items m ON m.id = mp.media_id
+             WHERE m.is_hidden = 0 AND m.indexing_status != 'missing_file'
+             GROUP BY p.id ORDER BY count(*) DESC, p.normalized_name",
+        )?
+        .query_map([], |row| {
+            Ok(PersonOption {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                count: row.get::<_, i64>(2)?.max(0) as u64,
+            })
+        })?
+        .collect::<rusqlite::Result<Vec<_>>>()?;
+    let folders = connection
+        .prepare(
+            "SELECT f.relative_path FROM folders f
+             WHERE f.relative_path != '' AND EXISTS (
+               SELECT 1 FROM media_items m
+               WHERE m.library_id = f.library_id AND m.indexing_status != 'missing_file'
+                 AND lower(substr(m.relative_path, 1, length(f.relative_path) + 1)) = lower(f.relative_path || '/'))
+             ORDER BY f.relative_path COLLATE NOCASE",
+        )?
+        .query_map([], |row| row.get(0))?
+        .collect::<rusqlite::Result<Vec<String>>>()?;
+    Ok(SearchOptions { people, folders })
 }
 
 /// Rebuilds the index from the tables (after a restore or if it ever drifts).

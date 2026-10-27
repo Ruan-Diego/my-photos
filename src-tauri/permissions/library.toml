@@ -40,3 +40,13 @@ commands.allow = ["media_details"]
 identifier = "allow-media-panel-details"
 description = "Enables the media_panel_details command."
 commands.allow = ["media_panel_details"]
+
+[[permission]]
+identifier = "allow-search-media"
+description = "Enables the search_media command."
+commands.allow = ["search_media"]
+
+[[permission]]
+identifier = "allow-search-filters"
+description = "Enables the search_filters command."
+commands.allow = ["search_filters"]

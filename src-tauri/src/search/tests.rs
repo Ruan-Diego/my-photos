@@ -303,3 +303,42 @@ fn srch09_twenty_thousand_media_answer_quickly() {
     // RNF-001 asks for well under a second; debug build, generous bound.
     assert!(elapsed.as_millis() < 2000, "{elapsed:?}");
 }
+
+#[test]
+fn srch10_screen_filters_people_folders_and_counts() {
+    let db = Db::new("srch10");
+    let beach = db.media("Takeout/Google Fotos/Praia_2022/IMG_1.jpg", "photo", Some("2022-08-10T13:37:00Z"));
+    let clip = db.media("Takeout/Google Fotos/Praia_2022/VID_2.mp4", "video", Some("2022-08-11T10:00:00Z"));
+    let other = db.media("Takeout/Google Fotos/Praia_2022x/IMG_3.jpg", "photo", Some("2022-08-12T10:00:00Z"));
+    let home = db.media("Ruan/IMG_4.jpg", "photo", Some("2021-01-01T10:00:00Z"));
+    let ana = db.person(beach, "Ana");
+    db.person(clip, "Ana");
+    let bia = db.person(beach, "Bia");
+    db.person(home, "Bia");
+    db.sql(
+        "INSERT INTO folders (library_id, relative_path, created_at) VALUES
+           (1, 'Takeout/Google Fotos/Praia_2022', 't'), (1, 'Vazia', 't'), (1, 'Ruan', 't')",
+    );
+
+    let ids = |query: SearchQuery| search_ids(&db.connection, &query).unwrap();
+    let both = ids(SearchQuery { people: vec![ana, bia], ..SearchQuery::default() });
+    assert_eq!(both.ids, [beach], "every chosen person is in the photo");
+    let folder = ids(SearchQuery { folder: Some("takeout/google fotos/praia_2022/".into()), ..SearchQuery::default() });
+    assert_eq!(folder.ids, [clip, beach], "the folder, not its look-alike sibling");
+    assert_eq!((folder.photos, folder.videos), (1, 1));
+    let photos = ids(SearchQuery {
+        media_type: Some(MediaKind::Photo),
+        folder: Some("Takeout/Google Fotos/Praia_2022".into()),
+        ..SearchQuery::default()
+    });
+    assert_eq!(photos.ids, [beach]);
+    assert_eq!((photos.photos, photos.videos), (1, 1), "counts ignore the type filter");
+    assert_eq!(ids(SearchQuery::default()).ids, [other, clip, beach, home]);
+
+    let options = search_options(&db.connection).unwrap();
+    assert_eq!(
+        options.people.iter().map(|person| (person.name.as_str(), person.count)).collect::<Vec<_>>(),
+        [("Ana", 2), ("Bia", 2)]
+    );
+    assert_eq!(options.folders, ["Ruan", "Takeout/Google Fotos/Praia_2022"], "folders without media are left out");
+}

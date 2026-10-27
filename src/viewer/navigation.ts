@@ -49,17 +49,29 @@ export function stripWindow(index: number, total: number, size = 12): [number, n
   return [start, start + size];
 }
 
-/** `#/fotos/1066` → 1066. */
-export function openedId(hash: string): number | null {
-  const match = /^#\/fotos\/(\d+)$/.exec(hash);
+/** Onde o visualizador foi aberto: a grade (`fotos`) ou a busca (`buscar`, F22). */
+export type ViewerBase = "fotos" | "buscar";
+
+/** `#/fotos/1066` → 1066; `#/buscar/1066` com `base` `buscar`. */
+export function openedId(hash: string, base: ViewerBase = "fotos"): number | null {
+  const match = new RegExp(`^#/${base}/(\\d+)$`).exec(hash);
   return match === null ? null : Number(match[1]);
 }
 
-export function viewerHash(id: number): string {
-  return `#/fotos/${id}`;
+export function viewerHash(id: number, base: ViewerBase = "fotos"): string {
+  return `#/${base}/${id}`;
 }
 
 export const TIMELINE_HASH = "#/fotos";
+
+/** Para onde voltar: a grade ou a busca, com o que estava nela. */
+export function backHash(base: ViewerBase): string {
+  return `#/${base}`;
+}
+
+export function backLabel(base: ViewerBase): string {
+  return base === "buscar" ? "Voltar para a busca" : "Voltar para Fotos";
+}
 
 export type Zoom = "fit" | "actual";
 

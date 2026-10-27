@@ -2,6 +2,7 @@
 
 export type SectionId =
   | "timeline"
+  | "search"
   | "folders"
   | "albums"
   | "people"
@@ -17,7 +18,8 @@ export interface Section {
   label: string;
   /** Hash route: `#/fotos`. */
   slug: string;
-  group: "main" | "care";
+  /** `hidden`: tela sem item na lateral (a busca abre pela caixa da timeline). */
+  group: "main" | "care" | "hidden";
   /** Feature that builds the screen. */
   feature: string;
   /** SVG path, 24×24, traço 1.7. */
@@ -34,6 +36,7 @@ export const SECTIONS: readonly Section[] = [
   { id: "duplicates", label: "Duplicatas", slug: "duplicatas", group: "care", feature: "F29", icon: "M8 8h12v12H8zM4 16V4h12" },
   { id: "problems", label: "Problemas", slug: "problemas", group: "care", feature: "F28", icon: "M12 3l9 16H3zM12 10v4M12 17v.01" },
   { id: "trash", label: "Lixeira", slug: "lixeira", group: "care", feature: "AD-009", icon: "M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" },
+  { id: "search", label: "Buscar", slug: "buscar", group: "hidden", feature: "F22", icon: "M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-4-4" },
   { id: "settings", label: "Configurações", slug: "configuracoes", group: "care", feature: "F31", icon: "M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1M15 4v4M9 10v4M17 16v4" },
 ];
 

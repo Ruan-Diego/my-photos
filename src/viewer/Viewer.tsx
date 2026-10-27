@@ -7,19 +7,21 @@ import {
   fallbackNote,
   positionLine,
   stripWindow,
-  TIMELINE_HASH,
+  backHash,
+  backLabel,
   viewerHash,
+  type ViewerBase,
   type Entry,
   type Zoom,
 } from "./navigation";
 
 /** Foto no visualizador (F19); vídeo no player (F20, artboard `Video`). */
-export function Viewer({ entries, index }: { entries: Entry[]; index: number }) {
+export function Viewer({ entries, index, base = "fotos" }: { entries: Entry[]; index: number; base?: ViewerBase }) {
   const item = entries[index].item;
-  return item.video ? <VideoPlayer key={item.id} item={item} /> : <PhotoViewer entries={entries} index={index} />;
+  return item.video ? <VideoPlayer key={item.id} item={item} base={base} /> : <PhotoViewer entries={entries} index={index} base={base} />;
 }
 
-function PhotoViewer({ entries, index }: { entries: Entry[]; index: number }) {
+function PhotoViewer({ entries, index, base }: { entries: Entry[]; index: number; base: ViewerBase }) {
   const entry = entries[index];
   const item = entry.item;
   const info = useMediaInfo(item.id);
@@ -62,11 +64,11 @@ function PhotoViewer({ entries, index }: { entries: Entry[]; index: number }) {
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "ArrowLeft" && previous !== null) {
-        window.location.hash = viewerHash(previous);
+        window.location.hash = viewerHash(previous, base);
       } else if (event.key === "ArrowRight" && next !== null) {
-        window.location.hash = viewerHash(next);
+        window.location.hash = viewerHash(next, base);
       } else if (event.key === "Escape") {
-        window.location.hash = TIMELINE_HASH;
+        window.location.hash = backHash(base);
       } else {
         return;
       }
@@ -74,7 +76,7 @@ function PhotoViewer({ entries, index }: { entries: Entry[]; index: number }) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [previous, next]);
+  }, [previous, next, base]);
 
   // A próxima já vem do disco enquanto esta é vista.
   useEffect(() => {
@@ -96,7 +98,7 @@ function PhotoViewer({ entries, index }: { entries: Entry[]; index: number }) {
     <div className="viewer" role="dialog" aria-modal="true" aria-label="Visualizar foto">
       <div className="viewer-main">
         <header className="viewer-header">
-          <a className="viewer-icon" href={TIMELINE_HASH} aria-label="Voltar para Fotos">
+          <a className="viewer-icon" href={backHash(base)} aria-label={backLabel(base)}>
             <svg width="22" height="22" viewBox="0 0 24 24" {...icon} aria-hidden="true">
               <path d="M19 12H5M11 6l-6 6 6 6" />
             </svg>
@@ -181,14 +183,14 @@ function PhotoViewer({ entries, index }: { entries: Entry[]; index: number }) {
             </div>
           )}
           {previous !== null ? (
-            <a className="viewer-arrow viewer-arrow-previous" href={viewerHash(previous)} aria-label="Foto anterior">
+            <a className="viewer-arrow viewer-arrow-previous" href={viewerHash(previous, base)} aria-label="Foto anterior">
               <svg width="22" height="22" viewBox="0 0 24 24" {...icon} strokeWidth={2} aria-hidden="true">
                 <path d="M15 6l-6 6 6 6" />
               </svg>
             </a>
           ) : null}
           {next !== null ? (
-            <a className="viewer-arrow viewer-arrow-next" href={viewerHash(next)} aria-label="Próxima">
+            <a className="viewer-arrow viewer-arrow-next" href={viewerHash(next, base)} aria-label="Próxima">
               <svg width="22" height="22" viewBox="0 0 24 24" {...icon} strokeWidth={2} aria-hidden="true">
                 <path d="M9 6l6 6-6 6" />
               </svg>
@@ -200,7 +202,7 @@ function PhotoViewer({ entries, index }: { entries: Entry[]; index: number }) {
           {entries.slice(stripStart, stripEnd).map((neighbor) => (
             <a
               key={neighbor.item.id}
-              href={viewerHash(neighbor.item.id)}
+              href={viewerHash(neighbor.item.id, base)}
               className="viewer-strip-tile"
               aria-current={neighbor.item.id === item.id ? "true" : undefined}
               aria-label={dateLine(neighbor.item)}
