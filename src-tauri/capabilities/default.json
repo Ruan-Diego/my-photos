@@ -17,6 +17,7 @@
     "allow-media-panel-details",
     "allow-search-media",
     "allow-search-filters",
-    "allow-people-list"
+    "allow-people-list",
+    "allow-locations-overview"
   ]
 }

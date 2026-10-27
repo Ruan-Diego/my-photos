@@ -13,6 +13,8 @@ export interface SearchQuery {
   until: string | null;
   people: number[];
   folder: string | null;
+  /** F24: nome do lugar, ou parte dele. */
+  place: string | null;
   favoritesOnly: boolean;
 }
 
@@ -44,9 +46,11 @@ export interface Filters {
   favoritesOnly: boolean;
   people: number[];
   folder: string | null;
+  /** Campo Local, como digitado, ou o lugar clicado em Locais (F24). */
+  place: string;
 }
 
-export const NO_FILTERS: Filters = { from: "", until: "", photos: true, videos: true, favoritesOnly: false, people: [], folder: null };
+export const NO_FILTERS: Filters = { from: "", until: "", photos: true, videos: true, favoritesOnly: false, people: [], folder: null, place: "" };
 
 /** "01/08/2022" ou "1/8/2022" → "2022-08-01"; `null` se não for uma data. */
 export function parseDate(text: string): string | null {
@@ -89,6 +93,7 @@ export function toQuery(text: string, filters: Filters): SearchQuery {
     until: until === null ? null : dayAfter(until),
     people: filters.people,
     folder: filters.folder,
+    place: filters.place.trim() === "" ? null : filters.place.trim(),
     favoritesOnly: filters.favoritesOnly,
   };
 }
@@ -104,6 +109,7 @@ export function isBlank(text: string, filters: Filters): boolean {
     query.until === null &&
     query.people.length === 0 &&
     query.folder === null &&
+    query.place === null &&
     !query.favoritesOnly
   );
 }
@@ -136,7 +142,7 @@ export function dateChip(filters: Filters): string | null {
   return null;
 }
 
-export type ChipKey = "date" | "type" | "favorites" | "folder" | `person:${number}`;
+export type ChipKey = "date" | "type" | "favorites" | "folder" | "place" | `person:${number}`;
 
 /** Um chip por filtro ativo, na ordem da coluna; o X tira só aquele filtro. */
 export function chips(filters: Filters, people: PersonOption[]): { key: ChipKey; label: string }[] {
@@ -155,6 +161,10 @@ export function chips(filters: Filters, people: PersonOption[]): { key: ChipKey;
     const person = people.find((option) => option.id === id);
     result.push({ key: `person:${id}`, label: person?.name ?? "Pessoa" });
   }
+  if (filters.place.trim() !== "") {
+    // "São Paulo, SP, Brasil" vira "São Paulo".
+    result.push({ key: "place", label: filters.place.trim().split(", ")[0] });
+  }
   if (filters.folder !== null) {
     result.push({ key: "folder", label: folderLabel(filters.folder) });
   }
@@ -171,6 +181,8 @@ export function removeChip(filters: Filters, key: ChipKey): Filters {
       return { ...filters, favoritesOnly: false };
     case "folder":
       return { ...filters, folder: null };
+    case "place":
+      return { ...filters, place: "" };
     default: {
       const id = Number(key.slice("person:".length));
       return { ...filters, people: filters.people.filter((person) => person !== id) };

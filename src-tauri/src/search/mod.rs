@@ -46,6 +46,9 @@ pub struct SearchQuery {
     pub people: Vec<i64>,
     /// F22: under this folder (relative path, `/` separated), subfolders included.
     pub folder: Option<String>,
+    /// F24: in this place (`media_locations.place_label`, or part of it), accents and
+    /// case ignored: "São Paulo, SP, Brasil", "lisbon".
+    pub place: Option<String>,
     pub has_location: Option<bool>,
     pub favorites_only: bool,
     pub limit: Option<u32>,
@@ -240,6 +243,14 @@ fn where_clause(query: &SearchQuery, with_type: bool) -> (String, Vec<Value>) {
             &mut conditions,
             "lower(substr(m.relative_path, 1, length(?))) = lower(?)",
             Value::Text(format!("{folder}/")),
+        );
+    }
+    if let Some(place) = query.place.as_deref().map(str::trim).filter(|place| !place.is_empty()) {
+        // One phrase in the place column: "Porto, Portugal" is not "Porto Alegre, RS, Brasil".
+        bind(
+            &mut conditions,
+            "m.id IN (SELECT rowid FROM media_search WHERE media_search MATCH ?)",
+            Value::Text(format!("place : \"{}\"", place.replace('"', "\"\""))),
         );
     }
     if query.favorites_only {

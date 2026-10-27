@@ -1,6 +1,7 @@
 pub mod details;
 pub mod health;
 pub mod library;
+pub mod locations;
 pub mod onboarding;
 pub mod people;
 pub mod search;
