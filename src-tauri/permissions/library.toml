@@ -65,3 +65,8 @@ commands.allow = ["locations_overview"]
 identifier = "allow-albums-list"
 description = "Enables the albums_list command."
 commands.allow = ["albums_list"]
+
+[[permission]]
+identifier = "allow-favorite-set"
+description = "Enables the favorite_set command."
+commands.allow = ["favorite_set"]

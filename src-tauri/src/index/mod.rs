@@ -231,6 +231,8 @@ pub(crate) fn index_with(
             .map(|_| ())
             .map_err(ScanError::from)
     });
+    // F26: Google Photos favorites of the items this run added.
+    let finished = finished.and_then(|()| crate::favorites::import_takeout_favorites(connection).map(|_| ()).map_err(ScanError::from));
     outcome?;
     finished?;
     Ok(summary)

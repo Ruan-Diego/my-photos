@@ -330,7 +330,7 @@ export function emptyText(filter: Filter, total: number): { title: string; detai
     case "videos":
       return { title: "Nenhum vídeo", detail: "A biblioteca não tem vídeos indexados." };
     case "favorites":
-      return { title: "Nenhum favorito", detail: "As fotos marcadas como favoritas no Google Fotos aparecem aqui." };
+      return { title: "Nenhum favorito", detail: "Toque no coração ao ver uma foto ou vídeo. As favoritas do Google Fotos também aparecem aqui." };
     default:
       return { title: "Nenhuma foto", detail: "A biblioteca só tem vídeos." };
   }

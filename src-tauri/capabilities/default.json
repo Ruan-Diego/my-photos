@@ -19,6 +19,7 @@
     "allow-search-filters",
     "allow-people-list",
     "allow-locations-overview",
-    "allow-albums-list"
+    "allow-albums-list",
+    "allow-favorite-set"
   ]
 }

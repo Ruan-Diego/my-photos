@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { fit, icon, originalUrl, thumbnailUrl, useMediaInfo } from "./media";
 import { DetailsPanel, useDetailsOpen } from "./DetailsPanel";
+import { useToggleFavorite } from "../favorites/FavoriteContext";
 import { VideoPlayer } from "./VideoPlayer";
 import {
   dateLine,
@@ -25,6 +26,7 @@ function PhotoViewer({ entries, index, base }: { entries: Entry[]; index: number
   const entry = entries[index];
   const item = entry.item;
   const info = useMediaInfo(item.id);
+  const toggleFavorite = useToggleFavorite();
   const [zoom, setZoom] = useState<Zoom>("fit");
   const [originalReady, setOriginalReady] = useState(false);
   const [detailsOpen, toggleDetails] = useDetailsOpen();
@@ -115,7 +117,15 @@ function PhotoViewer({ entries, index, base }: { entries: Entry[]; index: number
               100%
             </button>
           </div>
-          <button type="button" className="viewer-icon" aria-label="Favoritar" aria-pressed={item.favorite} disabled title="Favoritar chega com a F26">
+          <button
+            type="button"
+            className="viewer-icon viewer-favorite"
+            aria-label={item.favorite ? "Remover dos favoritos" : "Favoritar"}
+            title={item.favorite ? "Remover dos favoritos" : "Favoritar"}
+            aria-pressed={item.favorite}
+            disabled={toggleFavorite === null}
+            onClick={() => toggleFavorite?.(item.id, !item.favorite)}
+          >
             <svg width="22" height="22" viewBox="0 0 24 24" {...icon} fill={item.favorite ? "currentColor" : "none"} aria-hidden="true">
               <path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" />
             </svg>
