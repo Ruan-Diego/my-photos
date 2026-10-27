@@ -3,7 +3,7 @@ use std::fs;
 use image::{DynamicImage, Rgb, RgbImage};
 use rusqlite::{params, Connection};
 
-use super::{dhash, duplicates, fill_perceptual_hashes, Kind};
+use super::{dhash, duplicates, fill_perceptual_hashes, similar_pairs, Kind, SIMILAR_BITS};
 use crate::db::MIGRATIONS;
 use crate::thumbs::{thumb_path, ThumbSize};
 
@@ -112,4 +112,36 @@ fn dup04_hashes_come_from_the_small_thumbnails() {
     assert_eq!((hash(without), hash(video)), (None, None));
     assert_eq!(fill_perceptual_hashes(&connection, &root, &|| false).unwrap(), 0, "done once");
     let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn dup05_block_index_finds_exactly_the_pairs_a_full_scan_finds() {
+    // Pseudo-random hashes plus near copies 1..=8 bits away, spread across the blocks.
+    let mut hashes = Vec::new();
+    let mut seed = 0x2545_F491_4F6C_DD1Du64;
+    for index in 0..400u64 {
+        seed ^= seed << 13;
+        seed ^= seed >> 7;
+        seed ^= seed << 17;
+        hashes.push(seed);
+        let flips = 1 + index % 8;
+        let mut near = seed;
+        for bit in 0..flips {
+            near ^= 1 << ((bit * 9 + index) % 64);
+        }
+        hashes.push(near);
+    }
+    let mut expected = Vec::new();
+    for a in 0..hashes.len() {
+        for b in a + 1..hashes.len() {
+            if (hashes[a] ^ hashes[b]).count_ones() <= SIMILAR_BITS {
+                expected.push((a, b));
+            }
+        }
+    }
+    let mut found = similar_pairs(&hashes);
+    found.sort();
+    found.dedup();
+    assert_eq!(found, expected);
+    assert!(expected.len() >= 250, "{}", expected.len());
 }

@@ -8,7 +8,7 @@ use tauri::State;
 
 use super::health::DbState;
 use crate::db::DbError;
-use crate::thumbs::{pending, video_tool, ThumbSize};
+use crate::thumbs::{pending_count, video_tool, ThumbSize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -60,7 +60,7 @@ pub fn summary(connection: &Connection, videos: bool) -> rusqlite::Result<Librar
     )?;
     let (root_path, volume_label, last_indexed_at): (Option<String>, _, _) = library.unwrap_or((None, None, None));
     let missing_thumbnails = match &root_path {
-        Some(root) => pending(connection, Path::new(root), ThumbSize::Small, videos)?.len() as u64,
+        Some(root) => pending_count(connection, Path::new(root), ThumbSize::Small, videos)?,
         None => 0,
     };
     Ok(LibrarySummary {

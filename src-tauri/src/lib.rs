@@ -8,6 +8,8 @@ mod db;
 pub mod scan;
 mod time;
 mod photo_meta;
+#[cfg(test)]
+mod perf;
 pub mod places;
 pub mod problems;
 mod resolve;

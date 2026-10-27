@@ -100,6 +100,50 @@ struct Row {
     phash: Option<u64>,
 }
 
+/// Pairs `(a, b)`, `a < b`, of hashes at most `SIMILAR_BITS` apart (F32: no all-pairs scan).
+/// Pigeonhole: split into four 16-bit blocks; two hashes within 6 bits have a block
+/// within 1 bit, so each hash only meets those filed under its blocks or their
+/// one-bit neighbours. A pair can come out more than once.
+pub(crate) fn similar_pairs(hashes: &[u64]) -> Vec<(usize, usize)> {
+    const BLOCKS: u32 = 4;
+    let block = |hash: u64, at: u32| ((hash >> (at * 16)) & 0xFFFF) as usize;
+    // One flat table per block, sorted by key (counting sort), holding the hash next to its
+    // index so a probe reads one contiguous run.
+    let tables: Vec<(Vec<u32>, Vec<(u64, u32)>)> = (0..BLOCKS)
+        .map(|at| {
+            let mut starts = vec![0u32; (1 << 16) + 1];
+            for &hash in hashes {
+                starts[block(hash, at) + 1] += 1;
+            }
+            for key in 0..1 << 16 {
+                starts[key + 1] += starts[key];
+            }
+            let mut next = starts.clone();
+            let mut entries = vec![(0u64, 0u32); hashes.len()];
+            for (index, &hash) in hashes.iter().enumerate() {
+                let slot = &mut next[block(hash, at)];
+                entries[*slot as usize] = (hash, index as u32);
+                *slot += 1;
+            }
+            (starts, entries)
+        })
+        .collect();
+    let mut pairs = Vec::new();
+    for (a, &hash) in hashes.iter().enumerate() {
+        for (at, (starts, entries)) in tables.iter().enumerate() {
+            let key = block(hash, at as u32);
+            for probe in std::iter::once(key).chain((0..16).map(|bit| key ^ (1 << bit))) {
+                for &(other, b) in &entries[starts[probe] as usize..starts[probe + 1] as usize] {
+                    if b as usize > a && (hash ^ other).count_ones() <= SIMILAR_BITS {
+                        pairs.push((a, b as usize));
+                    }
+                }
+            }
+        }
+    }
+    pairs
+}
+
 fn find(parent: &mut [usize], mut at: usize) -> usize {
     while parent[at] != at {
         parent[at] = parent[parent[at]];
@@ -155,15 +199,10 @@ pub fn duplicates(connection: &Connection) -> rusqlite::Result<Duplicates> {
     // Similar: union of every pair within SIMILAR_BITS.
     let hashed: Vec<usize> = (0..rows.len()).filter(|&index| rows[index].phash.is_some()).collect();
     let mut parent: Vec<usize> = (0..rows.len()).collect();
-    for (at, &a) in hashed.iter().enumerate() {
-        let hash = rows[a].phash.unwrap_or(0);
-        for &b in &hashed[at + 1..] {
-            if (hash ^ rows[b].phash.unwrap_or(0)).count_ones() <= SIMILAR_BITS {
-                let (ra, rb) = (find(&mut parent, a), find(&mut parent, b));
-                if ra != rb {
-                    parent[rb] = ra;
-                }
-            }
+    for (a, b) in similar_pairs(&hashed.iter().map(|&index| rows[index].phash.unwrap_or(0)).collect::<Vec<_>>()) {
+        let (ra, rb) = (find(&mut parent, hashed[a]), find(&mut parent, hashed[b]));
+        if ra != rb {
+            parent[rb] = ra;
         }
     }
     let mut clusters: HashMap<usize, Vec<usize>> = HashMap::new();

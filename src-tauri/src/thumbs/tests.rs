@@ -71,11 +71,13 @@ impl Library {
     }
 
     fn pending_ids(&self, size: ThumbSize) -> Vec<i64> {
-        pending(&self.connection, &self.root, size, false)
+        let ids: Vec<i64> = pending(&self.connection, &self.root, size, false)
             .unwrap()
             .into_iter()
             .map(|job| job.media_id)
-            .collect()
+            .collect();
+        assert_eq!(pending_count(&self.connection, &self.root, size, false).unwrap(), ids.len() as u64);
+        ids
     }
 
     fn generate(self, size: ThumbSize, workers: usize) -> (Self, ThumbSummary) {

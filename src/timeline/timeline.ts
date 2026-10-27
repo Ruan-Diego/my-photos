@@ -129,38 +129,52 @@ function keep(flags: number, filter: Filter): boolean {
 
 export const UNDATED = "Sem data";
 
+/** `20220810` para o dia do calendário, sem montar o objeto inteiro (F32: 300 mil itens). */
+function dayNumber(date: Date, utc: boolean): number {
+  return utc
+    ? date.getUTCFullYear() * 10000 + date.getUTCMonth() * 100 + date.getUTCDate()
+    : date.getFullYear() * 10000 + date.getMonth() * 100 + date.getDate();
+}
+
 /** Meses e dias na ordem que chegam (mais novo primeiro); sem data por último. */
 export function group(data: TimelineData, filter: Filter): Month[] {
   const months: Month[] = [];
   let month: Month | null = null;
   let day: Day | null = null;
+  // Textos e chaves só quando o dia muda: a maior parte dos itens cai no mesmo dia do anterior.
+  let lastDay = Number.NaN;
+  const date = new Date(0);
   for (let index = 0; index < data.ids.length; index += 1) {
     const flags = data.flags[index];
     if (!keep(flags, filter)) {
       continue;
     }
     const time = data.times[index];
-    let monthKey = "undated";
-    let dayKey = "undated";
-    let when: Calendar | null = null;
+    const offset = data.offsets[index];
+    let number = -1;
     if (time !== null) {
-      when = calendar(time, data.offsets[index]);
-      monthKey = `${when.year}-${String(when.month + 1).padStart(2, "0")}`;
-      dayKey = `${monthKey}-${String(when.day).padStart(2, "0")}`;
+      date.setTime((offset !== null ? time + offset * 60 : time) * 1000);
+      number = dayNumber(date, offset !== null);
     }
-    if (month === null || month.key !== monthKey) {
-      month = {
-        key: monthKey,
-        title: when === null ? UNDATED : monthTitle(when.year, when.month),
-        year: when === null ? null : when.year,
-        days: [],
-      };
-      months.push(month);
-      day = null;
-    }
-    if (day === null || day.key !== dayKey) {
-      day = { key: dayKey, label: when === null ? "Data não encontrada no arquivo nem no JSON" : dayLabel(when), items: [] };
-      month.days.push(day);
+    if (day === null || number !== lastDay) {
+      lastDay = number;
+      const when = time === null ? null : calendar(time, offset);
+      const monthKey = when === null ? "undated" : `${when.year}-${String(when.month + 1).padStart(2, "0")}`;
+      const dayKey = when === null ? "undated" : `${monthKey}-${String(when.day).padStart(2, "0")}`;
+      if (month === null || month.key !== monthKey) {
+        month = {
+          key: monthKey,
+          title: when === null ? UNDATED : monthTitle(when.year, when.month),
+          year: when === null ? null : when.year,
+          days: [],
+        };
+        months.push(month);
+        day = null;
+      }
+      if (day === null || day.key !== dayKey) {
+        day = { key: dayKey, label: when === null ? "Data não encontrada no arquivo nem no JSON" : dayLabel(when), items: [] };
+        month.days.push(day);
+      }
     }
     day.items.push({
       id: data.ids[index],
@@ -169,7 +183,7 @@ export function group(data: TimelineData, filter: Filter): Month[] {
       favorite: (flags & FAVORITE) !== 0,
       duration: data.durations[index],
       time,
-      offset: data.offsets[index],
+      offset,
     });
   }
   return months;
@@ -282,6 +296,25 @@ export function layout(months: Month[], width: number, height: number): Layout {
     });
   });
   return { lines, height: top + BOTTOM_PADDING, yearTops };
+}
+
+/**
+ * O WebView2 (Chromium) não passa de ~33,5 milhões de px de altura: com 300 mil itens em
+ * janela estreita e tamanho 5 a linha do tempo chega a 46 milhões (F32). Acima de `max`, a
+ * área de rolagem fica em `max` e cada px rolado anda `ratio` px na linha do tempo.
+ */
+export const MAX_CANVAS = 30_000_000;
+
+export interface ScrollSpace {
+  canvas: number;
+  ratio: number;
+}
+
+export function scrollSpace(total: number, viewport: number, max = MAX_CANVAS): ScrollSpace {
+  if (total <= max || viewport >= max) {
+    return { canvas: total, ratio: 1 };
+  }
+  return { canvas: max, ratio: (total - viewport) / (max - viewport) };
 }
 
 /** A primeira linha cujo fim passa de `y`. */
