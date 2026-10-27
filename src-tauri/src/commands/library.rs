@@ -8,7 +8,7 @@ use tauri::State;
 
 use super::health::DbState;
 use crate::db::DbError;
-use crate::thumbs::{locate_ffmpeg, pending, ThumbSize};
+use crate::thumbs::{pending, video_tool, ThumbSize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -83,7 +83,7 @@ pub fn library_summary(state: State<'_, DbState>) -> LibrarySummary {
     let guard = slot.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     match guard.as_ref() {
         Some(connection) => {
-            summary(connection, locate_ffmpeg().is_some()).unwrap_or_else(|_| LibrarySummary::disconnected(DbError::OpenFailed))
+            summary(connection, video_tool(connection).is_some()).unwrap_or_else(|_| LibrarySummary::disconnected(DbError::OpenFailed))
         }
         None => LibrarySummary::disconnected(DbError::OpenFailed),
     }

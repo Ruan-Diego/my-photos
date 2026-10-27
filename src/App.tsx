@@ -23,7 +23,6 @@ import {
   type RecentThumbnail,
 } from "./indexing/progress";
 import { Onboarding } from "./onboarding/Onboarding";
-import { Appearance } from "./shell/Appearance";
 import { diskCard, type LibrarySummary } from "./shell/library";
 import { SectionPage } from "./shell/SectionPage";
 import { sectionById, sectionFromHash, type SectionId } from "./shell/sections";
@@ -34,6 +33,8 @@ import { SearchScreen } from "./search/SearchScreen";
 import { SEARCH_HASH } from "./search/query";
 import { Sidebar } from "./shell/Sidebar";
 import { TimelineScreen } from "./timeline/TimelineScreen";
+import { SettingsScreen } from "./settings/SettingsScreen";
+import { loadMotion, reducedMotion, saveMotion, type MotionChoice, type Settings } from "./settings/settings";
 import { FavoritesScreen } from "./favorites/FavoritesScreen";
 import { ProblemsScreen } from "./problems/ProblemsScreen";
 import { DuplicatesScreen } from "./duplicates/DuplicatesScreen";
@@ -80,6 +81,24 @@ function useTheme(): [ThemeChoice, (choice: ThemeChoice) => void] {
     setTheme(choice);
   }, []);
   return [theme, choose];
+}
+
+/** Configurações › Aparência › Animações (F31): `data-motion` no <html> para o CSS. */
+function useMotion(): [MotionChoice, (choice: MotionChoice) => void] {
+  const [motion, setMotion] = useState(loadMotion);
+  useEffect(() => {
+    const root = document.documentElement;
+    if (motion === "system") {
+      delete root.dataset.motion;
+    } else {
+      root.dataset.motion = motion;
+    }
+  }, [motion]);
+  const choose = useCallback((choice: MotionChoice) => {
+    saveMotion(choice);
+    setMotion(choice);
+  }, []);
+  return [motion, choose];
 }
 
 /** Resumo do disco; `undefined` enquanto a primeira resposta não chega. */
@@ -137,6 +156,7 @@ const THUMBNAIL_POLL_MS = 1500;
 function App() {
   const active = useSection();
   const [theme, setTheme] = useTheme();
+  const [motion, setMotion] = useMotion();
   const [summary, reloadSummary] = useLibrary();
   const [folder, setFolder] = useState<LibraryFolder | null>(null);
   const [progress, setProgress] = useState<Progress | null>(null);
@@ -254,7 +274,8 @@ function App() {
       .catch((error) => setStartError(errorText(error)));
   }, [onboarding, folder]);
 
-  const startIndexing = useCallback(() => {
+  // `quiet`: a busca automática ao conectar o HD (F31) fica no cartão da lateral.
+  const startIndexing = useCallback((quiet = false) => {
     setStarting(true);
     setStartError(null);
     setIndexError(null);
@@ -265,11 +286,33 @@ function App() {
         setLines([]);
         setRunStartedAt(Date.now());
         setNow(Date.now());
-        setShowProgress(true);
+        setShowProgress(!quiet);
       })
       .catch((error) => setStartError(errorText(error)))
       .finally(() => setStarting(false));
   }, []);
+
+  // Configurações › "Procurar arquivos novos ao conectar o HD": uma vez a cada conexão.
+  const connected = summary?.connected === true && !needsOnboarding(summary);
+  const idle = progress === null && !starting;
+  const wasConnected = useRef(false);
+  useEffect(() => {
+    if (!connected) {
+      wasConnected.current = false;
+      return;
+    }
+    if (wasConnected.current || !idle) {
+      return;
+    }
+    wasConnected.current = true;
+    invoke<Settings>("settings_overview")
+      .then((settings) => {
+        if (settings.scanOnConnect) {
+          startIndexing(true);
+        }
+      })
+      .catch(() => undefined);
+  }, [connected, idle, startIndexing]);
 
   const pauseIndexing = useCallback(() => {
     setPausing(true);
@@ -283,12 +326,12 @@ function App() {
 
   if (onboarding) {
     return (
-      <MotionConfig reducedMotion="user">
+      <MotionConfig reducedMotion={reducedMotion(motion)}>
         <Onboarding
           folder={folder}
           starting={starting}
           failure={startError ?? (indexError === null ? null : `A indexação parou: ${failureText(indexError)}.`)}
-          onStart={startIndexing}
+          onStart={() => startIndexing()}
         />
       </MotionConfig>
     );
@@ -298,7 +341,7 @@ function App() {
 
   if (showProgress && progress !== null) {
     return (
-      <MotionConfig reducedMotion="user">
+      <MotionConfig reducedMotion={reducedMotion(motion)}>
         <IndexingScreen
           root={root}
           progress={progress}
@@ -308,7 +351,7 @@ function App() {
           thumbnails={thumbnails}
           lines={lines}
           onPause={pauseIndexing}
-          onResume={startIndexing}
+          onResume={() => startIndexing()}
           onBrowse={() => setShowProgress(false)}
         />
       </MotionConfig>
@@ -319,25 +362,25 @@ function App() {
   let onDiskAction: (() => void) | undefined;
   if (progress !== null) {
     disk = indexingCard(root, progress, paused);
-    onDiskAction = paused ? startIndexing : () => setShowProgress(true);
+    onDiskAction = paused ? () => startIndexing() : () => setShowProgress(true);
   } else if (indexError !== null) {
     disk = failedCard(indexError);
-    onDiskAction = startIndexing;
+    onDiskAction = () => startIndexing();
   } else if (startError !== null) {
     disk = { tone: "warn", title: "A indexação não começou", detail: startError, action: null };
   } else if (interrupted(summary)) {
     disk = interruptedCard(summary?.mediaCount ?? 0);
-    onDiskAction = startIndexing;
+    onDiskAction = () => startIndexing();
   } else if (missingThumbnails(summary ?? null) > 0) {
     disk = thumbnailsCard(missingThumbnails(summary ?? null));
-    onDiskAction = startIndexing;
+    onDiskAction = () => startIndexing();
   } else if (summary?.connected === true) {
     // "Procurar arquivos novos": varredura incremental.
-    onDiskAction = startIndexing;
+    onDiskAction = () => startIndexing();
   }
   const section = sectionById(active);
   return (
-    <MotionConfig reducedMotion="user">
+    <MotionConfig reducedMotion={reducedMotion(motion)}>
       <FavoriteContext.Provider value={summary?.connected === true ? toggleFavorite : null}>
       <div className="shell">
         <Sidebar active={active} disk={disk} onDiskAction={onDiskAction} />
@@ -357,14 +400,17 @@ function App() {
           <ProblemsScreen />
         ) : section.id === "duplicates" ? (
           <DuplicatesScreen data={timeline} />
+        ) : section.id === "settings" ? (
+          <SettingsScreen
+            theme={theme}
+            onTheme={setTheme}
+            motion={motion}
+            onMotion={setMotion}
+            onScan={summary?.connected === true && progress === null && !starting ? () => startIndexing() : undefined}
+            indexing={progress !== null}
+          />
         ) : (
-          <SectionPage key={section.id} section={section}>
-            {section.id === "settings" ? (
-              <div className="settings">
-                <Appearance theme={theme} onChange={setTheme} />
-              </div>
-            ) : undefined}
-          </SectionPage>
+          <SectionPage key={section.id} section={section} />
         )}
       </div>
       </FavoriteContext.Provider>

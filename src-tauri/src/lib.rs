@@ -11,6 +11,7 @@ pub mod places;
 pub mod problems;
 mod resolve;
 pub mod search;
+pub mod settings;
 pub mod volume;
 pub mod index;
 mod takeout;
@@ -60,7 +61,11 @@ pub fn run() {
             commands::problems::problems_overview,
             commands::problems::database_check,
             commands::problems::problems_export,
-            commands::duplicates::duplicates_list
+            commands::duplicates::duplicates_list,
+            commands::settings::settings_overview,
+            commands::settings::settings_set_flag,
+            commands::settings::settings_set_cache_limit,
+            commands::settings::thumbnails_clear
         ])
         .register_asynchronous_uri_scheme_protocol(
             commands::timeline::THUMB_SCHEME,
