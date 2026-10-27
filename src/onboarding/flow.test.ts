@@ -8,6 +8,7 @@ const fresh = {
   volumeLabel: null,
   mediaCount: 0,
   lastIndexedAt: null,
+  missingThumbnails: 0,
   problem: null,
 };
 

@@ -231,6 +231,15 @@ pub(crate) fn start_run(
     ))
 }
 
+/// A run left `running` by an app that closed (or crashed) mid-way: at startup nothing
+/// is indexing, so every such run ended without saying so. Marks them `cancelled`.
+pub fn close_orphan_runs(connection: &Connection, now: &str) -> rusqlite::Result<usize> {
+    connection.execute(
+        "UPDATE indexing_runs SET status = 'cancelled', finished_at = ?1 WHERE status = 'running'",
+        [now],
+    )
+}
+
 pub(crate) fn finish_run(
     connection: &Connection,
     library_id: i64,

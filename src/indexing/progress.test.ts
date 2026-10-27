@@ -6,6 +6,8 @@ import {
   indexingCard,
   interrupted,
   interruptedCard,
+  missingThumbnails,
+  thumbnailsCard,
   logLine,
   NO_COUNTS,
   overall,
@@ -99,4 +101,15 @@ test("PROG-06 the sidebar card follows the run, a pause and an interrupted first
   assert.equal(interrupted({ ...base, mediaCount: 0 }), false);
   assert.equal(interrupted(null), false);
   assert.deepEqual(interruptedCard(3400), { tone: "warn", title: "Indexação incompleta", detail: "3.400 mídias até agora", action: "Continuar" });
+});
+
+test("PROG-07 a run closed during the thumbnails asks to continue them", () => {
+  const done = { connected: true, lastIndexedAt: "2026-10-26T17:35:36Z", mediaCount: 5210, missingThumbnails: 1234 };
+  assert.equal(missingThumbnails(done), 1234);
+  assert.equal(missingThumbnails({ ...done, missingThumbnails: 0 }), 0);
+  assert.equal(missingThumbnails({ ...done, lastIndexedAt: null }), 0, "first run unfinished: the interrupted card covers it");
+  assert.equal(missingThumbnails({ ...done, connected: false }), 0);
+  assert.equal(missingThumbnails(null), 0);
+  assert.deepEqual(thumbnailsCard(1234), { tone: "warn", title: "Indexação incompleta", detail: "faltam 1.234 miniaturas", action: "Continuar" });
+  assert.equal(thumbnailsCard(1).detail, "falta 1 miniatura");
 });

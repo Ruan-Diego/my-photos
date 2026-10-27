@@ -252,3 +252,22 @@ export function interruptedCard(mediaCount: number): DiskCard {
     action: "Continuar",
   };
 }
+
+/** Índice completo, mas o app fechou (ou pausou) no meio das miniaturas: quantas faltam. */
+export function missingThumbnails(
+  summary: { connected: boolean; lastIndexedAt: string | null; missingThumbnails?: number } | null,
+): number {
+  if (summary === null || !summary.connected || summary.lastIndexedAt === null) {
+    return 0;
+  }
+  return summary.missingThumbnails ?? 0;
+}
+
+export function thumbnailsCard(missing: number): DiskCard {
+  return {
+    tone: "warn",
+    title: "Indexação incompleta",
+    detail: missing === 1 ? "falta 1 miniatura" : `faltam ${count.format(missing)} miniaturas`,
+    action: "Continuar",
+  };
+}

@@ -6,6 +6,8 @@ export interface LibrarySummary {
   volumeLabel: string | null;
   mediaCount: number;
   lastIndexedAt: string | null;
+  /** Mídias ainda sem miniatura pequena (o app fechou durante as miniaturas). */
+  missingThumbnails: number;
   problem: string | null;
 }
 
