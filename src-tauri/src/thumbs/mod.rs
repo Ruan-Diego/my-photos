@@ -172,6 +172,14 @@ pub fn cache_limit(connection: &Connection) -> rusqlite::Result<u64> {
         .unwrap_or(DEFAULT_CACHE_LIMIT_BYTES))
 }
 
+/// ffmpeg for video covers, unless "Gerar capa dos vídeos" is off in Settings (F31).
+pub fn video_tool(connection: &Connection) -> Option<Ffmpeg> {
+    match crate::settings::flag(connection, crate::settings::VIDEO_COVERS, true) {
+        Ok(false) => None,
+        _ => locate_ffmpeg(),
+    }
+}
+
 pub fn cache_bytes(connection: &Connection) -> rusqlite::Result<u64> {
     connection.query_row("SELECT COALESCE(SUM(bytes), 0) FROM thumbnails", [], |row| {
         row.get::<_, i64>(0).map(|bytes| bytes.max(0) as u64)
@@ -445,7 +453,7 @@ pub fn generate_library(
     progress: &mut dyn FnMut(u64, u64),
     stop: &dyn Fn() -> bool,
 ) -> (Connection, Result<ThumbSummary, rusqlite::Error>) {
-    let ffmpeg = locate_ffmpeg();
+    let ffmpeg = video_tool(&connection);
     let dir = video::describe(ffmpeg.as_ref());
     let tool = ffmpeg.map(|tool| Arc::new(tool) as Arc<dyn VideoTool>);
     let (connection, result) = generate_with(connection, root, size, workers, tool, progress, stop);

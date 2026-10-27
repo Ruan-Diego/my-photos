@@ -9,6 +9,7 @@ pub mod locations;
 pub mod onboarding;
 pub mod people;
 pub mod search;
+pub mod settings;
 pub mod timeline;
 pub mod viewer;
 

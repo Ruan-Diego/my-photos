@@ -11,7 +11,7 @@ use std::time::Duration;
 
 use rusqlite::Connection;
 
-use super::video::{cover_time, locate_ffmpeg, VideoError, VideoProbe, VideoTool};
+use super::video::{cover_time, VideoError, VideoProbe, VideoTool};
 use super::{
     cache_bytes, evict, job_for, now, original_path, record_done, record_failure, record_video,
     render, thumb_path, write_thumb, Job, Priority, ThumbError, ThumbQueue, ThumbSize,
@@ -72,7 +72,7 @@ impl ThumbService {
     /// `limit` is the cache size in bytes (`cache_limit`). Videos get covers when ffmpeg
     /// is found (F13).
     pub fn start(connection: Connection, root: PathBuf, workers: usize, limit: u64) -> Self {
-        let tool = locate_ffmpeg().map(|tool| Arc::new(tool) as Arc<dyn VideoTool>);
+        let tool = super::video_tool(&connection).map(|tool| Arc::new(tool) as Arc<dyn VideoTool>);
         Self::start_with(connection, root, workers, limit, tool)
     }
 

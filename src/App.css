@@ -253,13 +253,333 @@ button.side-card-action {
 
 /* Configurações */
 
+.settings-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.settings-nav {
+  position: sticky;
+  top: 0;
+  flex: 0 1 220px;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 22px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+@media (max-width: 960px) {
+  .settings-nav {
+    position: static;
+  }
+}
+
+.settings-nav button {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 15px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.settings-nav button:hover,
+.settings-nav button[aria-current="true"] {
+  background: var(--sunken);
+}
+
+.settings-nav button[aria-current="true"] {
+  font-weight: 600;
+}
+
 .settings {
+  flex: 999 1 460px;
+  min-width: 0;
   max-width: 860px;
   box-sizing: border-box;
   padding: 22px 28px 48px;
   display: flex;
   flex-direction: column;
   gap: 18px;
+}
+
+.settings .card {
+  scroll-margin-top: 16px;
+}
+
+.settings-notice {
+  margin: 0;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: var(--warn-bg);
+  color: var(--warn-fg);
+  font-size: 14px;
+}
+
+.settings-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+}
+
+.settings-what {
+  flex: 1 1 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.settings-what strong {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.settings-what span,
+.settings-hint,
+.settings-later,
+.settings-privacy span {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.settings-hint {
+  margin: 0;
+}
+
+.button-link {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.button-link:disabled,
+.button-solid:disabled,
+.settings-actions .button-line:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.button-danger {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 9px;
+  background: var(--warn-bg);
+  color: var(--warn-fg);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.settings-actions .button-solid,
+.settings-actions .button-line {
+  font-size: 14px;
+  padding: 0 16px;
+}
+
+.settings-cache .settings-actions .button-line {
+  min-height: 40px;
+  border-radius: 9px;
+  padding: 0 14px;
+}
+
+.settings-paths {
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px 20px;
+  font-size: 14px;
+}
+
+.settings-paths dt {
+  color: var(--muted);
+}
+
+.settings-paths dd {
+  margin: 0;
+  font-family: "Cascadia Mono", Consolas, monospace;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.settings-paths dd.settings-later {
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.settings-cache {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings-cache-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.settings-cache-head label {
+  font-weight: 600;
+}
+
+.settings-cache-head span {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.settings-meter {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.settings-meter div {
+  height: 100%;
+  background: var(--accent-fill);
+}
+
+.settings select {
+  min-height: 40px;
+  padding: 0 10px;
+  border-radius: 9px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.settings-switches {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.settings-switch {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 40px;
+  font-size: 15px;
+}
+
+.settings-switch input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--accent);
+}
+
+.settings-switch span {
+  flex: 1;
+}
+
+.settings-switches .settings-hint {
+  padding-left: 32px;
+}
+
+.settings-ignored {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings-ignored > span {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.settings-ignored div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.settings-ignored code {
+  padding: 5px 10px;
+  border-radius: 8px;
+  background: var(--sunken);
+  font-family: "Cascadia Mono", Consolas, monospace;
+  font-size: 12.5px;
+}
+
+.settings-selects {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.settings-selects label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.card.settings-privacy {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px 18px;
+}
+
+.settings-privacy > div {
+  flex: 1 1 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.settings-privacy-icon {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border-radius: 12px;
+  background: var(--ok-bg);
+  color: var(--ok-fg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Configurações › Animações › Sempre reduzidas. */
+:root[data-motion="reduced"] *,
+:root[data-motion="reduced"] *::before,
+:root[data-motion="reduced"] *::after {
+  transition: none !important;
+  animation: none !important;
 }
 
 .card {

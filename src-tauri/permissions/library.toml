@@ -90,3 +90,23 @@ commands.allow = ["problems_export"]
 identifier = "allow-duplicates-list"
 description = "Enables the duplicates_list command."
 commands.allow = ["duplicates_list"]
+
+[[permission]]
+identifier = "allow-settings-overview"
+description = "Enables the settings_overview command."
+commands.allow = ["settings_overview"]
+
+[[permission]]
+identifier = "allow-settings-set-flag"
+description = "Enables the settings_set_flag command."
+commands.allow = ["settings_set_flag"]
+
+[[permission]]
+identifier = "allow-settings-set-cache-limit"
+description = "Enables the settings_set_cache_limit command."
+commands.allow = ["settings_set_cache_limit"]
+
+[[permission]]
+identifier = "allow-thumbnails-clear"
+description = "Enables the thumbnails_clear command."
+commands.allow = ["thumbnails_clear"]

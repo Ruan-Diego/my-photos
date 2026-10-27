@@ -47,6 +47,12 @@ pub struct IndexingState {
     stop: Arc<AtomicBool>,
 }
 
+impl IndexingState {
+    pub fn is_running(&self) -> bool {
+        self.running.load(Ordering::SeqCst)
+    }
+}
+
 pub(crate) fn count_exports<'a>(names: impl IntoIterator<Item = &'a str>) -> u32 {
     let mut exports: Vec<String> = Vec::new();
     for name in names {

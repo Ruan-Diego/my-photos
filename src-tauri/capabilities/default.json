@@ -24,6 +24,10 @@
     "allow-problems-overview",
     "allow-database-check",
     "allow-problems-export",
-    "allow-duplicates-list"
+    "allow-duplicates-list",
+    "allow-settings-overview",
+    "allow-settings-set-flag",
+    "allow-settings-set-cache-limit",
+    "allow-thumbnails-clear"
   ]
 }
