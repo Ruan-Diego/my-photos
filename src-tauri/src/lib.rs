@@ -43,7 +43,8 @@ pub fn run() {
             commands::viewer::media_details,
             commands::details::media_panel_details,
             commands::search::search_media,
-            commands::search::search_filters
+            commands::search::search_filters,
+            commands::people::people_list
         ])
         .register_asynchronous_uri_scheme_protocol(
             commands::timeline::THUMB_SCHEME,

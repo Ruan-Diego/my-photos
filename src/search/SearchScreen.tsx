@@ -4,6 +4,7 @@ import { duration, FAVORITE, VIDEO, type Item, type TimelineData } from "../time
 import { thumbnailUrl } from "../viewer/media";
 import { indexOf, openedId, TIMELINE_HASH, viewerHash, type Entry } from "../viewer/navigation";
 import { Viewer } from "../viewer/Viewer";
+import { personFromHash } from "../people/people";
 import {
   chips,
   folderLabel,
@@ -41,6 +42,12 @@ function itemsById(data: TimelineData | null): Map<number, Item> {
     });
   });
   return map;
+}
+
+/** Os filtros com que a tela abre: só a pessoa, quando vem de Pessoas. */
+function fromPerson(hash: string): Filters {
+  const person = personFromHash(hash);
+  return person === null ? NO_FILTERS : { ...NO_FILTERS, people: [person] };
 }
 
 function useOpenedResult(): number | null {
@@ -84,7 +91,7 @@ export function SearchScreen({ data }: { data: TimelineData | null }) {
   const opened = useOpenedResult();
   const options = useSearchOptions();
   const [text, setText] = useState("");
-  const [filters, setFilters] = useState<Filters>(NO_FILTERS);
+  const [filters, setFilters] = useState<Filters>(() => fromPerson(window.location.hash));
   const [found, setFound] = useState<SearchIds | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const [shown, setShown] = useState(PAGE);
@@ -94,6 +101,18 @@ export function SearchScreen({ data }: { data: TimelineData | null }) {
 
   const blank = isBlank(text, filters);
   const query = useMemo(() => toQuery(text, filters), [text, filters]);
+
+  // Uma pessoa clicada em Pessoas (F23) chega como `#/buscar?pessoa=7`.
+  useEffect(() => {
+    const follow = () => {
+      if (personFromHash(window.location.hash) !== null) {
+        setText("");
+        setFilters(fromPerson(window.location.hash));
+      }
+    };
+    window.addEventListener("hashchange", follow);
+    return () => window.removeEventListener("hashchange", follow);
+  }, []);
 
   useEffect(() => {
     if (opened === null) {

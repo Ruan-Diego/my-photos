@@ -16,6 +16,7 @@
     "allow-media-details",
     "allow-media-panel-details",
     "allow-search-media",
-    "allow-search-filters"
+    "allow-search-filters",
+    "allow-people-list"
   ]
 }
