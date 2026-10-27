@@ -1,0 +1,7 @@
+# F32 — Design
+
+- **Banco sintético** (`src-tauri/src/perf/`, só em teste): `build(path, itens)` cria 600 pastas, 400 pessoas, local em 1/3, vídeo em 1/12, favorito em 1/50, cópia idêntica a cada 40 e hash perceptual nas fotos. `perf01_*` (ignorado; `cargo test --release --lib perf01 -- --ignored --nocapture`) mede cada tela, melhor de 3.
+- **Opções da busca**: as pastas com mídia saíam de um `EXISTS` com prefixo por pasta (9,5 s). Agora uma passada pelas mídias marca a pasta de cada uma e as de cima, e as pastas são filtradas por esse conjunto.
+- **Duplicadas parecidas**: a comparação de todos os pares travava. Agora `similar_pairs` divide o hash em 4 blocos de 16 bits: dois hashes a até 6 bits de distância têm um bloco a até 1 bit (casa dos pombos), então cada hash só é comparado com os do mesmo bloco ou de um vizinho a 1 bit. Tabelas planas por bloco, ordenadas por chave.
+- **Miniaturas faltando** (resumo da barra lateral, pedido a cada atualização): `pending_count` conta no SQL, com a mesma impressão digital de `fingerprint`, em vez de montar todos os trabalhos.
+- **Linha do tempo no navegador**: `group` só monta textos e datas quando o dia muda. Acima de `MAX_CANVAS` (30 milhões de px), `scrollSpace` limita a área de rolagem e cada px rolado anda `ratio` px na linha do tempo (no pior caso medido, 1,5). As linhas visíveis são posicionadas com esse deslocamento. `Tile` e `TimelineLine` usam `memo`.

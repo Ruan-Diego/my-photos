@@ -245,6 +245,26 @@ pub(crate) fn pending(
         .collect())
 }
 
+/// How many `pending` would return, without building the jobs (F32: the sidebar asks for
+/// it on every summary; 0.5 s on 300k items the long way). The SQL fingerprint matches
+/// `fingerprint`.
+pub(crate) fn pending_count(connection: &Connection, root: &Path, size: ThumbSize, videos: bool) -> rusqlite::Result<u64> {
+    let count: i64 = connection.query_row(
+        "SELECT count(*) FROM (
+           SELECT m.id, coalesce(CAST(m.size_bytes AS TEXT), '') || '|' || coalesce(m.fs_modified_at, '') || '|'
+                    || coalesce(CAST(m.orientation AS TEXT), '') AS print
+           FROM media_items m
+           WHERE (m.media_type = 'photo' OR (?2 AND m.media_type = 'video'))
+             AND m.indexing_status != 'missing_file'
+             AND m.library_id IN (SELECT id FROM libraries WHERE root_path = ?1 COLLATE NOCASE)) p
+         WHERE NOT EXISTS (SELECT 1 FROM thumbnails t WHERE t.media_id = p.id AND t.size = ?3 AND t.source_fingerprint = p.print)
+           AND NOT EXISTS (SELECT 1 FROM thumbnail_failures f WHERE f.media_id = p.id AND f.source_fingerprint = p.print)",
+        params![root.to_string_lossy(), videos, size.as_column()],
+        |row| row.get(0),
+    )?;
+    Ok(count.max(0) as u64)
+}
+
 fn fingerprints(
     connection: &Connection,
     sql: &str,

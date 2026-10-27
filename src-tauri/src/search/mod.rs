@@ -387,16 +387,31 @@ pub fn search_options(connection: &Connection) -> rusqlite::Result<SearchOptions
             })
         })?
         .collect::<rusqlite::Result<Vec<_>>>()?;
+    // F32: one pass over the media instead of a prefix scan per folder (9.5 s on 300k items).
+    let mut with_media = std::collections::HashSet::<(i64, String)>::new();
+    {
+        let mut statement = connection
+            .prepare("SELECT library_id, relative_path FROM media_items WHERE indexing_status != 'missing_file'")?;
+        let mut rows = statement.query([])?;
+        while let Some(row) = rows.next()? {
+            let library: i64 = row.get(0)?;
+            let path: String = row.get(1)?;
+            let mut folder = path.to_lowercase();
+            while let Some(slash) = folder.rfind('/') {
+                folder.truncate(slash);
+                if !with_media.insert((library, folder.clone())) {
+                    break;
+                }
+            }
+        }
+    }
     let folders = connection
-        .prepare(
-            "SELECT f.relative_path FROM folders f
-             WHERE f.relative_path != '' AND EXISTS (
-               SELECT 1 FROM media_items m
-               WHERE m.library_id = f.library_id AND m.indexing_status != 'missing_file'
-                 AND lower(substr(m.relative_path, 1, length(f.relative_path) + 1)) = lower(f.relative_path || '/'))
-             ORDER BY f.relative_path COLLATE NOCASE",
-        )?
-        .query_map([], |row| row.get(0))?
+        .prepare("SELECT library_id, relative_path FROM folders WHERE relative_path != '' ORDER BY relative_path COLLATE NOCASE")?
+        .query_map([], |row| Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?)))?
+        .filter_map(|row| match row {
+            Ok((library, path)) => with_media.contains(&(library, path.to_lowercase())).then_some(Ok(path)),
+            Err(error) => Some(Err(error)),
+        })
         .collect::<rusqlite::Result<Vec<String>>>()?;
     let albums = connection
         .prepare("SELECT id, name FROM albums ORDER BY name COLLATE NOCASE")?

@@ -10,6 +10,8 @@ import {
   GAP,
   group,
   layout,
+  MAX_CANVAS,
+  scrollSpace,
   rowHeight,
   rows,
   VIDEO,
@@ -102,4 +104,12 @@ test("TL-05 only the lines on screen are rendered", () => {
   assert.ok(top2020 !== undefined);
   assert.equal(yearAt(lines, top2020 + 10), 2020);
   assert.deepEqual([...yearTops.keys()], [2022, 2021, 2020, 2019]);
+});
+
+test("PERF-01 a timeline taller than the WebView allows still reaches its end", () => {
+  assert.deepEqual(scrollSpace(12_000_000, 900), { canvas: 12_000_000, ratio: 1 });
+  const space = scrollSpace(46_000_000, 900);
+  assert.equal(space.canvas, MAX_CANVAS);
+  // Rolar até o fim da área mostra o fim da linha do tempo.
+  assert.equal(Math.round((space.canvas - 900) * space.ratio + 900), 46_000_000);
 });

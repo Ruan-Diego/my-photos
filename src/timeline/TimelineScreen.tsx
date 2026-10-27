@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import {
   DEFAULT_SIZE,
@@ -9,6 +9,7 @@ import {
   layout,
   rowHeight,
   visible,
+  scrollSpace,
   yearAt,
   years as yearsOf,
   basis,
@@ -48,7 +49,8 @@ function thumbnailUrl(id: number): string {
   return convertFileSrc(String(id), "thumb");
 }
 
-function Tile({ item, height, grow }: { item: Item; height: number; grow: boolean }) {
+// F32: memo nas peças da grade; rolar só monta as linhas que entram na tela.
+const Tile = memo(function Tile({ item, height, grow }: { item: Item; height: number; grow: boolean }) {
   const [loaded, setLoaded] = useState(false);
   const size = basis(item.ratio, height);
   return (
@@ -82,10 +84,11 @@ function Tile({ item, height, grow }: { item: Item; height: number; grow: boolea
       ) : null}
     </a>
   );
-}
+});
 
-function TimelineLine({ line, height }: { line: Line; height: number }) {
-  const style = { top: line.top, height: line.height };
+/** `offset`: onde a linha do tempo começa na área de rolagem (ver `scrollSpace`). */
+const TimelineLine = memo(function TimelineLine({ line, height, offset }: { line: Line; height: number; offset: number }) {
+  const style = { top: line.top + offset, height: line.height };
   switch (line.kind) {
     case "month":
       return (
@@ -109,7 +112,7 @@ function TimelineLine({ line, height }: { line: Line; height: number }) {
         </div>
       );
   }
-}
+});
 
 /** F19: `#/fotos/<id>` abre o visualizador por cima da grade, que fica onde estava. */
 function useOpened(): number | null {
@@ -152,8 +155,10 @@ export function TimelineScreen({ data, failure }: { data: TimelineData | null; f
   const months = useMemo(() => (data === null ? [] : group(data, filter)), [data, filter]);
   const years = useMemo(() => yearsOf(months), [months]);
   const { lines, height: total, yearTops } = useMemo(() => layout(months, width, height), [months, width, height]);
-  const [start, end] = visible(lines, scrollTop, viewport);
-  const currentYear = yearAt(lines, scrollTop);
+  const space = scrollSpace(total, viewport);
+  const position = scrollTop * space.ratio;
+  const [start, end] = visible(lines, position, viewport);
+  const currentYear = yearAt(lines, position);
 
   // Filtro novo, lista nova: volta ao topo.
   useEffect(() => {
@@ -165,16 +170,16 @@ export function TimelineScreen({ data, failure }: { data: TimelineData | null; f
     (year: number) => {
       const top = yearTops.get(year);
       if (top !== undefined) {
-        scroller.current?.scrollTo({ top });
+        scroller.current?.scrollTo({ top: top / space.ratio });
       }
     },
-    [yearTops],
+    [yearTops, space.ratio],
   );
 
   const changeSize = (value: number) => {
     // Mantém o mesmo ponto da biblioteca no topo ao mudar a altura das linhas.
     const element = scroller.current;
-    const fraction = element !== null && total > 0 ? element.scrollTop / total : 0;
+    const fraction = element !== null && element.scrollHeight > 0 ? element.scrollTop / element.scrollHeight : 0;
     setSize(value);
     saveSize(value);
     window.requestAnimationFrame(() => {
@@ -264,9 +269,9 @@ export function TimelineScreen({ data, failure }: { data: TimelineData | null; f
               <p className="page-empty-detail">{empty.detail}</p>
             </div>
           ) : (
-            <div className="timeline-canvas" style={{ height: total }}>
+            <div className="timeline-canvas" style={{ height: space.canvas }}>
               {lines.slice(start, end).map((line) => (
-                <TimelineLine key={line.key} line={line} height={height} />
+                <TimelineLine key={line.key} line={line} height={height} offset={scrollTop - position} />
               ))}
             </div>
           )}
