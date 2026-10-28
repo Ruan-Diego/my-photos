@@ -1,13 +1,19 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "bundle": {
-    "createUpdaterArtifacts": true
+    "createUpdaterArtifacts": true,
+    "resources": {
+      "binaries/ffmpeg/ffmpeg.exe": "ffmpeg.exe",
+      "binaries/ffmpeg/ffprobe.exe": "ffprobe.exe",
+      "binaries/ffmpeg/LICENSE.txt": "ffmpeg-LICENSE.txt",
+      "binaries/ffmpeg/README.txt": "ffmpeg-README.txt"
+    }
   },
   "plugins": {
     "updater": {
       "pubkey": "",
       "endpoints": [
-        "https://github.com/Ruan-Diego/my-photos-releases/releases/latest/download/latest.json"
+        "https://github.com/Ruan-Diego/my-photos/releases/latest/download/latest.json"
       ],
       "windows": {
         "installMode": "passive"

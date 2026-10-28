@@ -6,8 +6,10 @@
 | PKG-03 | `release.yml`. Não rodou, porque o Actions do Windows está sem runner |
 | PKG-04 | Nenhum código usa `app_data_dir` ou `%APPDATA%`; o banco é aberto pelo disco (`db::open_located`) |
 | PKG-05 | `commands::tests::sec07_*` (registro só pela config de release, interruptor desligado, endpoint HTTPS, instalação passiva); `sec04` continua barrando os outros crates de rede; `settings.test.ts` UPD-01 e `problems.test.ts` (Privacidade e Diagnóstico dizem quando há rede). `tauri build --no-bundle` com a config de release e uma chave de teste: aceito, e o binário sobe sem pânico. Playwright com IPC simulado: bloco Atualizações em claro e escuro, cartão "Versão X disponível" na lateral, axe sem violações. `scripts/release.ps1` sem erro no parser do PowerShell 7.4 |
+| PKG-06 | `commands::tests::pkg02_*` (os destinos são `ffmpeg.exe`/`ffprobe.exe` na pasta do app, com licença e README; as fontes ficam em `binaries/ffmpeg/`, fora do git; o build de desenvolvimento não leva). O zip `ffmpeg-master-latest-win64-lgpl.zip` baixado aqui (build `N-128122-g215351c1c3-20261027`) tem o configure sem `--enable-gpl` nem `--enable-nonfree` (`--enable-version3`: LGPL v3). As checagens do `fetch-ffmpeg.ps1` (configure, versão, URL LGPL) rodaram no `pwsh` 7.4 contra esse binário. `tauri build` com a config de release copiou `ffmpeg.exe`, `ffprobe.exe`, `ffmpeg-LICENSE.txt` e `ffmpeg-README.txt` para o lado do executável. Comprimidos com LZMA, os dois executáveis dão 85 MB |
 
 Pendente no Windows:
+- instalar e ver o ffmpeg "disponível" em Problemas › Diagnóstico, e as capas dos vídeos sendo geradas;
 - gerar a chave, rodar `scripts/release.ps1 -Version 0.1.1` e depois `-Version 0.1.2`, instalar a primeira e atualizar pela tela;
 - `npm run tauri build`;
 - instalar o `x64-setup.exe` sem administrador;

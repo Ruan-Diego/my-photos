@@ -1,4 +1,5 @@
-﻿# F37: gera no PC (sem Actions) o instalador do Windows com o updater e o latest.json.
+﻿# F37: gera no PC (sem Actions) o instalador do Windows, com o updater, o ffmpeg LGPL e
+# o latest.json.
 # Na raiz do repositório:
 #
 #   powershell -ExecutionPolicy Bypass -File scripts/release.ps1 -Version 1.0.0
@@ -40,7 +41,12 @@ Set-Utf8 $package ((Get-Content $package -Raw -Encoding UTF8) -replace '"version
 $cargo = Join-Path $tauri "Cargo.toml"
 Set-Utf8 $cargo ((Get-Content $cargo -Raw -Encoding UTF8) -replace '(?m)^version = "[^"]+"', "version = `"$Version`"")
 
-# 3. Testes e build com a config de release (updater + artefatos assinados).
+# 3. ffmpeg LGPL ao lado do app (tauri.release.conf.json › bundle.resources).
+if (-not (Test-Path (Join-Path $tauri "binaries\ffmpeg\ffprobe.exe"))) {
+    & (Join-Path $PSScriptRoot "fetch-ffmpeg.ps1")
+}
+
+# 4. Testes e build com a config de release (updater, ffmpeg e artefatos assinados).
 npm ci
 if ($LASTEXITCODE -ne 0) { throw "npm ci falhou" }
 cargo test --manifest-path src-tauri/Cargo.toml
@@ -48,7 +54,7 @@ if ($LASTEXITCODE -ne 0) { throw "os testes do Rust falharam" }
 npx tauri build --bundles nsis --config $releaseFile
 if ($LASTEXITCODE -ne 0) { throw "tauri build falhou" }
 
-# 4. release/v<versão>: instalador, a assinatura do updater e o latest.json.
+# 5. release/v<versão>: instalador, a assinatura do updater e o latest.json.
 $nsis = Join-Path $tauri "target\release\bundle\nsis"
 $installer = Get-ChildItem $nsis -Filter "*_${Version}_x64-setup.exe" | Select-Object -First 1
 if ($null -eq $installer) { throw "Instalador não encontrado em $nsis" }
@@ -78,7 +84,7 @@ $latest = [ordered]@{
 Set-Utf8 (Join-Path $out "latest.json") ($latest | ConvertTo-Json -Depth 5)
 Write-Host "Pronto: $out"
 
-# 5. Publicar no repositório de atualizações (precisa do gh logado).
+# 6. Publicar no repositório de atualizações (precisa do gh logado).
 if ($Publish) {
     $body = if ($Notes) { $Notes } else { "My Photos $Version" }
     gh release create "v$Version" (Join-Path $out $name) (Join-Path $out "$name.sig") (Join-Path $out "latest.json") `

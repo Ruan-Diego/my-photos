@@ -21,18 +21,20 @@ Meta do ROADMAP (RNF-018): instalador do Windows (MSI/NSIS via Tauri), auto-upda
   - Com a busca ligada, Privacidade e Problemas › Diagnóstico dizem que existe essa conexão; ao abrir, uma versão nova aparece num cartão da barra lateral.
   - `scripts/release.ps1` gera no PC (sem Actions) o instalador, a `.sig` e o `latest.json`. Passo a passo em `docs/RELEASE.md`.
 
+- **PKG-06 (ffmpeg no instalador, decidido pelo Ruan em 2026-10-28: LGPL)**:
+  - O instalador de release leva o `ffmpeg.exe` e o `ffprobe.exe` do build **LGPL** estático do BtbN, ao lado do `My Photos.exe`, onde `thumbs::locate_ffmpeg` procura primeiro. O build de desenvolvimento não leva e continua usando o do `PATH`.
+  - `scripts/fetch-ffmpeg.ps1` baixa para `src-tauri/binaries/ffmpeg/`, que fica fora do git. Ele recusa um build GPL ou nonfree pelo configure gravado no binário. Junto vão a licença e um README com a versão, o configure, o SHA-256 e onde está o código-fonte.
+  - Custo: cerca de 85 MB a mais no instalador (os dois executáveis têm 139 MB cada).
+- **PKG-07 (onde ficam as atualizações)**: o `my-photos` ficou público (2026-10-28). O updater lê o `latest.json` do último release publicado dele mesmo.
+
 ## Decisões que dependem do Ruan
 
-- **Onde ficam as atualizações**: o `my-photos` é privado, e o updater não baixa de repositório privado. O endereço padrão é `Ruan-Diego/my-photos-releases`, um repositório público só para os instaladores, que ainda precisa ser criado.
 - **Chave do updater**: é gerada no PC do Ruan (`npx tauri signer generate`), e a pública vai para `tauri.release.conf.json`. Sem ela, o `release.ps1` para com instrução.
 
 - **Assinatura de código**:
   - Precisa de um certificado de assinatura de código. Ele é pago: OV ou EV, ou Azure Trusted Signing.
   - Sem ele, o instalador funciona, mas o SmartScreen mostra "O Windows protegeu o computador" e é preciso clicar em "Mais informações" e depois em "Executar assim mesmo".
   - O `digestAlgorithm` já é `sha256`. Com o certificado, entram `certificateThumbprint` (ou `signCommand`) e `timestampUrl` no `tauri.conf.json`, e um passo de importar o PFX no `release.yml`.
-- **ffmpeg**:
-  - Continua fora do instalador. O app o procura ao lado do executável e depois no `PATH` (F13).
-  - Empacotar acrescenta cerca de 80 a 130 MB e traz a licença do ffmpeg (LGPL ou GPL, conforme o build) para o instalador.
 
 ## Divergências do canvas
 
