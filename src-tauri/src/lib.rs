@@ -18,6 +18,7 @@ pub mod search;
 pub mod settings;
 pub mod volume;
 pub mod index;
+mod isolate;
 mod takeout;
 pub mod thumbs;
 
@@ -30,7 +31,6 @@ use commands::health::DbState;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let app = tauri::Builder::default()
-        .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             let mut library = db::open_library();
             if let Ok(connection) = &mut library {

@@ -63,4 +63,40 @@ mod tests {
             assert!(granted.contains(&permission.as_str()), "capability misses {permission}");
         }
     }
+
+    const CONFIG: &str = include_str!("../../tauri.conf.json");
+    const CARGO: &str = include_str!("../../Cargo.toml");
+
+    #[test]
+    fn sec03_the_window_gets_only_what_the_app_uses() {
+        let capability: serde_json::Value = serde_json::from_str(CAPABILITY).unwrap();
+        for permission in capability["permissions"].as_array().unwrap() {
+            let permission = permission.as_str().unwrap();
+            // App commands, and the events the indexing progress arrives by. No core:default
+            // (windows, menus, tray), no file system, shell, opener or http plugin.
+            assert!(
+                permission.starts_with("allow-") || permission == "core:event:default",
+                "{permission} is more than the app uses"
+            );
+        }
+    }
+
+    #[test]
+    fn sec04_no_network_by_default() {
+        let config: serde_json::Value = serde_json::from_str(CONFIG).unwrap();
+        let csp = config["app"]["security"]["csp"].as_str().expect("a CSP is set");
+        for directive in csp.split(';').map(str::trim) {
+            for source in directive.split_whitespace().skip(1) {
+                let remote = source.starts_with("http") && !source.ends_with(".localhost");
+                assert!(!remote && source != "*" && source != "https:", "{directive} reaches the network");
+            }
+        }
+        assert!(csp.contains("default-src 'self'") && csp.contains("script-src 'self';"), "{csp}");
+        assert!(!csp.contains("unsafe-eval"), "{csp}");
+        // Crates that talk to the network. An updater (F37) must be opt-in and listed here.
+        let dependencies = &CARGO[CARGO.find("[dependencies]").unwrap()..];
+        for crate_name in ["reqwest", "hyper", "ureq", "curl", "tauri-plugin-http", "tauri-plugin-updater", "tauri-plugin-opener"] {
+            assert!(!dependencies.contains(&format!("\n{crate_name} ")), "{crate_name} in Cargo.toml");
+        }
+    }
 }
