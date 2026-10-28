@@ -4,7 +4,10 @@ import { THEME_OPTIONS, type ThemeChoice } from "../theme/theme";
 import { fileSize } from "../viewer/navigation";
 import { currentLocale, LOCALES, t } from "../i18n/i18n";
 import { exportOptions, importText, lastBackupLine, type BackupOverview, type ImportOutcome } from "./backup";
+import { UpdatesBlock } from "./UpdatesBlock";
 import {
+  privacyNote,
+  UPDATE_CHECKS,
   cacheOptions,
   cacheUsage,
   databaseLine,
@@ -88,9 +91,10 @@ export function SettingsScreen({ theme, onTheme, motion, onMotion, onScan, index
   };
 
   const setFlag = (key: string, on: boolean) => {
-    setSettings((current) =>
-      current === null ? current : { ...current, ...(key === VIDEO_COVERS ? { videoCovers: on } : { scanOnConnect: on }) },
-    );
+    const field = ({ [VIDEO_COVERS]: "videoCovers", [SCAN_ON_CONNECT]: "scanOnConnect", [UPDATE_CHECKS]: "updateChecks" } as const)[key];
+    if (field !== undefined) {
+      setSettings((current) => (current === null ? current : { ...current, [field]: on }));
+    }
     invoke("settings_set_flag", { key, on }).catch((error) => {
       setNotice(t("settings.saveFailed", { error: String(error) }));
       reload();
@@ -376,7 +380,8 @@ export function SettingsScreen({ theme, onTheme, motion, onMotion, onScan, index
             </span>
             <div>
               <h2 id="settings-privacidade-title">{t("settings.sections.privacy")}</h2>
-              <span>{t("settings.privacyNote")}</span>
+              <span>{privacyNote(settings)}</span>
+              <UpdatesBlock settings={settings} onFlag={(on) => setFlag(UPDATE_CHECKS, on)} />
             </div>
           </section>
         </div>

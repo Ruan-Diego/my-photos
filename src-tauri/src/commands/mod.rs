@@ -13,6 +13,7 @@ pub mod people;
 pub mod search;
 pub mod settings;
 pub mod timeline;
+pub mod update;
 pub mod viewer;
 
 #[cfg(test)]
@@ -93,11 +94,34 @@ mod tests {
         }
         assert!(csp.contains("default-src 'self'") && csp.contains("script-src 'self';"), "{csp}");
         assert!(!csp.contains("unsafe-eval"), "{csp}");
-        // Crates that talk to the network. An updater (F37) must be opt-in and listed here.
+        // Crates that talk to the network. The updater (F37) is the one exception: opt-in,
+        // registered only in release builds, asked only by the person (sec05).
         let dependencies = &CARGO[CARGO.find("[dependencies]").unwrap()..];
-        for crate_name in ["reqwest", "hyper", "ureq", "curl", "tauri-plugin-http", "tauri-plugin-updater", "tauri-plugin-opener"] {
+        for crate_name in ["reqwest", "hyper", "ureq", "curl", "tauri-plugin-http", "tauri-plugin-opener"] {
             assert!(!dependencies.contains(&format!("\n{crate_name} ")), "{crate_name} in Cargo.toml");
         }
+        assert!(config["plugins"].get("updater").is_none(), "a development build has no updater");
+    }
+
+    const RELEASE_CONFIG: &str = include_str!("../../tauri.release.conf.json");
+    const UPDATE: &str = include_str!("update.rs");
+    const SETTINGS: &str = include_str!("../settings/mod.rs");
+
+    /// F37: the updater is the only network code, and it stays quiet unless the person asks.
+    #[test]
+    fn sec07_the_updater_is_opt_in() {
+        // Registered through `update::register`, which needs the release config's key.
+        assert!(LIB.contains("commands::update::register(app)?"));
+        assert!(!LIB.contains("tauri_plugin_updater"), "the plugin is never registered unconditionally");
+        assert!(UPDATE.contains("if configured(app.config())"));
+        // "Procurar atualizações ao abrir" starts off.
+        assert!(SETTINGS.contains("flag(connection, UPDATE_CHECKS, false)"));
+        // Updates come signed over HTTPS and install without asking for administrator.
+        let release: serde_json::Value = serde_json::from_str(RELEASE_CONFIG).unwrap();
+        let updater = &release["plugins"]["updater"];
+        assert!(updater["endpoints"].as_array().unwrap().iter().all(|url| url.as_str().unwrap().starts_with("https://")));
+        assert_eq!(updater["windows"]["installMode"], "passive");
+        assert_eq!(release["bundle"]["createUpdaterArtifacts"], true);
     }
 
     const PACKAGE: &str = include_str!("../../../package.json");

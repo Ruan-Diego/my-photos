@@ -40,6 +40,9 @@ windows-sys = { version = "0.61.2", features = [
     "Win32_System_Ioctl",
 ] }
 
+[target.'cfg(any(target_os = "macos", windows, target_os = "linux"))'.dependencies]
+tauri-plugin-updater = "2"
+
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
 [profile.release]

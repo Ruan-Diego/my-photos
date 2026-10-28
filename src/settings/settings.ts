@@ -14,10 +14,22 @@ export interface Settings {
   ffmpeg: boolean;
   scanOnConnect: boolean;
   ignoredFolders: string[];
+  /** F37: "Procurar atualizações ao abrir" (desligado por padrão: nada de rede, F36). */
+  updateChecks: boolean;
+  /** Build de release, com a chave e o endereço do updater. */
+  updaterConfigured: boolean;
+  version: string;
+}
+
+/** O que `app_update_check` devolve quando há versão nova. */
+export interface UpdateAvailable {
+  version: string;
+  notes: string | null;
 }
 
 export const VIDEO_COVERS = "video_covers";
 export const SCAN_ON_CONNECT = "scan_on_connect";
+export const UPDATE_CHECKS = "update_checks";
 export const DEFAULT_CACHE_LIMIT = 4 * 1024 ** 3;
 
 export const SECTIONS = [
@@ -116,4 +128,9 @@ export function saveMotion(choice: MotionChoice): void {
   } catch {
     // Sem armazenamento a escolha vale até fechar o app.
   }
+}
+
+/** F36/F37: o que o cartão Privacidade diz, conforme a busca de atualizações. */
+export function privacyNote(settings: Pick<Settings, "updateChecks"> | null): string {
+  return settings?.updateChecks === true ? t("settings.privacyUpdates") : t("settings.privacyNote");
 }

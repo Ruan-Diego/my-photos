@@ -37,11 +37,14 @@ export function Sidebar({
   active,
   disk,
   onDiskAction,
+  update = null,
 }: {
   active: SectionId;
   disk: DiskCard | null;
   /** Quando dado, o link do cartão vira botão (tentar a indexação de novo). */
   onDiskAction?: () => void;
+  /** F37: versão nova achada ao abrir, com a busca de atualizações ligada. */
+  update?: string | null;
 }) {
   const main = SECTIONS.filter((section) => section.group === "main");
   const care = SECTIONS.filter((section) => section.group === "care");
@@ -64,6 +67,18 @@ export function Sidebar({
           <Item key={section.id} section={section} active={section.id === active} />
         ))}
       </div>
+
+      {update !== null ? (
+        <div className="side-card" role="status">
+          <div className="side-card-title">
+            <span className="side-dot side-dot-ok" aria-hidden="true" />
+            {t("settings.updates.available", { version: update })}
+          </div>
+          <a className="side-card-action" href={hashFor("settings")}>
+            {t("settings.updates.install")}
+          </a>
+        </div>
+      ) : null}
 
       {disk !== null ? (
         <div className="side-card" role="status">

@@ -34,6 +34,8 @@ test("PRBUI-03 report and diagnostics read like the canvas", () => {
   assert.equal(lines[1].value, "1,2 GB de 2 GB");
   assert.equal(lines[2].value, "disponível");
   assert.equal(lines[3].value, "E:\\ · conectado");
+  assert.equal(lines[4].value, "nenhuma");
+  assert.equal(diagnosticLines({ ...diagnostics, updateChecks: true }, null)[4].value, "só a busca de atualizações (GitHub)");
   assert.equal(diagnosticLines(diagnostics)[0].tone, "unknown");
   assert.equal(diagnosticLines({ ...diagnostics, ffmpeg: false }, "page 3 bad")[0].value, "E:\\.myphotos\\library.db · com defeito: page 3 bad");
 });

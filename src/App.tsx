@@ -36,7 +36,7 @@ import { TimelineScreen } from "./timeline/TimelineScreen";
 import { SettingsScreen } from "./settings/SettingsScreen";
 import { FoldersScreen } from "./folders/FoldersScreen";
 import { TrashScreen } from "./folders/TrashScreen";
-import { loadMotion, reducedMotion, saveMotion, type MotionChoice, type Settings } from "./settings/settings";
+import { loadMotion, reducedMotion, saveMotion, type MotionChoice, type Settings, type UpdateAvailable } from "./settings/settings";
 import { FavoritesScreen } from "./favorites/FavoritesScreen";
 import { ProblemsScreen } from "./problems/ProblemsScreen";
 import { DuplicatesScreen } from "./duplicates/DuplicatesScreen";
@@ -175,6 +175,7 @@ function App() {
   const [now, setNow] = useState(() => Date.now());
   const [thumbnails, setThumbnails] = useState<RecentThumbnail[]>([]);
   const [lines, setLines] = useState<LogLine[]>([]);
+  const [update, setUpdate] = useState<string | null>(null);
   const seenThumbnails = useRef(new Set<number>());
   // A busca (F22) monta os resultados com os itens da linha do tempo.
   const [timeline, timelineFailure, toggleFavorite] = useTimeline(
@@ -313,6 +314,12 @@ function App() {
         if (settings.scanOnConnect) {
           startIndexing(true);
         }
+        // F37: só com "Procurar atualizações ao abrir" ligado (F36: nada de rede por padrão).
+        if (settings.updateChecks && settings.updaterConfigured) {
+          invoke<UpdateAvailable | null>("app_update_check")
+            .then((update) => setUpdate(update?.version ?? null))
+            .catch(() => undefined);
+        }
       })
       .catch(() => undefined);
   }, [connected, idle, startIndexing]);
@@ -391,7 +398,7 @@ function App() {
         <button type="button" className="skip-link" onClick={skipToContent}>
           {t("app.skipToContent")}
         </button>
-        <Sidebar active={active} disk={disk} onDiskAction={onDiskAction} />
+        <Sidebar active={active} disk={disk} onDiskAction={onDiskAction} update={update} />
         {section.id === "timeline" ? (
           <TimelineScreen data={timeline} failure={timelineFailure} />
         ) : section.id === "search" ? (

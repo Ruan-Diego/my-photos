@@ -28,6 +28,8 @@ export interface Diagnostics {
   thumbnailBytes: number;
   thumbnailLimitBytes: number;
   ffmpeg: boolean;
+  /** F37: a busca de atualizações, a única conexão de rede possível. */
+  updateChecks?: boolean;
 }
 
 export interface Overview {
@@ -119,6 +121,6 @@ export function diagnosticLines(diagnostics: Diagnostics, integrity?: string | n
       tone: diagnostics.ffmpeg ? "ok" : "warn",
     },
     { label: t("problems.volume"), value: t("problems.volumeConnected", { root: diagnostics.rootPath ?? "?" }), tone: "ok" },
-    { label: t("problems.network"), value: t("problems.networkNone"), tone: "ok" },
+    { label: t("problems.network"), value: diagnostics.updateChecks === true ? t("problems.networkUpdates") : t("problems.networkNone"), tone: "ok" },
   ];
 }

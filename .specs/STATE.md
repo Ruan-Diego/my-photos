@@ -115,6 +115,14 @@
 - **Date**: 2026-10-15
 - **Status**: active
 
+### AD-015
+- **Decision**: O auto-update (F37) entra **desligado por padrão**. O plugin só existe no build de release; ele consulta a internet quando a pessoa clica em "Procurar agora" ou liga "Procurar atualizações ao abrir" (Configurações › Privacidade). É a única exceção à regra de zero rede da F36.
+- **Reason**: Definido pelo Ruan em 2026-10-28 ("porte o updater desligado por padrão").
+- **Trade-off**: Com a opção desligada, ninguém fica sabendo de versão nova sozinho. As atualizações precisam de um repositório público (o `my-photos` é privado) e da chave do updater, gerada no PC do Ruan.
+- **Scope**: F36 (`sec04`, `sec07`), F37.
+- **Date**: 2026-10-28
+- **Status**: active
+
 ## Handoff
 
 - **Feature**: F07 EXIF Parser — concluída (Verifier PASS na iteração 4: EXIF-01..06; 71/77 mutantes mortos, os 6 sobreviventes sem efeito visível no spec). F06 concluída (PASS iteração 3). F05 concluída (PASS iteração 3; SCAN-07 no `E:` PASS em 2026-10-12: 6132 mídias, 38 pastas, 2ª varredura 6132 `unchanged`, 0 hash)

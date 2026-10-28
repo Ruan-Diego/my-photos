@@ -5,5 +5,6 @@
 - [x] Workflow de release em rascunho a partir de uma tag
 - [x] Teste `pkg01`
 - [ ] Assinatura de código (precisa do certificado do Ruan)
-- [ ] Atualização (decisão do Ruan; o updater vai contra a regra de zero rede)
+- [x] Atualização desligada por padrão: plugin só no release, "Procurar agora" e "Procurar atualizações ao abrir", testes `sec07`/UPD-01, `scripts/release.ps1`
+- [ ] Chave do updater e repositório público de releases (Ruan)
 - [ ] ffmpeg no instalador (decisão do Ruan)

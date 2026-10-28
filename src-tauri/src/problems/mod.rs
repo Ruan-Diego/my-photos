@@ -55,6 +55,8 @@ pub struct Diagnostics {
     pub thumbnail_bytes: u64,
     pub thumbnail_limit_bytes: u64,
     pub ffmpeg: bool,
+    /// F37: the update check, the one network connection the app can make, off unless turned on.
+    pub update_checks: bool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize)]
@@ -205,6 +207,7 @@ pub fn diagnostics(connection: &Connection, ffmpeg: bool) -> rusqlite::Result<Di
         thumbnail_bytes: cache_bytes(connection)?,
         thumbnail_limit_bytes: cache_limit(connection)?,
         ffmpeg,
+        update_checks: crate::settings::flag(connection, crate::settings::UPDATE_CHECKS, false)?,
     })
 }
 

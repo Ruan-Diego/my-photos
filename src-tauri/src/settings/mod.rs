@@ -15,6 +15,10 @@ pub const VIDEO_COVERS: &str = "video_covers";
 /// "Procurar arquivos novos ao conectar o HD": off unless turned on.
 pub const SCAN_ON_CONNECT: &str = "scan_on_connect";
 
+/// F37: "Procurar atualizações ao abrir". Off unless turned on: with it off the app makes
+/// no network connection at all (F36, sec04).
+pub const UPDATE_CHECKS: &str = "update_checks";
+
 /// Folders the scan never enters: the app's own, and hidden system folders such as these.
 pub const IGNORED_FOLDERS: [&str; 3] = [".myphotos", "$RECYCLE.BIN", "System Volume Information"];
 
@@ -43,7 +47,7 @@ fn store(connection: &Connection, key: &str, value: &str) -> rusqlite::Result<()
 
 /// Only the two switches of the screen can be set this way.
 pub fn set_flag(connection: &Connection, key: &str, on: bool) -> Result<(), String> {
-    if key != VIDEO_COVERS && key != SCAN_ON_CONNECT {
+    if ![VIDEO_COVERS, SCAN_ON_CONNECT, UPDATE_CHECKS].contains(&key) {
         return Err(format!("configuração desconhecida: {key}"));
     }
     store(connection, key, if on { "1" } else { "0" }).map_err(|error| error.to_string())
@@ -71,6 +75,11 @@ pub struct Settings {
     pub ffmpeg: bool,
     pub scan_on_connect: bool,
     pub ignored_folders: Vec<String>,
+    pub update_checks: bool,
+    /// F37: this build knows where to look for updates (a release build). Filled by the command.
+    pub updater_configured: bool,
+    /// The app's version. Filled by the command.
+    pub version: String,
 }
 
 pub fn settings(connection: &Connection, ffmpeg: bool) -> rusqlite::Result<Settings> {
@@ -94,6 +103,9 @@ pub fn settings(connection: &Connection, ffmpeg: bool) -> rusqlite::Result<Setti
         ffmpeg,
         scan_on_connect: flag(connection, SCAN_ON_CONNECT, false)?,
         ignored_folders: IGNORED_FOLDERS.iter().map(|name| name.to_string()).collect(),
+        update_checks: flag(connection, UPDATE_CHECKS, false)?,
+        updater_configured: false,
+        version: String::new(),
     })
 }
 

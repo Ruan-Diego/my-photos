@@ -17,9 +17,12 @@ fn with_connection<T>(state: &DbState, work: impl FnOnce(&rusqlite::Connection) 
 }
 
 #[tauri::command]
-pub fn settings_overview(state: State<'_, DbState>) -> Result<Settings, String> {
+pub fn settings_overview(app: tauri::AppHandle, state: State<'_, DbState>) -> Result<Settings, String> {
     let ffmpeg = locate_ffmpeg().is_some();
-    with_connection(&state, |connection| settings(connection, ffmpeg).map_err(|error| error.to_string()))
+    let mut settings = with_connection(&state, |connection| settings(connection, ffmpeg).map_err(|error| error.to_string()))?;
+    settings.updater_configured = super::update::configured(app.config());
+    settings.version = app.package_info().version.to_string();
+    Ok(settings)
 }
 
 /// "Gerar capa dos vídeos" and "Procurar arquivos novos ao conectar o HD".
