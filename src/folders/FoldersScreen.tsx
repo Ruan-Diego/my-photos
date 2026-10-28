@@ -15,6 +15,7 @@ import {
   type FolderItem,
   type Outcome,
 } from "./folders";
+import { formatCount } from "../i18n/i18n";
 
 type DialogKind = "create" | "rename" | "move" | "trash-folder" | null;
 
@@ -161,7 +162,7 @@ export function FoldersScreen({ rootLabel, writable, onChanged }: { rootLabel: s
                   <path d={folder.path === "" ? driveIcon : folderIcon} />
                 </svg>
                 <span className="folders-tree-name">{folder.path === "" ? rootLabel : folder.name}</span>
-                <span className="folders-tree-count">{folder.total > 0 ? folder.total.toLocaleString("pt-BR") : ""}</span>
+                <span className="folders-tree-count">{folder.total > 0 ? formatCount(folder.total) : ""}</span>
               </a>
             );
           })}

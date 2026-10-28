@@ -2,6 +2,7 @@
 
 import { FAVORITE, VIDEO, type Item, type TimelineData } from "../timeline/timeline.ts";
 import { fileSize } from "../viewer/navigation.ts";
+import { formatCount, list } from "../i18n/i18n.ts";
 
 export type Kind = "identical" | "similar";
 
@@ -27,16 +28,15 @@ export interface Duplicates {
 
 export type KindFilter = "all" | Kind;
 
-const count = new Intl.NumberFormat("pt-BR");
-const MONTHS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+const MONTHS = list("calendar.months").map((month) => month.slice(0, 3).toLowerCase());
 
 /** "Todas · 214", "Idênticas · 187", "Parecidas · 27". */
 export function kindFilters(groups: Group[]): { id: KindFilter; label: string }[] {
   const of = (kind: Kind) => groups.filter((group) => group.kind === kind).length;
   return [
-    { id: "all", label: `Todas · ${count.format(groups.length)}` },
-    { id: "identical", label: `Idênticas · ${count.format(of("identical"))}` },
-    { id: "similar", label: `Parecidas · ${count.format(of("similar"))}` },
+    { id: "all", label: `Todas · ${formatCount(groups.length)}` },
+    { id: "identical", label: `Idênticas · ${formatCount(of("identical"))}` },
+    { id: "similar", label: `Parecidas · ${formatCount(of("similar"))}` },
   ];
 }
 
@@ -126,7 +126,7 @@ export function emptyDuplicates(filter: KindFilter, hashed: number, photos: numb
   if (filter === "similar" && hashed < photos) {
     return {
       title: "Nenhuma parecida ainda",
-      detail: `Só ${count.format(hashed)} de ${count.format(photos)} fotos foram comparadas. Use "Procurar arquivos novos" para comparar as outras.`,
+      detail: `Só ${formatCount(hashed)} de ${formatCount(photos)} fotos foram comparadas. Use "Procurar arquivos novos" para comparar as outras.`,
     };
   }
   return { title: "Nenhuma duplicata", detail: "Nenhum arquivo repetido foi encontrado na biblioteca." };

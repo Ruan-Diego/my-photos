@@ -1,6 +1,7 @@
 // F19: o que o visualizador (artboard `Viewer`) diz e por onde ele anda. Sem React.
 
 import { calendar, MONTHS, WEEKDAYS, type Item, type Month } from "../timeline/timeline.ts";
+import { numberFormat } from "../i18n/i18n.ts";
 
 /** Uma mídia na ordem da grade, com o dia em que está. */
 export interface Entry {
@@ -95,7 +96,7 @@ export function fallbackNote(info: { video: boolean; extension: string } | null)
   return `Arquivos .${info.extension.toUpperCase()} ainda não abrem no app. Esta é a miniatura.`;
 }
 
-const decimal = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 });
+const decimal = numberFormat({ maximumFractionDigits: 1 });
 
 /** "3,4 MB", "84 MB", "1,2 GB". */
 export function fileSize(bytes: number): string {

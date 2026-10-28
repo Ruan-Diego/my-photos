@@ -2,6 +2,7 @@
 // indexação e diagnóstico. Sem React.
 
 import { fileSize } from "../viewer/navigation.ts";
+import { formatCount } from "../i18n/i18n.ts";
 
 export type Status = "pending" | "resolved" | "ignored";
 
@@ -47,16 +48,15 @@ export type StatusFilter = "all" | Status;
 
 export const STATUS_LABEL: Record<Status, string> = { pending: "Pendente", resolved: "Resolvido", ignored: "Ignorado" };
 
-const count = new Intl.NumberFormat("pt-BR");
 
 /** "Todos · 37", "Pendentes · 9", … na ordem do canvas. */
 export function statusFilters(problems: Problem[]): { id: StatusFilter; label: string }[] {
   const of = (status: Status) => problems.filter((problem) => problem.status === status).length;
   return [
-    { id: "all", label: `Todos · ${count.format(problems.length)}` },
-    { id: "pending", label: `Pendentes · ${count.format(of("pending"))}` },
-    { id: "resolved", label: `Resolvidos · ${count.format(of("resolved"))}` },
-    { id: "ignored", label: `Ignorados · ${count.format(of("ignored"))}` },
+    { id: "all", label: `Todos · ${formatCount(problems.length)}` },
+    { id: "pending", label: `Pendentes · ${formatCount(of("pending"))}` },
+    { id: "resolved", label: `Resolvidos · ${formatCount(of("resolved"))}` },
+    { id: "ignored", label: `Ignorados · ${formatCount(of("ignored"))}` },
   ];
 }
 
@@ -91,11 +91,11 @@ export function durationText(seconds: number): string {
 
 export function reportCards(report: Report): { label: string; value: string }[] {
   return [
-    { label: "Mídias indexadas", value: count.format(report.media) },
-    { label: "Data pelo JSON do Takeout", value: count.format(report.dateFromJson) },
-    { label: "Data pelo EXIF", value: count.format(report.dateFromExif) },
-    { label: "Data pelo arquivo", value: count.format(report.dateFromFile) },
-    { label: "JSON em outra parte do export", value: count.format(report.jsonInOtherPart) },
+    { label: "Mídias indexadas", value: formatCount(report.media) },
+    { label: "Data pelo JSON do Takeout", value: formatCount(report.dateFromJson) },
+    { label: "Data pelo EXIF", value: formatCount(report.dateFromExif) },
+    { label: "Data pelo arquivo", value: formatCount(report.dateFromFile) },
+    { label: "JSON em outra parte do export", value: formatCount(report.jsonInOtherPart) },
     { label: "Duração da última indexação", value: report.lastDurationSeconds === null ? "—" : durationText(report.lastDurationSeconds) },
   ];
 }

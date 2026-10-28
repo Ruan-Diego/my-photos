@@ -1,5 +1,6 @@
 // F18: a linha do tempo (artboard `Timeline`): agrupar por mês e dia, montar as linhas
 // justificadas e saber quais linhas estão na tela. Sem React: testável no Node.
+import { list, t } from "../i18n/i18n.ts";
 
 /** O que o comando `timeline` devolve: um vetor por campo, mais novo primeiro. */
 export interface TimelineData {
@@ -53,9 +54,9 @@ export interface Month {
   days: Day[];
 }
 
-export const MONTHS = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
-export const WEEKDAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-const count = new Intl.NumberFormat("pt-BR");
+/** Do idioma escolhido ao abrir o app (F34). */
+export const MONTHS = list("calendar.months");
+export const WEEKDAYS = list("calendar.weekdays");
 
 export interface Calendar {
   year: number;
@@ -102,7 +103,7 @@ export function dayLabel(when: Calendar): string {
 
 /** "14 itens". O canvas põe o local antes; o índice ainda não tem nome de lugar. */
 export function dayDetail(items: number): string {
-  return items === 1 ? "1 item" : `${count.format(items)} itens`;
+  return t("count.items", { n: items });
 }
 
 /** "2:18", "1:02:03" */

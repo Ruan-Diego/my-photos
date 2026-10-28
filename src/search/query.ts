@@ -2,6 +2,7 @@
 // Sem React: testável no Node.
 
 import { MONTHS } from "../timeline/timeline.ts";
+import { t } from "../i18n/i18n.ts";
 
 /** O que o comando `search_media` recebe (`SearchQuery` do F14). */
 export interface SearchQuery {
@@ -212,14 +213,13 @@ export function folderLabel(path: string): string {
   return path.replace(/^Takeout\//i, "").replace(/\//g, "\\");
 }
 
-const count = new Intl.NumberFormat("pt-BR");
 
 /** "48 resultados" */
 export function resultsTitle(total: number): string {
   if (total === 0) {
     return "Nenhum resultado";
   }
-  return total === 1 ? "1 resultado" : `${count.format(total)} resultados`;
+  return t("count.results", { n: total });
 }
 
 /** `#/buscar`: a tela (F22); `#/buscar/1066` abre o visualizador por cima. */

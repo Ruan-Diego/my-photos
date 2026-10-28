@@ -2,6 +2,7 @@
 
 import { MONTHS } from "../timeline/timeline.ts";
 import { SEARCH_HASH } from "../search/query.ts";
+import { formatCount, t } from "../i18n/i18n.ts";
 
 /** Um lugar com nome, do comando `locations_overview`. */
 export interface Place {
@@ -21,12 +22,11 @@ export interface Locations {
   places: Place[];
 }
 
-const count = new Intl.NumberFormat("pt-BR");
-const items = (total: number) => (total === 1 ? "1 item" : `${count.format(total)} itens`);
+const items = (total: number) => (t("count.items", { n: total }));
 
 /** "3.402 itens com coordenadas · 845 sem localização" */
 export function locationsSubtitle(located: number, unlocated: number): string {
-  return `${items(located)} com coordenadas · ${count.format(unlocated)} sem localização`;
+  return `${items(located)} com coordenadas · ${formatCount(unlocated)} sem localização`;
 }
 
 /** "São Paulo" de "São Paulo, SP, Brasil". */
@@ -63,7 +63,7 @@ export function pinLabel(total: number): string {
   }
   const thousands = total / 1000;
   const shown = thousands < 10 ? Math.floor(thousands * 10) / 10 : Math.floor(thousands);
-  return `${shown.toLocaleString("pt-BR")} mil`;
+  return `${formatCount(shown)} mil`;
 }
 
 /** 36 px para 1 item até 64 px para 2 mil ou mais, em escala logarítmica. */

@@ -1,6 +1,7 @@
 // F26: a tela Favoritos (artboard `Favorites`) e a marcação no visualizador. Sem React.
 
 import { FAVORITE, group, UNDATED, type Filter, type Item, type TimelineData } from "../timeline/timeline.ts";
+import { t } from "../i18n/i18n.ts";
 
 export type FavoritesFilter = Extract<Filter, "all" | "photos" | "videos">;
 
@@ -10,11 +11,10 @@ export const FAVORITES_FILTERS: readonly { id: FavoritesFilter; label: string }[
   { id: "videos", label: "Vídeos" },
 ];
 
-const count = new Intl.NumberFormat("pt-BR");
 
 /** "96 itens · marcados só no app, o arquivo original não muda" */
 export function favoritesSubtitle(total: number): string {
-  const items = total === 1 ? "1 item" : `${count.format(total)} itens`;
+  const items = t("count.items", { n: total });
   return `${items} · marcados só no app, o arquivo original não muda`;
 }
 
