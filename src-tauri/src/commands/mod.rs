@@ -99,4 +99,23 @@ mod tests {
             assert!(!dependencies.contains(&format!("\n{crate_name} ")), "{crate_name} in Cargo.toml");
         }
     }
+
+    const PACKAGE: &str = include_str!("../../../package.json");
+
+    #[test]
+    fn pkg01_one_version_and_a_per_user_portuguese_installer() {
+        let config: serde_json::Value = serde_json::from_str(CONFIG).unwrap();
+        let package: serde_json::Value = serde_json::from_str(PACKAGE).unwrap();
+        // The installer takes the version from package.json; Cargo.toml must say the same.
+        assert_eq!(config["version"], "../package.json");
+        let version = package["version"].as_str().unwrap();
+        assert!(CARGO.contains(&format!("\nversion = \"{version}\"\n")), "Cargo.toml is not at {version}");
+        let bundle = &config["bundle"];
+        assert_eq!(bundle["targets"], serde_json::json!(["nsis"]));
+        let nsis = &bundle["windows"]["nsis"];
+        // Per user: installs without administrator, like the library it opens on E:.
+        assert_eq!(nsis["installMode"], "currentUser");
+        assert_eq!(nsis["languages"], serde_json::json!(["PortugueseBR"]));
+        assert_eq!(config["productName"], "My Photos");
+    }
 }

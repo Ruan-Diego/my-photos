@@ -1,8 +1,8 @@
 [package]
 name = "my-photos"
 version = "0.1.0"
-description = "A Tauri App"
-authors = ["you"]
+description = "My Photos: fotos e vídeos do seu disco, sem nuvem"
+authors = ["Ruan"]
 edition = "2021"
 # u32::is_multiple_of (photo_meta::date) is stable since 1.87.
 rust-version = "1.87"
