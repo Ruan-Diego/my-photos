@@ -32,6 +32,8 @@ use commands::health::DbState;
 pub fn run() {
     let app = tauri::Builder::default()
         .setup(|app| {
+            // F37: release builds only; a development build never looks for updates.
+            commands::update::register(app)?;
             let mut library = db::open_library();
             if let Ok(connection) = &mut library {
                 // Nothing indexes yet: a run still `running` was cut off by a close.
@@ -60,6 +62,7 @@ pub fn run() {
             }
             app.manage(DbState(library.map(|c| Mutex::new(Some(c)))));
             app.manage(commands::onboarding::IndexingState::default());
+            app.manage(commands::update::UpdateState::default());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -99,7 +102,9 @@ pub fn run() {
             commands::backup::backup_overview,
             commands::backup::backup_now,
             commands::backup::appdata_export,
-            commands::backup::appdata_import
+            commands::backup::appdata_import,
+            commands::update::app_update_check,
+            commands::update::app_update_install
         ])
         .register_asynchronous_uri_scheme_protocol(
             commands::timeline::THUMB_SCHEME,

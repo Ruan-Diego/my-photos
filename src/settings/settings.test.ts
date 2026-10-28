@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { cacheOptions, cacheUsage, databaseLine, parseMotion, reducedMotion, videoCoversNote, volumeLine } from "./settings.ts";
+import { cacheOptions, privacyNote, cacheUsage, databaseLine, parseMotion, reducedMotion, videoCoversNote, volumeLine } from "./settings.ts";
 
 const GB = 1024 ** 3;
 
@@ -34,4 +34,10 @@ test("SETUI-04 animações", () => {
   assert.equal(reducedMotion("system"), "user");
   assert.equal(reducedMotion("reduced"), "always");
   assert.equal(reducedMotion("full"), "never");
+});
+
+test("UPD-01 Privacidade diz quando a busca de atualizações usa a rede", () => {
+  assert.match(privacyNote({ updateChecks: false }), /não faz nenhuma conexão de rede/);
+  assert.match(privacyNote(null), /não faz nenhuma conexão de rede/);
+  assert.match(privacyNote({ updateChecks: true }), /única conexão de rede é a busca de atualizações/);
 });

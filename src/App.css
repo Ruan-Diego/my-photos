@@ -3748,3 +3748,18 @@ a.timeline-search:hover {
   cursor: default;
   opacity: 0.55;
 }
+
+/* F37: atualizações, dentro do cartão Privacidade (fora do canvas). */
+.settings-updates {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.settings-updates strong {
+  font-size: 14px;
+  font-weight: 600;
+}

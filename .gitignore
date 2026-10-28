@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# F37: saída do scripts/release.ps1
+/release/

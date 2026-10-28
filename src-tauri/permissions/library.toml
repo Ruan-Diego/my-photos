@@ -180,3 +180,13 @@ commands.allow = ["appdata_export"]
 identifier = "allow-appdata-import"
 description = "Enables the appdata_import command."
 commands.allow = ["appdata_import"]
+
+[[permission]]
+identifier = "allow-app-update-check"
+description = "Enables the app_update_check command."
+commands.allow = ["app_update_check"]
+
+[[permission]]
+identifier = "allow-app-update-install"
+description = "Enables the app_update_install command."
+commands.allow = ["app_update_install"]

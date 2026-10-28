@@ -41,6 +41,8 @@
     "allow-media-trash",
     "allow-trash-list",
     "allow-trash-restore",
-    "allow-trash-restore-all"
+    "allow-trash-restore-all",
+    "allow-app-update-check",
+    "allow-app-update-install"
   ]
 }
