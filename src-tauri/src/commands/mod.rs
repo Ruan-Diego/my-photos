@@ -133,7 +133,9 @@ mod tests {
         // The installer takes the version from package.json; Cargo.toml must say the same.
         assert_eq!(config["version"], "../package.json");
         let version = package["version"].as_str().unwrap();
-        assert!(CARGO.contains(&format!("\nversion = \"{version}\"\n")), "Cargo.toml is not at {version}");
+        // Line by line: a Windows checkout has CRLF endings.
+        let wanted = format!("version = \"{version}\"");
+        assert!(CARGO.lines().any(|line| line.trim_end() == wanted), "Cargo.toml is not at {version}");
         let bundle = &config["bundle"];
         assert_eq!(bundle["targets"], serde_json::json!(["nsis"]));
         let nsis = &bundle["windows"]["nsis"];
