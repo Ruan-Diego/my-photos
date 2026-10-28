@@ -51,6 +51,30 @@ a:hover {
   overflow: hidden;
 }
 
+/* F33: só aparece com o foco do teclado (primeiro Tab). */
+.skip-link {
+  position: fixed;
+  left: 12px;
+  top: 12px;
+  z-index: 100;
+  padding: 10px 16px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--ink);
+  color: var(--ground);
+  font: inherit;
+  font-weight: 600;
+  transform: translateY(-200%);
+}
+
+.skip-link:focus-visible {
+  transform: none;
+}
+
+main:focus {
+  outline: none;
+}
+
 /* Barra lateral */
 
 .side {
@@ -2488,7 +2512,7 @@ a.timeline-search:hover {
   border-radius: 50%;
   border: 3px solid var(--surface);
   background: var(--accent-fill);
-  color: #fff;
+  color: var(--on-accent);
   font: inherit;
   font-size: 13px;
   font-weight: 700;

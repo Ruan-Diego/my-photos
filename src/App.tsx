@@ -387,6 +387,9 @@ function App() {
     <MotionConfig reducedMotion={reducedMotion(motion)}>
       <FavoriteContext.Provider value={summary?.connected === true ? toggleFavorite : null}>
       <div className="shell">
+        <button type="button" className="skip-link" onClick={skipToContent}>
+          Pular para o conteúdo
+        </button>
         <Sidebar active={active} disk={disk} onDiskAction={onDiskAction} />
         {section.id === "timeline" ? (
           <TimelineScreen data={timeline} failure={timelineFailure} />
@@ -424,6 +427,15 @@ function App() {
       </FavoriteContext.Provider>
     </MotionConfig>
   );
+}
+
+/** F33: o atalho de teclado por cima da barra lateral leva o foco para a tela aberta. */
+function skipToContent() {
+  const main = document.querySelector<HTMLElement>("main");
+  if (main !== null) {
+    main.tabIndex = -1;
+    main.focus();
+  }
 }
 
 export default App;

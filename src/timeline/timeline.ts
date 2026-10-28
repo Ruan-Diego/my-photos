@@ -114,6 +114,29 @@ export function duration(ms: number): string {
   return hours > 0 ? `${hours}:${String(minutes).padStart(2, "0")}:${seconds}` : `${minutes}:${seconds}`;
 }
 
+/**
+ * F33: o que o leitor de tela diz de uma miniatura: "Foto de 10 de agosto de 2022 às 14:37",
+ * "Vídeo de …, 2:18, favorito", "Foto sem data".
+ */
+export function tileLabel(item: Item): string {
+  const kind = item.video ? "Vídeo" : "Foto";
+  let text: string;
+  if (item.time === null) {
+    text = `${kind} sem data`;
+  } else {
+    const when = calendar(item.time, item.offset);
+    const clock = `${when.hour}:${String(when.minute).padStart(2, "0")}`;
+    text = `${kind} de ${when.day} de ${MONTHS[when.month].toLowerCase()} de ${when.year} às ${clock}`;
+  }
+  if (item.video && item.duration !== null) {
+    text += `, ${duration(item.duration)}`;
+  }
+  if (item.favorite) {
+    text += item.video ? ", favorito" : ", favorita";
+  }
+  return text;
+}
+
 function keep(flags: number, filter: Filter): boolean {
   switch (filter) {
     case "all":

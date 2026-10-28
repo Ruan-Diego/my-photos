@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { Dialog } from "../a11y/Dialog";
 import { invoke } from "@tauri-apps/api/core";
 import { thumbnailUrl } from "../viewer/media";
 import {
@@ -15,7 +16,7 @@ import {
   type Outcome,
 } from "./folders";
 
-type Dialog = "create" | "rename" | "move" | "trash-folder" | null;
+type DialogKind = "create" | "rename" | "move" | "trash-folder" | null;
 
 const folderIcon = "M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z";
 const driveIcon = "M3 8h18v8H3zM7 12h.01";
@@ -43,7 +44,7 @@ export function FoldersScreen({ rootLabel, writable, onChanged }: { rootLabel: s
   const [failure, setFailure] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [anchor, setAnchor] = useState<number | null>(null);
-  const [dialog, setDialog] = useState<Dialog>(null);
+  const [dialog, setDialog] = useState<DialogKind>(null);
   const [notice, setNotice] = useState<{ text: string; warn: boolean } | null>(null);
   const [busy, setBusy] = useState(false);
   const [version, setVersion] = useState(0);
@@ -282,7 +283,7 @@ export function FoldersScreen({ rootLabel, writable, onChanged }: { rootLabel: s
               }
             />
           ) : dialog === "trash-folder" ? (
-            <div role="dialog" aria-label="Mover pasta para a lixeira" className="folders-dialog">
+            <Dialog label="Mover pasta para a lixeira" className="folders-dialog" onEscape={() => setDialog(null)}>
               <h2>Mover {title} para a lixeira?</h2>
               <p className="folders-dialog-note">
                 A pasta vai inteira, com as subpastas e os JSONs do Takeout. Ela fica 30 dias na lixeira e pode ser restaurada de lá.
@@ -304,7 +305,7 @@ export function FoldersScreen({ rootLabel, writable, onChanged }: { rootLabel: s
                   Mover para a lixeira
                 </button>
               </div>
-            </div>
+            </Dialog>
           ) : null}
         </section>
       </div>
@@ -336,7 +337,7 @@ function MoveDialog({
     (folder) => folder.path.toLowerCase() !== current.toLowerCase() && (needle === "" || folder.path.toLowerCase().includes(needle)),
   );
   return (
-    <div role="dialog" aria-label="Mover itens" className="folders-dialog">
+    <Dialog label="Mover itens" className="folders-dialog" onEscape={onCancel}>
       <h2>{count === 1 ? "Mover 1 item para" : `Mover ${count} itens para`}</h2>
       <input type="search" placeholder="Filtrar pastas" value={filter} onChange={(event) => setFilter(event.target.value)} aria-label="Filtrar pastas" />
       <div className="folders-targets">
@@ -357,7 +358,7 @@ function MoveDialog({
           Mover
         </button>
       </div>
-    </div>
+    </Dialog>
   );
 }
 
@@ -388,7 +389,7 @@ function NameDialog({
     }
   };
   return (
-    <form role="dialog" aria-label={title} className="folders-dialog" onSubmit={submit}>
+    <Dialog label={title} className="folders-dialog" onEscape={onCancel} onSubmit={submit}>
       <h2>{title}</h2>
       <input
         ref={input}
@@ -396,7 +397,6 @@ function NameDialog({
         value={name}
         aria-label="Nome da pasta"
         onChange={(event) => setName(event.target.value)}
-        onKeyDown={(event) => event.key === "Escape" && onCancel()}
         autoFocus
       />
       <div className="folders-dialog-actions">
@@ -407,6 +407,6 @@ function NameDialog({
           {action}
         </button>
       </div>
-    </form>
+    </Dialog>
   );
 }

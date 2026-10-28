@@ -4,6 +4,7 @@ import { DetailsPanel, useDetailsOpen } from "./DetailsPanel";
 import { useToggleFavorite } from "../favorites/FavoriteContext";
 import { fit, icon, originalUrl, thumbnailUrl, useMediaInfo } from "./media";
 import { backHash, backLabel, clock, dateLine, seek, SEEK_STEP, videoLine, videoProblem, type ViewerBase } from "./navigation";
+import { useDialogFocus } from "../a11y/useDialogFocus";
 
 const VOLUME_KEY = "myphotos.player.volume";
 /** Largura máxima do quadro no canvas. */
@@ -43,6 +44,8 @@ export function VideoPlayer({ item, base = "fotos" }: { item: Item; base?: Viewe
   const toggleFavorite = useToggleFavorite();
   const video = useRef<HTMLVideoElement>(null);
   const frame = useRef<HTMLDivElement>(null);
+  const root = useRef<HTMLDivElement>(null);
+  useDialogFocus(root, { trap: true });
   const stage = useRef<HTMLDivElement>(null);
   const [area, setArea] = useState({ width: 0, height: 0 });
   const [paused, setPaused] = useState(true);
@@ -150,7 +153,7 @@ export function VideoPlayer({ item, base = "fotos" }: { item: Item; base?: Viewe
   const box = fit(item.ratio > 0 ? item.ratio : 16 / 9, area.width, area.height);
 
   return (
-    <div className="viewer player" role="dialog" aria-modal="true" aria-label="Reproduzir vídeo">
+    <div ref={root} className="viewer player" role="dialog" aria-modal="true" aria-label="Reproduzir vídeo">
       <div className="viewer-main">
         <header className="viewer-header">
           <a className="viewer-icon" href={backHash(base)} aria-label={backLabel(base)}>
