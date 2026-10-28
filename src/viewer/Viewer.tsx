@@ -4,6 +4,7 @@ import { DetailsPanel, useDetailsOpen } from "./DetailsPanel";
 import { useToggleFavorite } from "../favorites/FavoriteContext";
 import { useDialogFocus } from "../a11y/useDialogFocus";
 import { VideoPlayer } from "./VideoPlayer";
+import { t } from "../i18n/i18n";
 import { typing, viewerAction } from "../shortcuts/shortcuts";
 import {
   dateLine,
@@ -111,7 +112,7 @@ function PhotoViewer({ entries, index, base }: { entries: Entry[]; index: number
   const [stripStart, stripEnd] = stripWindow(index, entries.length);
 
   return (
-    <div ref={frame} className="viewer" role="dialog" aria-modal="true" aria-label="Visualizar foto">
+    <div ref={frame} className="viewer" role="dialog" aria-modal="true" aria-label={t("viewer.dialog")}>
       <div className="viewer-main">
         <header className="viewer-header">
           <a className="viewer-icon" href={backHash(base)} aria-label={backLabel(base)}>
@@ -123,9 +124,9 @@ function PhotoViewer({ entries, index, base }: { entries: Entry[]; index: number
             <span>{dateLine(item)}</span>
             <span>{positionLine(entry)}</span>
           </div>
-          <div role="group" aria-label="Zoom" className="viewer-zoom">
+          <div role="group" aria-label={t("viewer.zoom")} className="viewer-zoom">
             <button type="button" aria-pressed={!actual} onClick={() => setZoom("fit")}>
-              Ajustar
+              {t("viewer.fit")}
             </button>
             <button type="button" aria-pressed={actual} disabled={!viewable} onClick={() => setZoom("actual")}>
               100%
@@ -134,8 +135,8 @@ function PhotoViewer({ entries, index, base }: { entries: Entry[]; index: number
           <button
             type="button"
             className="viewer-icon viewer-favorite"
-            aria-label={item.favorite ? "Remover dos favoritos" : "Favoritar"}
-            title={item.favorite ? "Remover dos favoritos" : "Favoritar"}
+            aria-label={item.favorite ? t("viewer.unfavorite") : t("viewer.favorite")}
+            title={item.favorite ? t("viewer.unfavorite") : t("viewer.favorite")}
             aria-pressed={item.favorite}
             disabled={toggleFavorite === null}
             onClick={() => toggleFavorite?.(item.id, !item.favorite)}
@@ -147,7 +148,7 @@ function PhotoViewer({ entries, index, base }: { entries: Entry[]; index: number
           <button
             type="button"
             className="viewer-icon viewer-toggle"
-            aria-label={detailsOpen ? "Ocultar detalhes" : "Mostrar detalhes"}
+            aria-label={detailsOpen ? t("viewer.hideDetails") : t("viewer.showDetails")}
             aria-pressed={detailsOpen}
             onClick={toggleDetails}
           >
@@ -156,7 +157,7 @@ function PhotoViewer({ entries, index, base }: { entries: Entry[]; index: number
               <path d="M12 11v6M12 7.5v.01" />
             </svg>
           </button>
-          <button type="button" className="viewer-icon" aria-label="Mais ações" disabled title="Ações chegam com as operações de arquivo">
+          <button type="button" className="viewer-icon" aria-label={t("viewer.moreActions")} disabled title={t("viewer.actionsSoon")}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
               <circle cx="5" cy="12" r="1.7" />
               <circle cx="12" cy="12" r="1.7" />
@@ -191,7 +192,7 @@ function PhotoViewer({ entries, index, base }: { entries: Entry[]; index: number
           {actual ? (
             <img className="viewer-actual" src={originalUrl(item.id)} alt={info?.filename ?? ""} draggable={false} />
           ) : (
-            <div className="viewer-photo" role="img" aria-label={info === null ? "Foto" : `Foto: ${info.filename}`} style={{ width: box.width, height: box.height }}>
+            <div className="viewer-photo" role="img" aria-label={info === null ? t("viewer.photo") : t("viewer.photoNamed", { name: info.filename })} style={{ width: box.width, height: box.height }}>
               <img className="viewer-layer" src={thumbnailUrl(item.id)} alt="" draggable={false} />
               {viewable ? (
                 <img
@@ -207,14 +208,14 @@ function PhotoViewer({ entries, index, base }: { entries: Entry[]; index: number
             </div>
           )}
           {previous !== null ? (
-            <a className="viewer-arrow viewer-arrow-previous" href={viewerHash(previous, base)} aria-label="Foto anterior">
+            <a className="viewer-arrow viewer-arrow-previous" href={viewerHash(previous, base)} aria-label={t("viewer.previous")}>
               <svg width="22" height="22" viewBox="0 0 24 24" {...icon} strokeWidth={2} aria-hidden="true">
                 <path d="M15 6l-6 6 6 6" />
               </svg>
             </a>
           ) : null}
           {next !== null ? (
-            <a className="viewer-arrow viewer-arrow-next" href={viewerHash(next, base)} aria-label="Próxima">
+            <a className="viewer-arrow viewer-arrow-next" href={viewerHash(next, base)} aria-label={t("viewer.next")}>
               <svg width="22" height="22" viewBox="0 0 24 24" {...icon} strokeWidth={2} aria-hidden="true">
                 <path d="M9 6l6 6-6 6" />
               </svg>
@@ -222,7 +223,7 @@ function PhotoViewer({ entries, index, base }: { entries: Entry[]; index: number
           ) : null}
         </div>
 
-        <nav className="viewer-strip" aria-label="Fotos vizinhas">
+        <nav className="viewer-strip" aria-label={t("viewer.neighbors")}>
           {entries.slice(stripStart, stripEnd).map((neighbor) => (
             <a
               key={neighbor.item.id}

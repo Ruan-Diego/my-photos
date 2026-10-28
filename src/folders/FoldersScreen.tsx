@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } fro
 import { Dialog } from "../a11y/Dialog";
 import { invoke } from "@tauri-apps/api/core";
 import { thumbnailUrl } from "../viewer/media";
+import { formatCount, t } from "../i18n/i18n";
 import {
   breadcrumb,
   folderFromHash,
@@ -15,7 +16,6 @@ import {
   type FolderItem,
   type Outcome,
 } from "./folders";
-import { formatCount } from "../i18n/i18n";
 
 type DialogKind = "create" | "rename" | "move" | "trash-folder" | null;
 
@@ -110,7 +110,7 @@ export function FoldersScreen({ rootLabel, writable, onChanged }: { rootLabel: s
       <header className="page-header folders-header">
         <div className="folders-title">
           {crumbs.length > 1 ? (
-            <nav aria-label="Caminho" className="folders-crumbs">
+            <nav aria-label={t("folders.path")} className="folders-crumbs">
               {crumbs.slice(0, -1).map((crumb) => (
                 <span key={crumb.path}>
                   <a href={folderHash(crumb.path)}>{crumb.label}</a>
@@ -119,25 +119,25 @@ export function FoldersScreen({ rootLabel, writable, onChanged }: { rootLabel: s
               ))}
             </nav>
           ) : null}
-          <h1 id="page-title">{current === "" ? "Pastas" : title}</h1>
+          <h1 id="page-title">{current === "" ? t("section.folders") : title}</h1>
         </div>
         <button type="button" className="button-line folders-action" disabled={!writable || !known} onClick={() => setDialog("create")}>
           <svg width="18" height="18" viewBox="0 0 24 24" {...stroke} aria-hidden="true">
             <path d={`${folderIcon}M12 10v6M9 13h6`} />
           </svg>
-          Nova pasta
+          {t("folders.newFolder")}
         </button>
         <button type="button" className="button-line folders-action" disabled={!writable || current === "" || !known} onClick={() => setDialog("rename")}>
           <svg width="18" height="18" viewBox="0 0 24 24" {...stroke} aria-hidden="true">
             <path d="M4 20h4L19 9l-4-4L4 16zM13 7l4 4" />
           </svg>
-          Renomear pasta
+          {t("folders.renameFolder")}
         </button>
         <button
           type="button"
           className="button-line folders-trash"
-          aria-label="Mover pasta para a lixeira"
-          title="Mover pasta para a lixeira"
+          aria-label={t("folders.trashFolderLabel")}
+          title={t("folders.trashFolderLabel")}
           disabled={!writable || current === "" || !known}
           onClick={() => setDialog("trash-folder")}
         >
@@ -148,7 +148,7 @@ export function FoldersScreen({ rootLabel, writable, onChanged }: { rootLabel: s
       </header>
 
       <div className="folders-body">
-        <nav aria-label="Árvore de pastas" className="folders-tree">
+        <nav aria-label={t("folders.tree")} className="folders-tree">
           {(tree ?? []).map((folder) => {
             const here = folder.path.toLowerCase() === current.toLowerCase();
             return (
@@ -168,32 +168,32 @@ export function FoldersScreen({ rootLabel, writable, onChanged }: { rootLabel: s
           })}
         </nav>
 
-        <section className="folders-content" aria-label={`Conteúdo de ${title}`}>
+        <section className="folders-content" aria-label={t("folders.contentOf", { title })}>
           {notice !== null ? (
             <p className={notice.warn ? "folders-notice folders-notice-warn" : "folders-notice"} role="status">
               {notice.text}
-              <button type="button" aria-label="Fechar aviso" onClick={() => setNotice(null)}>
+              <button type="button" aria-label={t("trash.closeNotice")} onClick={() => setNotice(null)}>
                 ×
               </button>
             </p>
           ) : null}
           {failure !== null ? (
             <div className="page-empty">
-              <p className="page-empty-title">Não foi possível ler as pastas</p>
+              <p className="page-empty-title">{t("folders.readFailed")}</p>
               <p className="page-empty-detail">{failure}</p>
             </div>
           ) : !known ? (
             <div className="page-empty">
-              <p className="page-empty-title">Esta pasta não existe mais</p>
+              <p className="page-empty-title">{t("folders.goneTitle")}</p>
               <p className="page-empty-detail">
-                Ela foi renomeada, movida ou excluída. <a href={folderHash("")}>Voltar para {rootLabel}</a>
+                {t("folders.goneDetail")} <a href={folderHash("")}>{t("viewer.backTo", { section: rootLabel })}</a>
               </p>
             </div>
           ) : (
             <>
               <div className="folders-meta">
                 <span>{items === null ? " " : folderSummary(items)}</span>
-                {items !== null && items.length > 0 ? <span>Clique para selecionar · Shift para intervalo</span> : null}
+                {items !== null && items.length > 0 ? <span>{t("folders.selectHint")}</span> : null}
               </div>
               <div className="folders-grid">
                 {(items ?? []).map((item) => {
@@ -219,7 +219,7 @@ export function FoldersScreen({ rootLabel, writable, onChanged }: { rootLabel: s
                           </svg>
                         ) : null}
                       </span>
-                      {item.video ? <span className="folders-video">Vídeo</span> : null}
+                      {item.video ? <span className="folders-video">{t("timeline.video")}</span> : null}
                     </button>
                   );
                 })}
@@ -228,25 +228,25 @@ export function FoldersScreen({ rootLabel, writable, onChanged }: { rootLabel: s
           )}
 
           {selected.size > 0 ? (
-            <div role="toolbar" aria-label="Ações da seleção" className="folders-toolbar">
-              <strong>{selected.size === 1 ? "1 selecionada" : `${selected.size} selecionadas`}</strong>
+            <div role="toolbar" aria-label={t("folders.selectionActions")} className="folders-toolbar">
+              <strong>{t("folders.selected", { n: selected.size })}</strong>
               <button type="button" className="folders-toolbar-main" disabled={!writable || busy} onClick={() => setDialog("move")}>
                 <svg width="18" height="18" viewBox="0 0 24 24" {...stroke} aria-hidden="true">
                   <path d={`${folderIcon}M10 13h6M13 10l3 3-3 3`} />
                 </svg>
-                Mover para…
+                {t("folders.moveTo")}
               </button>
               <button
                 type="button"
                 disabled={!writable || busy}
-                onClick={() => run(invoke<Outcome>("media_trash", { ids }), (outcome) => outcomeText(outcome, "movido", " para a lixeira, onde fica 30 dias"))}
+                onClick={() => run(invoke<Outcome>("media_trash", { ids }), (outcome) => outcomeText(outcome, "trashed"))}
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" {...stroke} aria-hidden="true">
                   <path d="M4 7h16M6 7l1 13h10l1-13M9 7V4h6v3" />
                 </svg>
-                Mover para a lixeira
+                {t("folders.moveToTrash")}
               </button>
-              <button type="button" aria-label="Limpar seleção" className="folders-toolbar-close" onClick={() => setSelected(new Set())}>
+              <button type="button" aria-label={t("folders.clearSelection")} className="folders-toolbar-close" onClick={() => setSelected(new Set())}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
                   <path d="M6 6l12 12M18 6L6 18" />
                 </svg>
@@ -263,47 +263,47 @@ export function FoldersScreen({ rootLabel, writable, onChanged }: { rootLabel: s
               busy={busy}
               onCancel={() => setDialog(null)}
               onMove={(target) =>
-                run(invoke<Outcome>("media_move", { ids, folder: target }), (outcome) => `${outcomeText(outcome, "movido")} Destino: ${targetLabel(target, rootLabel)}.`)
+                run(invoke<Outcome>("media_move", { ids, folder: target }), (outcome) => t("folders.movedTo", { outcome: outcomeText(outcome, "moved"), target: targetLabel(target, rootLabel) }))
               }
             />
           ) : dialog === "create" || dialog === "rename" ? (
             <NameDialog
-              title={dialog === "create" ? `Nova pasta em ${title}` : `Renomear ${title}`}
-              action={dialog === "create" ? "Criar" : "Renomear"}
+              title={dialog === "create" ? t("folders.newFolderIn", { title }) : t("folders.renameTitle", { title })}
+              action={dialog === "create" ? t("folders.create") : t("folders.rename")}
               initial={dialog === "create" ? "" : title}
               busy={busy}
               onCancel={() => setDialog(null)}
               onSubmit={(name) =>
                 dialog === "create"
-                  ? run(invoke<string>("folder_create", { parent: current, name }), () => `Pasta ${name.trim()} criada.`, (path) => {
+                  ? run(invoke<string>("folder_create", { parent: current, name }), () => t("folders.created", { name: name.trim() }), (path) => {
                       window.location.hash = folderHash(path);
                     })
-                  : run(invoke<string>("folder_rename", { folder: current, name }), () => `Pasta renomeada para ${name.trim()}.`, (path) => {
+                  : run(invoke<string>("folder_rename", { folder: current, name }), () => t("folders.renamed", { name: name.trim() }), (path) => {
                       window.location.hash = folderHash(path);
                     })
               }
             />
           ) : dialog === "trash-folder" ? (
-            <Dialog label="Mover pasta para a lixeira" className="folders-dialog" onEscape={() => setDialog(null)}>
-              <h2>Mover {title} para a lixeira?</h2>
+            <Dialog label={t("folders.trashFolderLabel")} className="folders-dialog" onEscape={() => setDialog(null)}>
+              <h2>{t("folders.trashQuestion", { title })}</h2>
               <p className="folders-dialog-note">
-                A pasta vai inteira, com as subpastas e os JSONs do Takeout. Ela fica 30 dias na lixeira e pode ser restaurada de lá.
+                {t("folders.trashFolderNote")}
               </p>
               <div className="folders-dialog-actions">
                 <button type="button" className="button-line" disabled={busy} onClick={() => setDialog(null)}>
-                  Cancelar
+                  {t("common.cancel")}
                 </button>
                 <button
                   type="button"
                   className="button-solid"
                   disabled={busy}
                   onClick={() =>
-                    run(invoke("folder_trash", { folder: current }), () => `${title} foi para a lixeira, onde fica 30 dias.`, () => {
+                    run(invoke("folder_trash", { folder: current }), () => t("folders.folderTrashed", { title }), () => {
                       window.location.hash = folderHash(current.includes("/") ? current.slice(0, current.lastIndexOf("/")) : "");
                     })
                   }
                 >
-                  Mover para a lixeira
+                  {t("folders.moveToTrash")}
                 </button>
               </div>
             </Dialog>
@@ -338,9 +338,9 @@ function MoveDialog({
     (folder) => folder.path.toLowerCase() !== current.toLowerCase() && (needle === "" || folder.path.toLowerCase().includes(needle)),
   );
   return (
-    <Dialog label="Mover itens" className="folders-dialog" onEscape={onCancel}>
-      <h2>{count === 1 ? "Mover 1 item para" : `Mover ${count} itens para`}</h2>
-      <input type="search" placeholder="Filtrar pastas" value={filter} onChange={(event) => setFilter(event.target.value)} aria-label="Filtrar pastas" />
+    <Dialog label={t("folders.moveItems")} className="folders-dialog" onEscape={onCancel}>
+      <h2>{t("folders.moveItemsTo", { n: count })}</h2>
+      <input type="search" placeholder={t("folders.filterFolders")} value={filter} onChange={(event) => setFilter(event.target.value)} aria-label={t("folders.filterFolders")} />
       <div className="folders-targets">
         {targets.map((folder) => (
           <label key={folder.path} data-on={target === folder.path ? "" : undefined}>
@@ -348,15 +348,15 @@ function MoveDialog({
             {targetLabel(folder.path, rootLabel)}
           </label>
         ))}
-        {targets.length === 0 ? <p className="folders-dialog-note">Nenhuma pasta com esse nome.</p> : null}
+        {targets.length === 0 ? <p className="folders-dialog-note">{t("folders.noFolderMatch")}</p> : null}
       </div>
-      <p className="folders-dialog-note">Cada mídia leva junto o seu JSON do Takeout, para a data e o local não se perderem. O índice é atualizado na hora.</p>
+      <p className="folders-dialog-note">{t("folders.moveNote")}</p>
       <div className="folders-dialog-actions">
         <button type="button" className="button-line" disabled={busy} onClick={onCancel}>
-          Cancelar
+          {t("common.cancel")}
         </button>
         <button type="button" className="button-solid" disabled={busy || target === null} onClick={() => target !== null && onMove(target)}>
-          Mover
+          {t("folders.move")}
         </button>
       </div>
     </Dialog>
@@ -396,13 +396,13 @@ function NameDialog({
         ref={input}
         type="text"
         value={name}
-        aria-label="Nome da pasta"
+        aria-label={t("folders.folderName")}
         onChange={(event) => setName(event.target.value)}
         autoFocus
       />
       <div className="folders-dialog-actions">
         <button type="button" className="button-line" disabled={busy} onClick={onCancel}>
-          Cancelar
+          {t("common.cancel")}
         </button>
         <button type="submit" className="button-solid" disabled={busy || name.trim() === ""}>
           {action}

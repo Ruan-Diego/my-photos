@@ -10,6 +10,8 @@ Meta do ROADMAP (RNF-020): um sistema de tradução, pt-BR como padrão e estrut
 - **I18N-04**: Já saem do idioma: os nomes dos meses e dos dias da semana, os nomes das seções da barra lateral, as contagens com plural ("1 item"/"N itens", mídias, resultados, miniaturas que faltam), o `lang` da página e a lista de Idioma em Configurações.
 - **I18N-05**: Nenhum texto visível muda. Comparamos o texto (visível, `aria-label` e `title`) das 12 telas antes e depois.
 
+- **I18N-06** (segunda parte, 2026-10-28): todos os textos das telas (títulos, botões, `aria-label`, `title`, `placeholder`, avisos, estados vazios, plurais) saem do código para o `pt-BR.ts`, um bloco por tela. Frase com marcação no meio (`<code>`) usa `rich()`, sem partir a frase. Um teste com o parser do TypeScript (`src/i18n/scan.ts`) falha se sobrar texto de tela no código.
+
 ## Fora desta feature
 
-Os demais textos de cada tela (títulos, botões, avisos, cerca de 600 frases) continuam no código, em português. Eles passam para `pt-BR.ts` quando a tela for mexida, ou num lote quando houver um segundo idioma de verdade. As mensagens que vêm do Rust (erros, motivos dos problemas) também ficam para depois. Não há segundo idioma nesta feature: a lista de Idioma em Configurações mostra "Português (Brasil)" e fica travada enquanto houver um só.
+As mensagens que vêm do Rust (erros, motivos dos problemas) também ficam para depois. Não há segundo idioma nesta feature: a lista de Idioma em Configurações mostra "Português (Brasil)" e fica travada enquanto houver um só.

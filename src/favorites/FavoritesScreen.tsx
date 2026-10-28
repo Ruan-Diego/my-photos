@@ -4,6 +4,7 @@ import { Viewer } from "../viewer/Viewer";
 import { indexOf, openedId, viewerHash, type Entry } from "../viewer/navigation";
 import { duration, tileLabel, type Item, type TimelineData } from "../timeline/timeline";
 import { emptyFavorites, favoriteCount, favoritesByYear, favoritesSubtitle, FAVORITES_FILTERS, type FavoritesFilter } from "./favorites";
+import { t } from "../i18n/i18n";
 
 const HEART = "M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z";
 
@@ -35,7 +36,7 @@ function Tile({ item }: { item: Item }) {
           <svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M7 4l13 8-13 8z" />
           </svg>
-          {item.duration === null ? "Vídeo" : duration(item.duration)}
+          {item.duration === null ? t("timeline.video") : duration(item.duration)}
         </span>
       ) : null}
       {item.favorite ? (
@@ -70,16 +71,16 @@ export function FavoritesScreen({ data, failure }: { data: TimelineData | null; 
   const openedIndex = opened === null ? -1 : indexOf(entries, opened);
   const total = data === null ? 0 : favoriteCount(data);
   const empty = data !== null && years.length === 0 ? emptyFavorites(filter, total) : null;
-  const subtitle = failure !== null ? "Não foi possível ler a biblioteca" : data === null ? " " : favoritesSubtitle(total);
+  const subtitle = failure !== null ? t("timeline.readFailed") : data === null ? " " : favoritesSubtitle(total);
 
   return (
     <main className="page favorites" aria-labelledby="favorites-title">
       <header className="page-header">
         <div className="people-heading">
-          <h1 id="favorites-title">Favoritos</h1>
+          <h1 id="favorites-title">{t("section.favorites")}</h1>
           <span>{subtitle}</span>
         </div>
-        <div role="group" aria-label="Mostrar" className="segmented">
+        <div role="group" aria-label={t("timeline.show")} className="segmented">
           {FAVORITES_FILTERS.map((option) => (
             <button key={option.id} type="button" aria-pressed={filter === option.id} onClick={() => setFilter(option.id)}>
               {option.label}
@@ -90,7 +91,7 @@ export function FavoritesScreen({ data, failure }: { data: TimelineData | null; 
       <div className="page-body favorites-body">
         {failure !== null ? (
           <div className="page-empty">
-            <p className="page-empty-title">Não foi possível ler a biblioteca</p>
+            <p className="page-empty-title">{t("timeline.readFailed")}</p>
             <p className="page-empty-detail">{failure}</p>
           </div>
         ) : empty !== null ? (

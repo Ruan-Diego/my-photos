@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { thumbnailUrl } from "../viewer/media";
 import { filterPeople, initials, itemsLabel, peopleSubtitle, personHash, type PersonCard } from "./people";
+import { t } from "../i18n/i18n";
 
 function usePeople(): [PersonCard[] | null, string | null] {
   const [people, setPeople] = useState<PersonCard[] | null>(null);
@@ -43,19 +44,19 @@ export function PeopleScreen() {
     <main className="page people" aria-labelledby="people-title">
       <header className="page-header people-header">
         <div className="people-heading">
-          <h1 id="people-title">Pessoas</h1>
-          <span>{failure !== null ? "Não foi possível ler as pessoas" : people === null ? " " : peopleSubtitle(people.length)}</span>
+          <h1 id="people-title">{t("section.people")}</h1>
+          <span>{failure !== null ? t("people.readFailed") : people === null ? " " : peopleSubtitle(people.length)}</span>
         </div>
         {people !== null && people.length > 0 ? (
           <label className="people-filter">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
               <path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-4-4" />
             </svg>
-            <span className="visually-hidden">Filtrar pessoas</span>
+            <span className="visually-hidden">{t("people.filterLabel")}</span>
             <input
               type="text"
               value={text}
-              placeholder="Filtrar por nome"
+              placeholder={t("people.filterPlaceholder")}
               onChange={(event) => setText(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === "Escape" && text !== "") {
@@ -71,21 +72,21 @@ export function PeopleScreen() {
       <div className="page-body">
         {failure !== null ? (
           <div className="page-empty">
-            <p className="page-empty-title">Não foi possível ler as pessoas</p>
+            <p className="page-empty-title">{t("people.readFailed")}</p>
             <p className="page-empty-detail">{failure}</p>
           </div>
         ) : people !== null && people.length === 0 ? (
           <div className="page-empty">
-            <p className="page-empty-title">Ninguém marcado no Google Fotos</p>
-            <p className="page-empty-detail">As pessoas aparecem aqui quando os JSONs do Takeout trazem quem está em cada foto.</p>
+            <p className="page-empty-title">{t("details.noPeople")}</p>
+            <p className="page-empty-detail">{t("people.emptyDetail")}</p>
           </div>
         ) : people !== null && shown.length === 0 ? (
           <div className="page-empty">
-            <p className="page-empty-title">Ninguém com esse nome</p>
-            <p className="page-empty-detail">Confira a grafia ou apague o filtro.</p>
+            <p className="page-empty-title">{t("people.noMatchTitle")}</p>
+            <p className="page-empty-detail">{t("people.noMatchDetail")}</p>
           </div>
         ) : (
-          <section className="people-grid" aria-label="Pessoas">
+          <section className="people-grid" aria-label={t("section.people")}>
             {shown.map((person) => (
               <Person key={person.id} person={person} />
             ))}

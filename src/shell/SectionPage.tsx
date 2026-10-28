@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { Section } from "./sections";
+import { t } from "../i18n/i18n";
 
 /** Cabeçalho das telas (26 px/700) e o corpo de cada seção. */
 export function SectionPage({ section, children }: { section: Section; children?: ReactNode }) {
@@ -11,8 +12,8 @@ export function SectionPage({ section, children }: { section: Section; children?
       <div className="page-body">
         {children ?? (
           <div className="page-empty">
-            <p className="page-empty-title">Esta tela ainda está sendo construída.</p>
-            <p className="page-empty-detail">Ela chega com a {section.feature}, seguindo o canvas de design.</p>
+            <p className="page-empty-title">{t("page.buildingTitle")}</p>
+            <p className="page-empty-detail">{t("page.buildingDetail", { feature: section.feature })}</p>
           </div>
         )}
       </div>

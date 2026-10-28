@@ -1,17 +1,19 @@
 import { motion } from "motion/react";
 import { Logo } from "../shell/Sidebar";
 import { folderDetail, type LibraryFolder } from "./flow";
+import { t } from "../i18n/i18n";
+import { rich } from "../i18n/rich";
 
 const PROMISES = [
   {
     icon: "M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6zM9 12l2 2 4-4",
-    title: "Ler e indexar nunca altera seus arquivos.",
-    body: " Varredura, metadados e miniaturas só leem o disco.",
+    title: t("onboarding.readOnlyTitle"),
+    body: t("onboarding.readOnlyBody"),
   },
   {
     icon: "M4 7h16M6 7l1 13h10l1-13M9 7V4h6v3",
-    title: "Mover, renomear e excluir só quando você pedir.",
-    body: " Excluir vai para a lixeira do app e fica lá por 30 dias.",
+    title: t("onboarding.writeTitle"),
+    body: t("onboarding.writeBody"),
   },
 ];
 
@@ -45,7 +47,7 @@ export function Onboarding({
   failure: string | null;
   onStart: () => void;
 }) {
-  const root = folder?.rootPath ?? "E:\\";
+  const root = folder?.rootPath ?? t("app.defaultRoot");
   return (
     <main className="welcome">
       <section className="welcome-text">
@@ -55,15 +57,12 @@ export function Onboarding({
         </div>
 
         <div className="welcome-lead">
-          <h1>Seu acervo do Google Fotos, de volta no seu disco.</h1>
-          <p>
-            Aponte a pasta do Takeout. O My Photos lê datas, locais e pessoas dos JSONs e monta a sua linha do
-            tempo, tudo offline: nada sai deste computador.
-          </p>
+          <h1>{t("onboarding.title")}</h1>
+          <p>{t("onboarding.lead")}</p>
         </div>
 
         <div className="welcome-folder">
-          <span className="welcome-label">Pasta da biblioteca</span>
+          <span className="welcome-label">{t("onboarding.folderLabel")}</span>
           <div className="welcome-folder-card">
             <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <rect x="3" y="6" width="18" height="12" rx="2" />
@@ -71,11 +70,11 @@ export function Onboarding({
             </svg>
             <div className="welcome-folder-text">
               <strong>{root}</strong>
-              <span>{folder === null ? "procurando o disco…" : folderDetail(folder)}</span>
+              <span>{folder === null ? t("onboarding.lookingForDisk") : folderDetail(folder)}</span>
             </div>
             {/* Trocar a pasta muda a regra do F11 (AD-007): fica para uma feature própria. */}
-            <button type="button" className="welcome-change" disabled title="Em breve">
-              Trocar pasta
+            <button type="button" className="welcome-change" disabled title={t("onboarding.soon")}>
+              {t("onboarding.changeFolder")}
             </button>
           </div>
         </div>
@@ -93,20 +92,20 @@ export function Onboarding({
           <li>
             <PromiseIcon d={DB_ICON} />
             <span>
-              <strong>O índice viaja com o HD.</strong> Fica em <code>{root}.myphotos\library.db</code>, numa pasta
-              oculta.
+              <strong>{t("onboarding.dbTitle")}</strong>
+              {rich(t("onboarding.dbBody"), { path: <code>{root}.myphotos\library.db</code> })}
             </span>
           </li>
         </ul>
 
         <div className="welcome-actions">
           <button type="button" className="welcome-start" onClick={onStart} disabled={starting || folder === null}>
-            {starting ? "Começando…" : `Indexar ${root}`}
+            {starting ? t("onboarding.starting") : t("onboarding.start", { root })}
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M5 12h14M13 6l6 6-6 6" />
             </svg>
           </button>
-          <span className="welcome-hint">Leva alguns minutos. Dá para navegar enquanto indexa.</span>
+          <span className="welcome-hint">{t("onboarding.hint")}</span>
         </div>
         {failure !== null ? (
           <p className="welcome-failure" role="alert">

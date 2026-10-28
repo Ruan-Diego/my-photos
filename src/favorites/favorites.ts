@@ -1,21 +1,19 @@
 // F26: a tela Favoritos (artboard `Favorites`) e a marcação no visualizador. Sem React.
 
-import { FAVORITE, group, UNDATED, type Filter, type Item, type TimelineData } from "../timeline/timeline.ts";
 import { t } from "../i18n/i18n.ts";
+import { FAVORITE, group, UNDATED, type Filter, type Item, type TimelineData } from "../timeline/timeline.ts";
 
 export type FavoritesFilter = Extract<Filter, "all" | "photos" | "videos">;
 
 export const FAVORITES_FILTERS: readonly { id: FavoritesFilter; label: string }[] = [
-  { id: "all", label: "Tudo" },
-  { id: "photos", label: "Fotos" },
-  { id: "videos", label: "Vídeos" },
+  { id: "all", label: t("timeline.filterAll") },
+  { id: "photos", label: t("timeline.filterPhotos") },
+  { id: "videos", label: t("timeline.filterVideos") },
 ];
-
 
 /** "96 itens · marcados só no app, o arquivo original não muda" */
 export function favoritesSubtitle(total: number): string {
-  const items = t("count.items", { n: total });
-  return `${items} · marcados só no app, o arquivo original não muda`;
+  return t("favorites.subtitle", { items: t("count.items", { n: total }) });
 }
 
 export function favoriteCount(data: TimelineData): number {
@@ -68,11 +66,8 @@ export function withFavorite(data: TimelineData, id: number, favorite: boolean):
 export function emptyFavorites(filter: FavoritesFilter, total: number): { title: string; detail: string } {
   if (total > 0) {
     return filter === "videos"
-      ? { title: "Nenhum vídeo favorito", detail: "Os vídeos marcados com o coração aparecem aqui." }
-      : { title: "Nenhuma foto favorita", detail: "As fotos marcadas com o coração aparecem aqui." };
+      ? { title: t("favorites.noVideosTitle"), detail: t("favorites.noVideosDetail") }
+      : { title: t("favorites.noPhotosTitle"), detail: t("favorites.noPhotosDetail") };
   }
-  return {
-    title: "Nenhum favorito ainda",
-    detail: "Toque no coração ao ver uma foto ou vídeo. As favoritas do Google Fotos também aparecem aqui.",
-  };
+  return { title: t("favorites.noneTitle"), detail: t("timeline.empty.favoritesDetail") };
 }

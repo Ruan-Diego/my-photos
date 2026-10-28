@@ -45,10 +45,11 @@ test("FOLUI-03 seleção com clique e Shift", () => {
 
 test("FOLUI-04 textos de resultado", () => {
   assert.equal(folderSummary([{ id: 1, filename: "a", video: false, hasJson: true }, { id: 2, filename: "b", video: false, hasJson: false }]), "2 itens nesta pasta · 1 com JSON do Takeout");
-  assert.equal(outcomeText({ done: 3, skipped: [] }, "movido"), "3 itens movidos.");
-  assert.equal(outcomeText({ done: 1, skipped: [] }, "movido", " para a lixeira"), "1 item movido para a lixeira.");
+  assert.equal(outcomeText({ done: 3, skipped: [] }, "moved"), "3 itens movidos.");
+  assert.equal(outcomeText({ done: 1, skipped: [] }, "trashed"), "1 item movido para a lixeira, onde fica 30 dias.");
+  assert.equal(outcomeText({ done: 2, skipped: [] }, "restored"), "2 itens restaurados.");
   assert.equal(
-    outcomeText({ done: 1, skipped: [["b.jpg", "já existe b.jpg no destino"], ["c.jpg", "x"]] }, "movido"),
+    outcomeText({ done: 1, skipped: [["b.jpg", "já existe b.jpg no destino"], ["c.jpg", "x"]] }, "moved"),
     "1 item movido. Ficou como estava: b.jpg (já existe b.jpg no destino) e mais 1.",
   );
 });

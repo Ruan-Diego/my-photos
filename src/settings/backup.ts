@@ -1,5 +1,5 @@
 // F35: o cartão Backup das Configurações. Sem React: testável no Node.
-import { dateText, formatCount, t } from "../i18n/i18n.ts";
+import { dateText, t } from "../i18n/i18n.ts";
 import { fileSize } from "../viewer/navigation.ts";
 
 export interface BackupFile {
@@ -40,33 +40,33 @@ function when(name: string): string {
 export function lastBackupLine(overview: BackupOverview): string {
   const copies = overview.files.filter((file) => file.kind === "database");
   if (copies.length === 0) {
-    return "Nenhum ainda. O app faz um por dia ao abrir.";
+    return t("backup.none");
   }
   const total = copies.reduce((sum, file) => sum + file.bytes, 0);
-  const kept = copies.length === 1 ? "1 cópia guardada" : `${copies.length} cópias guardadas`;
-  return `${when(copies[0].name)} · ${kept} (${fileSize(total)}), as ${overview.keep} mais novas ficam`;
+  const kept = t("backup.copiesKept", { n: copies.length });
+  return t("backup.lastLine", { when: when(copies[0].name), kept, size: fileSize(total), keep: String(overview.keep) });
 }
 
 /** As exportações, mais nova primeiro, com o rótulo da lista "Importar de". */
 export function exportOptions(overview: BackupOverview): { name: string; label: string }[] {
-  return overview.files.filter((file) => file.kind === "export").map((file) => ({ name: file.name, label: `${when(file.name)} · ${file.name}` }));
+  return overview.files.filter((file) => file.kind === "export").map((file) => ({ name: file.name, label: t("backup.exportOption", { when: when(file.name), name: file.name }) }));
 }
 
 /** O que a importação fez, em uma frase. */
 export function importText(outcome: ImportOutcome): string {
   const parts: string[] = [];
   if (outcome.favorites > 0) {
-    parts.push(outcome.favorites === 1 ? "1 favorito marcado" : `${formatCount(outcome.favorites)} favoritos marcados`);
+    parts.push(t("backup.favoritesMarked", { n: outcome.favorites }));
   }
   if (outcome.unfavorites > 0) {
-    parts.push(outcome.unfavorites === 1 ? "1 favorito desmarcado" : `${formatCount(outcome.unfavorites)} favoritos desmarcados`);
+    parts.push(t("backup.favoritesUnmarked", { n: outcome.unfavorites }));
   }
   if (outcome.notes > 0) {
-    parts.push(outcome.notes === 1 ? "1 nota" : `${formatCount(outcome.notes)} notas`);
+    parts.push(t("backup.notes", { n: outcome.notes }));
   }
-  const done = parts.length === 0 ? "Nada mudou: tudo já estava igual" : `Importado: ${parts.join(", ")}`;
+  const done = parts.length === 0 ? t("backup.nothingChanged") : t("backup.imported", { parts: parts.join(", ") });
   if (outcome.missing === 0) {
-    return `${done}.`;
+    return t("backup.done", { done });
   }
-  return `${done}. ${t("count.items", { n: outcome.missing })} do arquivo não estão nesta biblioteca.`;
+  return t("backup.doneMissing", { done, missing: t("count.items", { n: outcome.missing }) });
 }

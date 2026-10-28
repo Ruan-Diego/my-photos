@@ -535,3 +535,36 @@ fn thumb07_a_full_cache_stops_the_background_fill_and_keeps_what_it_made() {
         .unwrap();
     assert_eq!(rows as u64, summary.generated);
 }
+
+/// F36: a 45-byte PNG whose header claims 100 000 × 100 000 pixels (30 GB decoded).
+fn png_bomb() -> Vec<u8> {
+    fn crc32(bytes: &[u8]) -> u32 {
+        let mut crc = 0xFFFF_FFFFu32;
+        for &byte in bytes {
+            crc ^= u32::from(byte);
+            for _ in 0..8 {
+                crc = if crc & 1 != 0 { (crc >> 1) ^ 0xEDB8_8320 } else { crc >> 1 };
+            }
+        }
+        !crc
+    }
+    let mut chunk = b"IHDR".to_vec();
+    chunk.extend_from_slice(&100_000u32.to_be_bytes());
+    chunk.extend_from_slice(&100_000u32.to_be_bytes());
+    chunk.extend_from_slice(&[8, 2, 0, 0, 0]);
+    let mut png = b"\x89PNG\r\n\x1a\n".to_vec();
+    png.extend_from_slice(&13u32.to_be_bytes());
+    png.extend_from_slice(&chunk);
+    png.extend_from_slice(&crc32(&chunk).to_be_bytes());
+    png
+}
+
+#[test]
+fn sec05_a_decompression_bomb_stops_at_the_header() {
+    let scratch = Scratch::new("thumbs-bomb");
+    let path = scratch.path.join("bomb.png");
+    fs::write(&path, png_bomb()).unwrap();
+    let started = std::time::Instant::now();
+    assert_eq!(render(&path, ThumbSize::Small, None).unwrap_err(), ThumbError::Corrupt);
+    assert!(started.elapsed().as_secs() < 2, "refused before allocating");
+}

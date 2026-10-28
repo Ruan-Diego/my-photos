@@ -6,3 +6,4 @@
 - [x] CSP restrita sem rede
 - [x] Auditoria das entradas dos comandos
 - [x] Testes sec01..04; CSP conferida no Playwright em todas as telas
+- [x] Limites do decodificador (sec05) e contenção do protocolo `media` (sec06)

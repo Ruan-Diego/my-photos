@@ -15,6 +15,9 @@ Meta do ROADMAP (RNF-005, RNF-007, RNF-008): validar entradas, isolar o parsing 
   O `Cargo.toml` não tem crate de rede (o `reqwest` do Tauri só entra no Android e no iOS). Um teste falha se isso mudar. O auto-update da F37 terá de entrar como exceção explícita e opcional.
 - **SEC-05 (validação de entrada)**: auditoria dos 37 comandos (tabela em `design.md`). Os que recebem texto ou números já validavam: nomes de pasta, pastas conhecidas no índice, chaves e limites de configuração por lista fechada, importação só por nome dentro da pasta de backups, `Range` dos vídeos, ids numéricos nos protocolos e busca com parâmetros SQL. Não faltou nenhuma validação.
 
+- **SEC-06 (bomba de descompressão)**: o decodificador das miniaturas para no cabeçalho de uma imagem que diz ter mais de 40 mil px de lado ou que pediria mais de 1 GiB. Antes, um PNG de 45 bytes que se diz com 100 000 × 100 000 px ainda chegava a tentar alocar.
+- **SEC-07 (arquivo dentro da biblioteca)**: o protocolo `media` só entrega um original que, depois de resolver links e junções, está dentro da raiz da biblioteca. Mesmo com o índice editado para `..\..\Windows\…`, ou com um link que sai do disco, a janela recebe 404.
+
 ## Divergências do canvas
 
 Nenhuma: a F36 não muda nenhuma tela.

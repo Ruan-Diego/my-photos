@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 import { formatCount, list, LOCALES, placeholders, t, type Key } from "./i18n.ts";
 import { ptBR } from "./pt-BR.ts";
+import { leftovers, looksLikeText } from "./scan.ts";
 
 test("I18N-01 messages fill in numbers and pick the plural", () => {
   assert.equal(t("count.items", { n: 0 }), "0 itens");
@@ -47,4 +48,48 @@ test("I18N-03 number and date formats go through the i18n module", () => {
   };
   walk(fileURLToPath(new URL("..", import.meta.url)));
   assert.deepEqual(offenders, []);
+});
+
+test("I18N-06 nenhum texto de tela fora do catálogo", () => {
+  const root = fileURLToPath(new URL("..", import.meta.url));
+  const found: string[] = [];
+  const walk = (folder: string) => {
+    for (const name of readdirSync(folder)) {
+      const path = join(folder, name);
+      if (statSync(path).isDirectory()) {
+        if (name !== "i18n") {
+          walk(path);
+        }
+      } else if (/\.tsx?$/.test(name) && !name.endsWith(".test.ts")) {
+        for (const item of leftovers(path.slice(root.length), readFileSync(path, "utf8"))) {
+          found.push(`${item.file}:${item.line} ${item.text}`);
+        }
+      }
+    }
+  };
+  walk(root);
+  assert.deepEqual(found, []);
+});
+
+test("I18N-07 o detector acha texto e ignora código", () => {
+  const sample = [
+    'const a = <p className="x y">Nenhuma foto</p>;',
+    'const b = <button aria-label="Fechar aviso" />;',
+    "const c = `desde ${d}`;",
+    'const d = n === 1 ? "1 nota" : x;',
+    'const e = invoke("folder_tree");',
+    'const f = <svg viewBox="0 0 24 24"><path d="M4 4h7" /></svg>;',
+    'if (key === "Escape") {}',
+    'const g = <span>{t("section.trash")}</span>;',
+    'const h = <span className="side-heading">My Photos</span>;',
+    "const i = { flex: `${grow} 1 ${size}px` };",
+  ].join("\n");
+  assert.deepEqual(
+    leftovers("sample.tsx", sample).map((item) => item.line),
+    [1, 2, 3, 4],
+  );
+  assert.equal(looksLikeText("Tamanho"), true);
+  assert.equal(looksLikeText("Apagando…"), true);
+  assert.equal(looksLikeText("folder_tree"), false);
+  assert.equal(looksLikeText("#/fotos"), false);
 });

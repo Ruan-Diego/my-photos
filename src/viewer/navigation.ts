@@ -1,7 +1,7 @@
 // F19: o que o visualizador (artboard `Viewer`) diz e por onde ele anda. Sem React.
 
 import { calendar, MONTHS, WEEKDAYS, type Item, type Month } from "../timeline/timeline.ts";
-import { numberFormat } from "../i18n/i18n.ts";
+import { numberFormat, t } from "../i18n/i18n.ts";
 
 /** Uma mídia na ordem da grade, com o dia em que está. */
 export interface Entry {
@@ -29,16 +29,16 @@ export function indexOf(entries: Entry[], id: number): number {
 /** "Qua, 10 de agosto de 2022 · 14:37"; "Sem data" quando não há. */
 export function dateLine(item: Item): string {
   if (item.time === null) {
-    return "Sem data";
+    return t("timeline.undated");
   }
   const when = calendar(item.time, item.offset);
   const hour = `${String(when.hour).padStart(2, "0")}:${String(when.minute).padStart(2, "0")}`;
-  return `${WEEKDAYS[when.weekday]}, ${when.day} de ${MONTHS[when.month].toLowerCase()} de ${when.year} · ${hour}`;
+  return t("viewer.dateLine", { weekday: WEEKDAYS[when.weekday], day: when.day, month: MONTHS[when.month].toLowerCase(), year: String(when.year), hour });
 }
 
 /** "3 de 14": a posição no dia, como no canvas. O local entra com a F24. */
 export function positionLine(entry: Entry): string {
-  return `${entry.position} de ${entry.dayCount}`;
+  return t("viewer.position", { position: entry.position, count: entry.dayCount });
 }
 
 /** Até `size` vizinhas para a tira de baixo, com a atual o mais ao centro possível. */
@@ -73,13 +73,13 @@ export function backHash(base: ViewerBase): string {
 export function backLabel(base: ViewerBase): string {
   switch (base) {
     case "buscar":
-      return "Voltar para a busca";
+      return t("viewer.backToSearch");
     case "favoritos":
-      return "Voltar para Favoritos";
+      return t("viewer.backTo", { section: t("section.favorites") });
     case "duplicatas":
-      return "Voltar para Duplicatas";
+      return t("viewer.backTo", { section: t("section.duplicates") });
     default:
-      return "Voltar para Fotos";
+      return t("viewer.backTo", { section: t("section.timeline") });
   }
 }
 
@@ -91,9 +91,9 @@ export function fallbackNote(info: { video: boolean; extension: string } | null)
     return null;
   }
   if (info.video) {
-    return "O player de vídeo chega com a F20. Por enquanto, só a capa.";
+    return t("viewer.videoSoon");
   }
-  return `Arquivos .${info.extension.toUpperCase()} ainda não abrem no app. Esta é a miniatura.`;
+  return t("viewer.unsupportedPhoto", { extension: info.extension.toUpperCase() });
 }
 
 const decimal = numberFormat({ maximumFractionDigits: 1 });
@@ -146,10 +146,10 @@ export function videoProblem(info: { playable: boolean; extension: string } | nu
     return null;
   }
   if (!info.playable) {
-    return `Vídeos .${info.extension.toUpperCase()} ainda não tocam no app. Esta é a capa.`;
+    return t("viewer.unsupportedVideo", { extension: info.extension.toUpperCase() });
   }
   if (failed) {
-    return "O Windows não tem o codec deste vídeo (às vezes HEVC/H.265). Esta é a capa.";
+    return t("viewer.missingCodec");
   }
   return null;
 }

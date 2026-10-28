@@ -127,7 +127,7 @@ function PlacesMap({ places }: { places: Place[] }) {
     <section
       ref={setFrame}
       className="locations-map"
-      aria-label="Mapa"
+      aria-label={t("locations.map")}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
@@ -150,14 +150,14 @@ function PlacesMap({ places }: { places: Place[] }) {
             }
             const size = pinSize(pin.count);
             const single = pin.places.length === 1;
-            const name = single ? placeName(pin.places[0].label) : `${placeName(pin.places[0].label)} e mais ${pin.places.length - 1}`;
+            const name = single ? placeName(pin.places[0].label) : t("locations.andMore", { name: placeName(pin.places[0].label), count: pin.places.length - 1 });
             return (
               <button
                 key={pin.places[0].label}
                 type="button"
                 className="locations-pin"
                 style={{ left, top, width: size, height: size }}
-                aria-label={`${name}: ${t("count.items", { n: pin.count })}`}
+                aria-label={t("locations.pinLabel", { name, items: t("count.items", { n: pin.count }) })}
                 title={name}
                 onClick={() => {
                   if (single) {
@@ -173,10 +173,10 @@ function PlacesMap({ places }: { places: Place[] }) {
           })
         : null}
       <div className="locations-zoom">
-        <button type="button" aria-label="Aproximar" onClick={() => zoom(1.6)}>
+        <button type="button" aria-label={t("locations.zoomIn")} onClick={() => zoom(1.6)}>
           +
         </button>
-        <button type="button" aria-label="Afastar" onClick={() => zoom(1 / 1.6)}>
+        <button type="button" aria-label={t("locations.zoomOut")} onClick={() => zoom(1 / 1.6)}>
           −
         </button>
       </div>
@@ -207,37 +207,37 @@ function PlaceRow({ place }: { place: Place }) {
 export function LocationsScreen() {
   const [locations, failure] = useLocations();
   const subtitle =
-    failure !== null ? "Não foi possível ler os locais" : locations === null ? " " : locationsSubtitle(locations.located, locations.unlocated);
+    failure !== null ? t("locations.readFailed") : locations === null ? " " : locationsSubtitle(locations.located, locations.unlocated);
 
   return (
     <main className="page locations" aria-labelledby="locations-title">
       <header className="page-header">
         <div className="people-heading">
-          <h1 id="locations-title">Locais</h1>
+          <h1 id="locations-title">{t("section.locations")}</h1>
           <span>{subtitle}</span>
         </div>
       </header>
       {failure !== null ? (
         <div className="page-body">
           <div className="page-empty">
-            <p className="page-empty-title">Não foi possível ler os locais</p>
+            <p className="page-empty-title">{t("locations.readFailed")}</p>
             <p className="page-empty-detail">{failure}</p>
           </div>
         </div>
       ) : locations !== null && locations.places.length === 0 ? (
         <div className="page-body">
           <div className="page-empty">
-            <p className="page-empty-title">Nenhuma foto com lugar</p>
+            <p className="page-empty-title">{t("locations.emptyTitle")}</p>
             <p className="page-empty-detail">
-              Os lugares vêm das coordenadas do GPS da câmera ou dos JSONs do Takeout, com o nome da cidade mais próxima.
+              {t("locations.emptyDetail")}
             </p>
           </div>
         </div>
       ) : locations !== null ? (
         <div className="locations-body">
           <PlacesMap places={locations.places} />
-          <aside className="locations-list" aria-label="Lugares">
-            <h2>Lugares com mais fotos</h2>
+          <aside className="locations-list" aria-label={t("locations.places")}>
+            <h2>{t("locations.topPlaces")}</h2>
             {locations.places.slice(0, LIST_LIMIT).map((place) => (
               <PlaceRow key={place.label} place={place} />
             ))}

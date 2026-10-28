@@ -7,6 +7,8 @@
 | SEC-03 | `commands::tests::sec03_*`: a capability só tem `allow-*` e `core:event:default`; `acl01` continua passando |
 | SEC-04 | `commands::tests::sec04_*`: a CSP não tem origem remota, `*`, `https:` nem `unsafe-eval`; o `Cargo.toml` não tem `reqwest`, `hyper`, `ureq`, `curl`, nem os plugins http, updater ou opener. Playwright: o build servido com a CSP (e o hash do script inline, como o Tauri faz) abre as 13 telas, entre elas o visualizador de foto e de vídeo, sem nenhuma violação. As fontes Hanken Grotesk carregam e as miniaturas vêm de `http://thumb.localhost`. Controle negativo: sem o hash e sem `thumb:`, as violações aparecem. Captura `csp-timeline.png` em `/mnt/project-files/f36-security/` |
 | SEC-05 | Tabela em `design.md`; os testes de validação já existentes (`fileops`, `bak04`, `video01`, settings) continuam passando |
+| SEC-06 | `thumbs::tests::sec05_*`: o PNG de 45 bytes vira `Corrupt` em menos de 2 s |
+| SEC-07 | `commands::viewer::tests::sec06_*`: `../secret.jpg` no índice e um link simbólico para fora → recusados; o original de dentro é servido |
 
 Pendente no Windows:
 - abrir o app instalado e ver miniaturas, vídeos e fontes com a CSP;

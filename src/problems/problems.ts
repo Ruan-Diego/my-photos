@@ -2,7 +2,7 @@
 // indexação e diagnóstico. Sem React.
 
 import { fileSize } from "../viewer/navigation.ts";
-import { formatCount } from "../i18n/i18n.ts";
+import { formatCount, t } from "../i18n/i18n.ts";
 
 export type Status = "pending" | "resolved" | "ignored";
 
@@ -39,24 +39,23 @@ export interface Overview {
 export type Tab = "items" | "report" | "diagnostics";
 
 export const TABS: readonly { id: Tab; label: string }[] = [
-  { id: "items", label: "Itens não reconhecidos" },
-  { id: "report", label: "Relatório da indexação" },
-  { id: "diagnostics", label: "Diagnóstico" },
+  { id: "items", label: t("problems.tabItems") },
+  { id: "report", label: t("problems.tabReport") },
+  { id: "diagnostics", label: t("problems.tabDiagnostics") },
 ];
 
 export type StatusFilter = "all" | Status;
 
-export const STATUS_LABEL: Record<Status, string> = { pending: "Pendente", resolved: "Resolvido", ignored: "Ignorado" };
-
+export const STATUS_LABEL: Record<Status, string> = { pending: t("problems.pending"), resolved: t("problems.resolved"), ignored: t("problems.ignored") };
 
 /** "Todos · 37", "Pendentes · 9", … na ordem do canvas. */
 export function statusFilters(problems: Problem[]): { id: StatusFilter; label: string }[] {
   const of = (status: Status) => problems.filter((problem) => problem.status === status).length;
   return [
-    { id: "all", label: `Todos · ${formatCount(problems.length)}` },
-    { id: "pending", label: `Pendentes · ${formatCount(of("pending"))}` },
-    { id: "resolved", label: `Resolvidos · ${formatCount(of("resolved"))}` },
-    { id: "ignored", label: `Ignorados · ${formatCount(of("ignored"))}` },
+    { id: "all", label: t("problems.filterAll", { count: formatCount(problems.length) }) },
+    { id: "pending", label: t("problems.filterPending", { count: formatCount(of("pending")) }) },
+    { id: "resolved", label: t("problems.filterResolved", { count: formatCount(of("resolved")) }) },
+    { id: "ignored", label: t("problems.filterIgnored", { count: formatCount(of("ignored")) }) },
   ];
 }
 
@@ -79,24 +78,24 @@ export function fullPath(root: string | null, path: string): string {
 /** "6 min 41 s", "45 s", "1 h 02 min". */
 export function durationText(seconds: number): string {
   if (seconds < 60) {
-    return `${seconds} s`;
+    return t("problems.seconds", { seconds });
   }
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
   if (hours > 0) {
-    return `${hours} h ${String(minutes).padStart(2, "0")} min`;
+    return t("problems.hoursMinutes", { hours, minutes: String(minutes).padStart(2, "0") });
   }
-  return `${minutes} min ${seconds % 60} s`;
+  return t("problems.minutesSeconds", { minutes, seconds: seconds % 60 });
 }
 
 export function reportCards(report: Report): { label: string; value: string }[] {
   return [
-    { label: "Mídias indexadas", value: formatCount(report.media) },
-    { label: "Data pelo JSON do Takeout", value: formatCount(report.dateFromJson) },
-    { label: "Data pelo EXIF", value: formatCount(report.dateFromExif) },
-    { label: "Data pelo arquivo", value: formatCount(report.dateFromFile) },
-    { label: "JSON em outra parte do export", value: formatCount(report.jsonInOtherPart) },
-    { label: "Duração da última indexação", value: report.lastDurationSeconds === null ? "—" : durationText(report.lastDurationSeconds) },
+    { label: t("problems.reportMedia"), value: formatCount(report.media) },
+    { label: t("indexing.countJson"), value: formatCount(report.dateFromJson) },
+    { label: t("indexing.countExif"), value: formatCount(report.dateFromExif) },
+    { label: t("problems.reportFile"), value: formatCount(report.dateFromFile) },
+    { label: t("indexing.countOtherPart"), value: formatCount(report.jsonInOtherPart) },
+    { label: t("problems.reportDuration"), value: report.lastDurationSeconds === null ? "—" : durationText(report.lastDurationSeconds) },
   ];
 }
 
@@ -104,22 +103,22 @@ export type Tone = "ok" | "warn" | "unknown";
 
 /** `integrity`: `undefined` antes de verificar, `null` íntegro, texto com o problema. */
 export function diagnosticLines(diagnostics: Diagnostics, integrity?: string | null): { label: string; value: string; tone: Tone }[] {
-  const database = diagnostics.databasePath ?? "banco aberto";
-  const health = integrity === undefined ? "não verificado" : integrity === null ? "íntegro" : `com defeito: ${integrity}`;
+  const database = diagnostics.databasePath ?? t("problems.databaseOpen");
+  const health = integrity === undefined ? t("problems.unchecked") : integrity === null ? t("problems.sound") : t("problems.damaged", { detail: integrity });
   const full = diagnostics.thumbnailBytes >= diagnostics.thumbnailLimitBytes;
   return [
-    { label: "Banco de dados", value: `${database} · ${health}`, tone: integrity === undefined ? "unknown" : integrity === null ? "ok" : "warn" },
+    { label: t("problems.database"), value: t("common.join", { a: database, b: health }), tone: integrity === undefined ? "unknown" : integrity === null ? "ok" : "warn" },
     {
-      label: "Miniaturas em cache",
-      value: `${fileSize(diagnostics.thumbnailBytes)} de ${fileSize(diagnostics.thumbnailLimitBytes)}`,
+      label: t("problems.thumbnails"),
+      value: t("problems.cacheOf", { used: fileSize(diagnostics.thumbnailBytes), limit: fileSize(diagnostics.thumbnailLimitBytes) }),
       tone: full ? "warn" : "ok",
     },
     {
       label: "ffmpeg",
-      value: diagnostics.ffmpeg ? "disponível" : "não encontrado · vídeos sem capa nem duração",
+      value: diagnostics.ffmpeg ? t("problems.ffmpegOk") : t("problems.ffmpegMissing"),
       tone: diagnostics.ffmpeg ? "ok" : "warn",
     },
-    { label: "Volume da biblioteca", value: `${diagnostics.rootPath ?? "?"} · conectado`, tone: "ok" },
-    { label: "Conexões de rede", value: "nenhuma", tone: "ok" },
+    { label: t("problems.volume"), value: t("problems.volumeConnected", { root: diagnostics.rootPath ?? "?" }), tone: "ok" },
+    { label: t("problems.network"), value: t("problems.networkNone"), tone: "ok" },
   ];
 }

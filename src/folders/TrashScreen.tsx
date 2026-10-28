@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { thumbnailUrl } from "../viewer/media";
 import { itemsLabel, outcomeText, purgeText, trashName, trashOrigin, type Outcome, type TrashItem } from "./folders";
+import { t } from "../i18n/i18n";
+import { rich } from "../i18n/rich";
 
 function errorText(error: unknown): string {
   return typeof error === "string" ? error : error instanceof Error ? error.message : String(error);
@@ -45,21 +47,21 @@ export function TrashScreen({ rootLabel, writable, onChanged }: { rootLabel: str
     <main className="page trash" aria-labelledby="page-title">
       <header className="page-header trash-header">
         <div className="trash-title">
-          <h1 id="page-title">Lixeira</h1>
-          <span>{items === null ? " " : `${itemsLabel(items.length)} · cada item fica 30 dias antes de ser apagado`}</span>
+          <h1 id="page-title">{t("section.trash")}</h1>
+          <span>{items === null ? " " : t("trash.subtitle", { items: itemsLabel(items.length) })}</span>
         </div>
         <button
           type="button"
           className="button-solid trash-restore-all"
           disabled={!writable || busy || items === null || items.length === 0}
           onClick={() =>
-            run(invoke<Outcome>("trash_restore_all"), (outcome) => ({ text: outcomeText(outcome, "restaurado"), warn: outcome.skipped.length > 0 }))
+            run(invoke<Outcome>("trash_restore_all"), (outcome) => ({ text: outcomeText(outcome, "restored"), warn: outcome.skipped.length > 0 }))
           }
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M4 12a8 8 0 1 0 2.3-5.7M4 4v5h5" />
           </svg>
-          Restaurar tudo
+          {t("trash.restoreAll")}
         </button>
       </header>
 
@@ -71,15 +73,14 @@ export function TrashScreen({ rootLabel, writable, onChanged }: { rootLabel: str
               <path d="M12 11v6M12 7.5v.01" />
             </svg>
             <span>
-              A lixeira mora no próprio HD, em <code>{trashPath}</code>, porque a Lixeira do Windows nem sempre existe em discos USB. Restaurar devolve a mídia e o JSON do Takeout
-              para a pasta de origem.
+              {rich(t("trash.about"), { path: <code>{trashPath}</code> })}
             </span>
           </p>
 
           {notice !== null ? (
             <p className={notice.warn ? "folders-notice folders-notice-warn" : "folders-notice"} role="status">
               {notice.text}
-              <button type="button" aria-label="Fechar aviso" onClick={() => setNotice(null)}>
+              <button type="button" aria-label={t("trash.closeNotice")} onClick={() => setNotice(null)}>
                 ×
               </button>
             </p>
@@ -87,13 +88,13 @@ export function TrashScreen({ rootLabel, writable, onChanged }: { rootLabel: str
 
           {failure !== null ? (
             <div className="page-empty">
-              <p className="page-empty-title">Não foi possível ler a lixeira</p>
+              <p className="page-empty-title">{t("trash.readFailed")}</p>
               <p className="page-empty-detail">{failure}</p>
             </div>
           ) : items !== null && items.length === 0 ? (
             <div className="trash-empty">
-              <strong>A lixeira está vazia</strong>
-              <span>O que for excluído em Pastas fica aqui por 30 dias.</span>
+              <strong>{t("trash.emptyTitle")}</strong>
+              <span>{t("trash.emptyDetail")}</span>
             </div>
           ) : (
             <ul className="trash-list">
@@ -119,9 +120,9 @@ export function TrashScreen({ rootLabel, writable, onChanged }: { rootLabel: str
                       type="button"
                       className="button-line"
                       disabled={!writable || busy}
-                      onClick={() => run(invoke("trash_restore", { id: item.id }), () => ({ text: `${trashName(item)} voltou para a pasta de origem.`, warn: false }))}
+                      onClick={() => run(invoke("trash_restore", { id: item.id }), () => ({ text: t("trash.restored", { name: trashName(item) }), warn: false }))}
                     >
-                      Restaurar
+                      {t("trash.restore")}
                     </button>
                   </li>
                 );

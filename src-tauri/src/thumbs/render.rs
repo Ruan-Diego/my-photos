@@ -5,7 +5,7 @@ use std::path::Path;
 
 use image::codecs::jpeg::JpegEncoder;
 use image::metadata::Orientation;
-use image::{DynamicImage, ExtendedColorType, ImageError, ImageReader, RgbImage};
+use image::{DynamicImage, ExtendedColorType, ImageError, ImageReader, Limits, RgbImage};
 
 use super::{ThumbError, ThumbSize, JPEG_QUALITY};
 
@@ -31,9 +31,10 @@ fn decode_and_render(
     size: ThumbSize,
     orientation: Option<u16>,
 ) -> Result<Rendered, ThumbError> {
-    let reader = ImageReader::open(original)
+    let mut reader = ImageReader::open(original)
         .and_then(ImageReader::with_guessed_format)
         .map_err(|_| ThumbError::Unreadable)?;
+    reader.limits(decode_limits());
     if reader.format().is_none() {
         return Err(ThumbError::Unsupported);
     }
@@ -66,6 +67,20 @@ fn decode_and_render(
         height: rgb.height(),
     })
 }
+
+/// F36: a decompression bomb (a tiny file whose header claims a gigantic image) stops at
+/// the header instead of allocating. 40 000 px a side and 1 GiB cover any real photo or
+/// panorama; the `image` default alone is 512 MB per allocation, with no size check.
+fn decode_limits() -> Limits {
+    let mut limits = Limits::default();
+    limits.max_image_width = Some(MAX_EDGE);
+    limits.max_image_height = Some(MAX_EDGE);
+    limits.max_alloc = Some(MAX_DECODE_BYTES);
+    limits
+}
+
+const MAX_EDGE: u32 = 40_000;
+const MAX_DECODE_BYTES: u64 = 1 << 30;
 
 fn flatten_on_white(image: DynamicImage) -> RgbImage {
     if !image.color().has_alpha() {

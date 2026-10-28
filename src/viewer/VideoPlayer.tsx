@@ -5,6 +5,7 @@ import { useToggleFavorite } from "../favorites/FavoriteContext";
 import { fit, icon, originalUrl, thumbnailUrl, useMediaInfo } from "./media";
 import { backHash, backLabel, clock, dateLine, seek, SEEK_STEP, videoLine, videoProblem, type ViewerBase } from "./navigation";
 import { useDialogFocus } from "../a11y/useDialogFocus";
+import { t } from "../i18n/i18n";
 
 const VOLUME_KEY = "myphotos.player.volume";
 /** Largura máxima do quadro no canvas. */
@@ -153,7 +154,7 @@ export function VideoPlayer({ item, base = "fotos" }: { item: Item; base?: Viewe
   const box = fit(item.ratio > 0 ? item.ratio : 16 / 9, area.width, area.height);
 
   return (
-    <div ref={root} className="viewer player" role="dialog" aria-modal="true" aria-label="Reproduzir vídeo">
+    <div ref={root} className="viewer player" role="dialog" aria-modal="true" aria-label={t("player.dialog")}>
       <div className="viewer-main">
         <header className="viewer-header">
           <a className="viewer-icon" href={backHash(base)} aria-label={backLabel(base)}>
@@ -168,8 +169,8 @@ export function VideoPlayer({ item, base = "fotos" }: { item: Item; base?: Viewe
           <button
             type="button"
             className="viewer-icon viewer-favorite"
-            aria-label={item.favorite ? "Remover dos favoritos" : "Favoritar"}
-            title={item.favorite ? "Remover dos favoritos" : "Favoritar"}
+            aria-label={item.favorite ? t("viewer.unfavorite") : t("viewer.favorite")}
+            title={item.favorite ? t("viewer.unfavorite") : t("viewer.favorite")}
             aria-pressed={item.favorite}
             disabled={toggleFavorite === null}
             onClick={() => toggleFavorite?.(item.id, !item.favorite)}
@@ -181,7 +182,7 @@ export function VideoPlayer({ item, base = "fotos" }: { item: Item; base?: Viewe
           <button
             type="button"
             className="viewer-icon viewer-toggle"
-            aria-label={detailsOpen ? "Ocultar detalhes" : "Mostrar detalhes"}
+            aria-label={detailsOpen ? t("viewer.hideDetails") : t("viewer.showDetails")}
             aria-pressed={detailsOpen}
             onClick={toggleDetails}
           >
@@ -223,7 +224,7 @@ export function VideoPlayer({ item, base = "fotos" }: { item: Item; base?: Viewe
             )}
             {problem !== null ? <span className="viewer-note player-note">{problem}</span> : null}
             {ready && paused ? (
-              <button type="button" className="player-big" aria-label="Reproduzir" onClick={toggle}>
+              <button type="button" className="player-big" aria-label={t("player.play")} onClick={toggle}>
                 <svg width="34" height="34" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                   <path d="M8 5l12 7-12 7z" />
                 </svg>
@@ -238,8 +239,8 @@ export function VideoPlayer({ item, base = "fotos" }: { item: Item; base?: Viewe
                   <input
                     type="range"
                     className="player-seek"
-                    aria-label="Progresso"
-                    aria-valuetext={`${clock(time)} de ${clock(duration)}`}
+                    aria-label={t("player.progress")}
+                    aria-valuetext={t("player.position", { time: clock(time), duration: clock(duration) })}
                     min={0}
                     max={duration || 0}
                     step={0.1}
@@ -248,7 +249,7 @@ export function VideoPlayer({ item, base = "fotos" }: { item: Item; base?: Viewe
                   />
                 </div>
                 <div className="player-row">
-                  <button type="button" className="player-button" aria-label={paused ? "Reproduzir" : "Pausar"} onClick={toggle}>
+                  <button type="button" className="player-button" aria-label={paused ? t("player.play") : t("player.pause")} onClick={toggle}>
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                       <path d={paused ? "M8 5l12 7-12 7z" : "M7 5h4v14H7zM13 5h4v14h-4z"} />
                     </svg>
@@ -261,7 +262,7 @@ export function VideoPlayer({ item, base = "fotos" }: { item: Item; base?: Viewe
                     <svg width="20" height="20" viewBox="0 0 24 24" {...icon} aria-hidden="true">
                       <path d="M4 9h4l5-4v14l-5-4H4zM17 9a4 4 0 0 1 0 6" />
                     </svg>
-                    <span className="visually-hidden">Volume</span>
+                    <span className="visually-hidden">{t("player.volume")}</span>
                     <input
                       type="range"
                       min={0}
@@ -274,7 +275,7 @@ export function VideoPlayer({ item, base = "fotos" }: { item: Item; base?: Viewe
                       }}
                     />
                   </label>
-                  <button type="button" className="player-button" aria-label={fullscreen ? "Sair da tela cheia" : "Tela cheia"} onClick={toggleFullscreen}>
+                  <button type="button" className="player-button" aria-label={fullscreen ? t("player.exitFullscreen") : t("player.fullscreen")} onClick={toggleFullscreen}>
                     <svg width="20" height="20" viewBox="0 0 24 24" {...icon} aria-hidden="true">
                       <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
                     </svg>
@@ -286,8 +287,8 @@ export function VideoPlayer({ item, base = "fotos" }: { item: Item; base?: Viewe
         </div>
 
         <footer className="player-footer">
-          <span>Espaço: reproduzir/pausar · ← →: voltar/avançar 5 s · F: tela cheia · Esc: fechar</span>
-          <span>{ready ? "Tocando o original direto do disco" : " "}</span>
+          <span>{t("player.keys")}</span>
+          <span>{ready ? t("player.playingOriginal") : " "}</span>
         </footer>
       </div>
       {detailsOpen ? <DetailsPanel item={item} info={info} /> : null}

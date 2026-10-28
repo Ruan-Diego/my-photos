@@ -5,6 +5,7 @@ import { thumbnailUrl } from "../viewer/media";
 import { Viewer } from "../viewer/Viewer";
 import { indexOf, openedId, viewerHash, type Entry } from "../viewer/navigation";
 import type { TimelineData } from "../timeline/timeline";
+import { formatCount, t } from "../i18n/i18n";
 import {
   copyMeta,
   emptyDuplicates,
@@ -21,7 +22,6 @@ import {
   type Kind,
   type KindFilter,
 } from "./duplicates";
-import { formatCount } from "../i18n/i18n";
 
 function useDuplicates(): [Duplicates | null, string | null] {
   const [duplicates, setDuplicates] = useState<Duplicates | null>(null);
@@ -48,7 +48,7 @@ function CopyCard({ kind, copy }: { kind: Kind; copy: Copy }) {
   const [broken, setBroken] = useState(false);
   return (
     <div className="duplicate-copy">
-      <a className="duplicate-thumb" href={viewerHash(copy.id, "duplicatas")} aria-label="Abrir no visualizador" draggable={false}>
+      <a className="duplicate-thumb" href={viewerHash(copy.id, "duplicatas")} aria-label={t("duplicates.openInViewer")} draggable={false}>
         {broken ? null : (
           <img src={thumbnailUrl(copy.id)} alt="" loading="lazy" decoding="async" draggable={false} onError={() => setBroken(true)} />
         )}
@@ -58,7 +58,7 @@ function CopyCard({ kind, copy }: { kind: Kind; copy: Copy }) {
         <span>{folderLabel(copy.path)}</span>
         <span>{copyMeta(kind, copy)}</span>
         <a className="duplicate-folder" href={folderHash(parentOf(copy.path))}>
-          Mostrar na pasta
+          {t("duplicates.showInFolder")}
         </a>
       </div>
     </div>
@@ -84,11 +84,11 @@ export function DuplicatesScreen({ data }: { data: TimelineData | null }) {
     <main className="page duplicates" aria-labelledby="duplicates-title">
       <header className="page-header">
         <div className="people-heading">
-          <h1 id="duplicates-title">Duplicatas</h1>
-          <span>Só informativo: nada é excluído automaticamente</span>
+          <h1 id="duplicates-title">{t("section.duplicates")}</h1>
+          <span>{t("duplicates.subtitle")}</span>
         </div>
         {duplicates !== null ? (
-          <div role="group" aria-label="Tipo de duplicata" className="segmented">
+          <div role="group" aria-label={t("duplicates.kindLabel")} className="segmented">
             {kindFilters(duplicates.groups).map((option) => (
               <button key={option.id} type="button" aria-pressed={filter === option.id} onClick={() => setFilter(option.id)}>
                 {option.label}
@@ -100,14 +100,13 @@ export function DuplicatesScreen({ data }: { data: TimelineData | null }) {
       <div className="page-body duplicates-body">
         {failure !== null ? (
           <div className="page-empty">
-            <p className="page-empty-title">Não foi possível ler as duplicatas</p>
+            <p className="page-empty-title">{t("duplicates.readFailed")}</p>
             <p className="page-empty-detail">{failure}</p>
           </div>
         ) : duplicates === null ? null : (
           <>
             <p className="duplicates-note">
-              O Takeout costuma repetir a mesma foto na pasta do ano e na pasta de cada álbum. Esses grupos mostram onde estão as
-              cópias para você decidir o que fazer em Pastas.
+              {t("duplicates.intro")}
             </p>
             {groups.length === 0 ? (
               <div className="page-empty">
@@ -132,7 +131,7 @@ export function DuplicatesScreen({ data }: { data: TimelineData | null }) {
             )}
             {groups.length > GROUP_LIMIT ? (
               <p className="problems-note">
-                Mostrando {GROUP_LIMIT} de {formatCount(groups.length)} grupos, os com mais espaço repetido primeiro.
+                {t("duplicates.showingGroups", { shown: formatCount(GROUP_LIMIT), total: formatCount(groups.length) })}
               </p>
             ) : null}
           </>

@@ -1,5 +1,6 @@
 // Configurações (F31, artboard `Settings`).
 import { fileSize } from "../viewer/navigation.ts";
+import { t } from "../i18n/i18n.ts";
 
 export interface Settings {
   rootPath: string | null;
@@ -20,42 +21,42 @@ export const SCAN_ON_CONNECT = "scan_on_connect";
 export const DEFAULT_CACHE_LIMIT = 4 * 1024 ** 3;
 
 export const SECTIONS = [
-  { id: "biblioteca", label: "Biblioteca" },
-  { id: "dados", label: "Dados e cache" },
-  { id: "backup", label: "Backup" },
-  { id: "indexacao", label: "Indexação" },
-  { id: "aparencia", label: "Aparência" },
-  { id: "privacidade", label: "Privacidade" },
+  { id: "biblioteca", label: t("settings.sections.library") },
+  { id: "dados", label: t("settings.sections.data") },
+  { id: "backup", label: t("settings.sections.backup") },
+  { id: "indexacao", label: t("settings.sections.indexing") },
+  { id: "aparencia", label: t("settings.sections.appearance") },
+  { id: "privacidade", label: t("settings.sections.privacy") },
 ] as const;
 
 /** "FOTOS · reconhecido pelo número de série, mesmo se a letra mudar". */
 export function volumeLine(settings: Pick<Settings, "volumeLabel">): string {
-  const label = settings.volumeLabel?.trim() || "Disco sem nome";
-  return `${label} · reconhecido pelo número de série, mesmo se a letra mudar`;
+  const label = settings.volumeLabel?.trim() || t("settings.unnamedDisk");
+  return t("settings.volumeLine", { label });
 }
 
 /** "E:\.myphotos\library.db · 184 MB". */
 export function databaseLine(settings: Pick<Settings, "databasePath" | "databaseBytes">): string {
-  const path = settings.databasePath ?? "Banco sem arquivo";
-  return settings.databaseBytes === null ? path : `${path} · ${fileSize(settings.databaseBytes)}`;
+  const path = settings.databasePath ?? t("settings.noDatabaseFile");
+  return settings.databaseBytes === null ? path : t("common.join", { a: path, b: fileSize(settings.databaseBytes) });
 }
 
 /** F48/F35: a lixeira do app, ao lado do banco: "E:\\.myphotos\\trash · 30 dias". */
 export function trashLine(settings: Pick<Settings, "databasePath">): string {
   const path = settings.databasePath;
   if (path === null) {
-    return "Banco sem arquivo";
+    return t("settings.noDatabaseFile");
   }
   const cut = Math.max(path.lastIndexOf("\\"), path.lastIndexOf("/"));
   const separator = path.includes("\\") ? "\\" : "/";
-  return `${path.slice(0, cut)}${separator}trash · 30 dias`;
+  return t("settings.trashLine", { path: `${path.slice(0, cut)}${separator}trash` });
 }
 
 /** "1,2 GB usados de 4 GB" e quanto da barra pintar (0 a 1). */
 export function cacheUsage(settings: Pick<Settings, "thumbnailBytes" | "thumbnailLimitBytes">): { text: string; fraction: number } {
   const limit = Math.max(1, settings.thumbnailLimitBytes);
   return {
-    text: `${fileSize(settings.thumbnailBytes)} usados de ${fileSize(settings.thumbnailLimitBytes)}`,
+    text: t("settings.cacheUsage", { used: fileSize(settings.thumbnailBytes), limit: fileSize(settings.thumbnailLimitBytes) }),
     fraction: Math.min(1, Math.max(0, settings.thumbnailBytes / limit)),
   };
 }
@@ -65,15 +66,15 @@ export function cacheOptions(settings: Pick<Settings, "cacheLimits" | "thumbnail
   const values = settings.cacheLimits.includes(settings.thumbnailLimitBytes)
     ? settings.cacheLimits
     : [...settings.cacheLimits, settings.thumbnailLimitBytes].sort((a, b) => a - b);
-  return values.map((bytes) => ({ bytes, label: bytes === DEFAULT_CACHE_LIMIT ? `${fileSize(bytes)} (padrão)` : fileSize(bytes) }));
+  return values.map((bytes) => ({ bytes, label: bytes === DEFAULT_CACHE_LIMIT ? t("settings.defaultOption", { value: fileSize(bytes) }) : fileSize(bytes) }));
 }
 
 /** O que dizer sob "Gerar capa dos vídeos" quando ligar não basta. */
 export function videoCoversNote(settings: Pick<Settings, "videoCovers" | "ffmpeg">): string | null {
   if (!settings.ffmpeg) {
-    return "O ffmpeg não foi encontrado: os vídeos ficam com um ícone no lugar da capa.";
+    return t("settings.noFfmpeg");
   }
-  return settings.videoCovers ? null : "Os vídeos novos ficam com um ícone; as capas já feitas continuam.";
+  return settings.videoCovers ? null : t("settings.coversOff");
 }
 
 // Animações: seguir o Windows por padrão, ou fixas.
@@ -83,9 +84,9 @@ export type MotionChoice = "system" | "reduced" | "full";
 export const MOTION_KEY = "myphotos.motion";
 
 export const MOTION_OPTIONS: ReadonlyArray<{ choice: MotionChoice; label: string }> = [
-  { choice: "system", label: "Seguir o Windows" },
-  { choice: "reduced", label: "Sempre reduzidas" },
-  { choice: "full", label: "Completas" },
+  { choice: "system", label: t("settings.followWindows") },
+  { choice: "reduced", label: t("settings.motionReduced") },
+  { choice: "full", label: t("settings.motionFull") },
 ];
 
 export function parseMotion(stored: string | null | undefined): MotionChoice {

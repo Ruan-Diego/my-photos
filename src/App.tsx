@@ -43,6 +43,7 @@ import { DuplicatesScreen } from "./duplicates/DuplicatesScreen";
 import { FavoriteContext, type ToggleFavorite } from "./favorites/FavoriteContext";
 import { withFavorite } from "./favorites/favorites";
 import type { TimelineData } from "./timeline/timeline";
+import { t } from "./i18n/i18n";
 import { applyTheme, loadTheme, saveTheme, type ThemeChoice } from "./theme/theme";
 import "@fontsource/hanken-grotesk/400.css";
 import "@fontsource/hanken-grotesk/500.css";
@@ -332,7 +333,7 @@ function App() {
         <Onboarding
           folder={folder}
           starting={starting}
-          failure={startError ?? (indexError === null ? null : `A indexação parou: ${failureText(indexError)}.`)}
+          failure={startError ?? (indexError === null ? null : t("app.indexingStopped", { reason: failureText(indexError) }))}
           onStart={() => startIndexing()}
         />
       </MotionConfig>
@@ -369,7 +370,7 @@ function App() {
     disk = failedCard(indexError);
     onDiskAction = () => startIndexing();
   } else if (startError !== null) {
-    disk = { tone: "warn", title: "A indexação não começou", detail: startError, action: null };
+    disk = { tone: "warn", title: t("app.indexingNotStarted"), detail: startError, action: null };
   } else if (interrupted(summary)) {
     disk = interruptedCard(summary?.mediaCount ?? 0);
     onDiskAction = () => startIndexing();
@@ -388,7 +389,7 @@ function App() {
       <FavoriteContext.Provider value={summary?.connected === true ? toggleFavorite : null}>
       <div className="shell">
         <button type="button" className="skip-link" onClick={skipToContent}>
-          Pular para o conteúdo
+          {t("app.skipToContent")}
         </button>
         <Sidebar active={active} disk={disk} onDiskAction={onDiskAction} />
         {section.id === "timeline" ? (
@@ -408,9 +409,9 @@ function App() {
         ) : section.id === "duplicates" ? (
           <DuplicatesScreen data={timeline} />
         ) : section.id === "folders" ? (
-          <FoldersScreen rootLabel={root ?? "E:\\"} writable={writable} onChanged={reloadSummary} />
+          <FoldersScreen rootLabel={root ?? t("app.defaultRoot")} writable={writable} onChanged={reloadSummary} />
         ) : section.id === "trash" ? (
-          <TrashScreen rootLabel={root ?? "E:\\"} writable={writable} onChanged={reloadSummary} />
+          <TrashScreen rootLabel={root ?? t("app.defaultRoot")} writable={writable} onChanged={reloadSummary} />
         ) : section.id === "settings" ? (
           <SettingsScreen
             theme={theme}

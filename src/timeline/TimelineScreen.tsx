@@ -25,6 +25,7 @@ import { Viewer } from "../viewer/Viewer";
 import { SEARCH_HASH } from "../search/query";
 import { WHEEL_STEP_MS, wheelSize } from "../shortcuts/shortcuts";
 import { indexOf, openedId, order, viewerHash } from "../viewer/navigation";
+import { t } from "../i18n/i18n";
 
 const SIZE_KEY = "myphotos.timeline.size";
 
@@ -75,7 +76,7 @@ const Tile = memo(function Tile({ item, height, grow }: { item: Item; height: nu
           <svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M7 4l13 8-13 8z" />
           </svg>
-          {item.duration === null ? "Vídeo" : duration(item.duration)}
+          {item.duration === null ? t("timeline.video") : duration(item.duration)}
         </span>
       ) : null}
       {item.favorite ? (
@@ -227,27 +228,27 @@ export function TimelineScreen({ data, failure }: { data: TimelineData | null; f
   return (
     <main className="page timeline" aria-labelledby="page-title">
       <header className="page-header">
-        <h1 id="page-title">Fotos</h1>
+        <h1 id="page-title">{t("section.timeline")}</h1>
         <a className="timeline-search" href={SEARCH_HASH}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
             <path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-4-4" />
           </svg>
-          <span>Buscar por pessoa, local, data, pasta…</span>
+          <span>{t("timeline.searchHint")}</span>
           <kbd>Ctrl F</kbd>
         </a>
-        <div role="group" aria-label="Mostrar" className="segmented">
+        <div role="group" aria-label={t("timeline.show")} className="segmented">
           {FILTERS.map((option) => (
             <button key={option.id} type="button" aria-pressed={filter === option.id} onClick={() => setFilter(option.id)}>
               {option.label}
             </button>
           ))}
         </div>
-        <label className="timeline-size" title="Também com Ctrl + roda do mouse">
-          Tamanho
+        <label className="timeline-size" title={t("timeline.sizeHint")}>
+          {t("timeline.size")}
           <input type="range" min={1} max={5} step={1} value={size} onChange={(event) => changeSize(Number(event.target.value))} />
         </label>
-        <button type="button" className="timeline-select" disabled title="A seleção chega com as operações de arquivo">
-          Selecionar
+        <button type="button" className="timeline-select" disabled title={t("timeline.selectSoon")}>
+          {t("timeline.select")}
         </button>
       </header>
 
@@ -257,11 +258,11 @@ export function TimelineScreen({ data, failure }: { data: TimelineData | null; f
           className="timeline-scroll"
           onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}
           tabIndex={0}
-          aria-label="Linha do tempo"
+          aria-label={t("timeline.label")}
         >
           {failure !== null ? (
             <div className="page-empty">
-              <p className="page-empty-title">Não foi possível ler a biblioteca</p>
+              <p className="page-empty-title">{t("timeline.readFailed")}</p>
               <p className="page-empty-detail">{failure}</p>
             </div>
           ) : empty !== null ? (
@@ -279,7 +280,7 @@ export function TimelineScreen({ data, failure }: { data: TimelineData | null; f
         </div>
 
         {years.length > 0 ? (
-          <nav aria-label="Saltar para o ano" className="timeline-years">
+          <nav aria-label={t("timeline.jumpToYear")} className="timeline-years">
             {years.map((year) => (
               <a
                 key={year}

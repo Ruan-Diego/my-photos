@@ -5,4 +5,5 @@
 - [x] Meses, dias da semana, seções e contagens com plural no `pt-BR.ts`
 - [x] Lista de Idioma em Configurações vinda de `LOCALES`; `lang` do `<html>`
 - [x] Testes I18N-01..03 no CI; comparação do texto das 12 telas
-- [ ] Depois: os demais textos de cada tela e as mensagens do Rust, quando houver um segundo idioma
+- [x] Os demais textos de cada tela (445 chaves no `pt-BR.ts`), `rich()` e o detector `scan.ts` com os testes I18N-06/07
+- [ ] Depois: as mensagens do Rust, quando houver um segundo idioma

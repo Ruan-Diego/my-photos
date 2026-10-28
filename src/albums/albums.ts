@@ -18,9 +18,9 @@ export interface AlbumCard {
 export type AlbumOrder = "recent" | "name" | "size";
 
 export const ORDERS: { value: AlbumOrder; label: string }[] = [
-  { value: "recent", label: "Mais recentes" },
-  { value: "name", label: "Nome" },
-  { value: "size", label: "Mais itens" },
+  { value: "recent", label: t("albums.orderRecent") },
+  { value: "name", label: t("albums.orderName") },
+  { value: "size", label: t("albums.orderSize") },
 ];
 
 const names = collator({ sensitivity: "base", numeric: true });
@@ -38,12 +38,11 @@ export function sortAlbums(albums: AlbumCard[], order: AlbumOrder): AlbumCard[] 
   return sorted;
 }
 
-
 /** "124 itens · ago 2022" */
 export function albumMeta(album: AlbumCard): string {
   const items = t("count.items", { n: album.count });
   const when = period(album.first, album.last);
-  return when === null ? items : `${items} · ${when}`;
+  return when === null ? items : t("common.join", { a: items, b: when });
 }
 
 /** As fotos do álbum, na busca: `#/buscar?album=5`. */

@@ -14,6 +14,7 @@ import {
   type Progress,
   type RecentThumbnail,
 } from "./progress";
+import { t } from "../i18n/i18n";
 
 /** Casas no painel "Chegando agora" (artboard `Indexing`: 6 × 3). */
 export const TILES = 18;
@@ -56,15 +57,15 @@ export function IndexingScreen({
         <div className="indexing-actions">
           {paused ? (
             <button type="button" className="button-line" onClick={onResume}>
-              Continuar
+              {t("indexing.continue")}
             </button>
           ) : (
             <button type="button" className="button-line" onClick={onPause} disabled={pausing}>
-              {pausing ? "Pausando…" : "Pausar"}
+              {pausing ? t("indexing.pausing") : t("indexing.pause")}
             </button>
           )}
           <a className="button-solid" href={hashFor("timeline")} onClick={onBrowse}>
-            Começar a navegar
+            {t("indexing.browse")}
           </a>
         </div>
       </header>
@@ -77,7 +78,7 @@ export function IndexingScreen({
           </div>
           <span className="indexing-percent">{paused ? `${percent}%` : percentLine(fraction, elapsedMs)}</span>
         </div>
-        <div className="indexing-bar" role="progressbar" aria-label="Progresso da indexação" aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100}>
+        <div className="indexing-bar" role="progressbar" aria-label={t("indexing.progressLabel")} aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100}>
           <motion.div className="indexing-bar-fill" initial={false} animate={{ width: `${fraction * 100}%` }} transition={{ duration: 0.4, ease: "easeOut" }} />
         </div>
         <ol className="indexing-steps">
@@ -112,8 +113,8 @@ export function IndexingScreen({
 
         <div className="indexing-arrivals">
           <div className="indexing-arrivals-head">
-            <h2>Chegando agora</h2>
-            <span>miniaturas mais recentes primeiro</span>
+            <h2>{t("indexing.arriving")}</h2>
+            <span>{t("indexing.arrivingHint")}</span>
           </div>
           <div className="indexing-tiles">
             {tiles.map((thumbnail, index) =>
@@ -133,7 +134,7 @@ export function IndexingScreen({
             )}
           </div>
           <div className="indexing-console" aria-live="polite">
-            {lines.length === 0 ? <div className="indexing-console-quiet">aguardando os primeiros arquivos…</div> : null}
+            {lines.length === 0 ? <div className="indexing-console-quiet">{t("indexing.waiting")}</div> : null}
             {lines.map((line, index) => (
               <div key={`${index}-${line.text}`} className={line.warn ? "indexing-console-warn" : undefined}>
                 {line.text}

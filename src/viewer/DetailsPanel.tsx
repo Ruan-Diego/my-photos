@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { Item } from "../timeline/timeline";
 import type { MediaInfo } from "./media";
+import { t } from "../i18n/i18n";
 import { coordinates, dateSource, DETAILS_KEY, fileRows, fullDate, technicalRows, type MediaPanel } from "./panel";
 
 function loadOpen(): boolean {
@@ -69,12 +70,12 @@ export function DetailsPanel({ item, info }: { item: Item; info: MediaInfo | nul
   const place = ready ? coordinates(panel.latitude, panel.longitude) : null;
 
   return (
-    <aside className="details" aria-label="Detalhes">
-      <h2>Detalhes</h2>
+    <aside className="details" aria-label={t("details.title")}>
+      <h2>{t("details.title")}</h2>
 
       <section className="details-section">
-        <span className="details-label">Data e hora</span>
-        <strong className="details-value">{when ?? "Sem data"}</strong>
+        <span className="details-label">{t("details.dateAndTime")}</span>
+        <strong className="details-value">{when ?? t("timeline.undated")}</strong>
         {source !== null ? (
           <span className={`details-badge details-badge-${source.tone}`}>
             {source.tone === "ok" ? (
@@ -85,12 +86,12 @@ export function DetailsPanel({ item, info }: { item: Item; info: MediaInfo | nul
             {source.label}
           </span>
         ) : when === null ? (
-          <span className="details-muted">Data não encontrada no arquivo nem no JSON</span>
+          <span className="details-muted">{t("timeline.undatedDetail")}</span>
         ) : null}
       </section>
 
       <section className="details-section">
-        <span className="details-label">Local</span>
+        <span className="details-label">{t("details.place")}</span>
         {place !== null ? (
           <>
             <div className="details-map" aria-hidden="true">
@@ -99,12 +100,12 @@ export function DetailsPanel({ item, info }: { item: Item; info: MediaInfo | nul
             <strong className="details-value details-place">{place}</strong>
           </>
         ) : (
-          <span className="details-muted">{ready ? "Sem localização no arquivo nem no JSON" : " "}</span>
+          <span className="details-muted">{ready ? t("details.noPlace") : " "}</span>
         )}
       </section>
 
       <section className="details-section">
-        <span className="details-label">Pessoas</span>
+        <span className="details-label">{t("details.people")}</span>
         {ready && panel.people.length > 0 ? (
           <ul className="details-people">
             {panel.people.map((name) => (
@@ -115,18 +116,18 @@ export function DetailsPanel({ item, info }: { item: Item; info: MediaInfo | nul
             ))}
           </ul>
         ) : (
-          <span className="details-muted">{ready ? "Ninguém marcado no Google Fotos" : " "}</span>
+          <span className="details-muted">{ready ? t("details.noPeople") : " "}</span>
         )}
       </section>
 
       <section className="details-section">
-        <span className="details-label">Arquivo</span>
+        <span className="details-label">{t("details.file")}</span>
         {ready && info !== null && info.id === item.id ? <Rows rows={fileRows(info, panel)} /> : null}
       </section>
 
       {ready ? (
         <details className="details-technical">
-          <summary>Técnico</summary>
+          <summary>{t("details.technical")}</summary>
           <Rows rows={technicalRows(panel)} />
         </details>
       ) : null}

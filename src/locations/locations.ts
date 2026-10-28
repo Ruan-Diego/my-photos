@@ -2,7 +2,7 @@
 
 import { MONTHS } from "../timeline/timeline.ts";
 import { SEARCH_HASH } from "../search/query.ts";
-import { formatCount, t } from "../i18n/i18n.ts";
+import { currentLocale, formatCount, t } from "../i18n/i18n.ts";
 
 /** Um lugar com nome, do comando `locations_overview`. */
 export interface Place {
@@ -22,11 +22,10 @@ export interface Locations {
   places: Place[];
 }
 
-const items = (total: number) => (t("count.items", { n: total }));
 
 /** "3.402 itens com coordenadas · 845 sem localização" */
 export function locationsSubtitle(located: number, unlocated: number): string {
-  return `${items(located)} com coordenadas · ${formatCount(unlocated)} sem localização`;
+  return t("locations.subtitle", { items: t("count.items", { n: located }), unlocated: formatCount(unlocated) });
 }
 
 /** "São Paulo" de "São Paulo, SP, Brasil". */
@@ -44,7 +43,7 @@ export function period(first: string | null, last: string | null): string | null
     return `${fromYear}–${toYear}`;
   }
   if (first.slice(5, 7) === last.slice(5, 7)) {
-    return `${MONTHS[Number(first.slice(5, 7)) - 1].slice(0, 3).toLowerCase()} ${fromYear}`;
+    return t("locations.monthYear", { month: MONTHS[Number(first.slice(5, 7)) - 1].slice(0, 3).toLowerCase(), year: fromYear });
   }
   return fromYear;
 }
@@ -63,7 +62,7 @@ export function pinLabel(total: number): string {
   }
   const thousands = total / 1000;
   const shown = thousands < 10 ? Math.floor(thousands * 10) / 10 : Math.floor(thousands);
-  return `${formatCount(shown)} mil`;
+  return t("locations.thousands", { value: shown.toLocaleString(currentLocale()) });
 }
 
 /** 36 px para 1 item até 64 px para 2 mil ou mais, em escala logarítmica. */

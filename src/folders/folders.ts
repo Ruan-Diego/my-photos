@@ -1,4 +1,5 @@
 // Pastas e lixeira (F48, artboards `Folders` e `Trash`; AD-008, AD-009).
+
 import { formatCount, t } from "../i18n/i18n.ts";
 
 export interface Folder {
@@ -97,29 +98,30 @@ export function select(selected: ReadonlySet<number>, order: readonly number[], 
   return next;
 }
 
-
 export function itemsLabel(n: number): string {
-  return t("count.items", { n });
+  return t("count.items", { n: n });
 }
 
 /** "124 itens nesta pasta · 118 com JSON do Takeout". */
 export function folderSummary(items: readonly FolderItem[]): string {
   if (items.length === 0) {
-    return "Nenhuma foto ou vídeo direto nesta pasta";
+    return t("folders.emptyFolder");
   }
   const json = items.filter((item) => item.hasJson).length;
-  return `${itemsLabel(items.length)} nesta pasta · ${formatCount(json)} com JSON do Takeout`;
+  return t("folders.summary", { items: itemsLabel(items.length), json: formatCount(json) });
 }
 
+export type OutcomeVerb = "moved" | "trashed" | "restored";
+
 /** O que dizer depois de mover, excluir ou restaurar. */
-export function outcomeText(outcome: Outcome, verb: string, tail = ""): string {
-  const done = outcome.done === 1 ? `1 item ${verb}${tail}` : `${formatCount(outcome.done)} itens ${verb}s${tail}`;
+export function outcomeText(outcome: Outcome, verb: OutcomeVerb): string {
+  const done = t(`folders.outcome.${verb}`, { n: outcome.done });
   if (outcome.skipped.length === 0) {
-    return `${done}.`;
+    return t("folders.outcome.done", { done });
   }
   const [name, reason] = outcome.skipped[0];
-  const more = outcome.skipped.length > 1 ? ` e mais ${outcome.skipped.length - 1}` : "";
-  return `${done}. Ficou como estava: ${name} (${reason})${more}.`;
+  const more = outcome.skipped.length > 1 ? t("folders.outcome.more", { count: formatCount(outcome.skipped.length - 1) }) : "";
+  return t("folders.outcome.skipped", { done, name, reason, more });
 }
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -127,16 +129,16 @@ const DAY = 24 * 60 * 60 * 1000;
 /** "apagado em 29 dias"; `warn` nos últimos 3 dias. */
 export function purgeText(purgeAfter: string, now: number): { text: string; warn: boolean } {
   const left = Math.ceil((Date.parse(purgeAfter) - now) / DAY);
-  const text = left <= 0 ? "apagado hoje" : left === 1 ? "apagado amanhã" : `apagado em ${left} dias`;
+  const text = left <= 0 ? t("folders.purgeToday") : t("folders.purgeIn", { n: left });
   return { text, warn: left <= 3 };
 }
 
 /** `Pasta “Rascunhos” · 42 itens` ou o nome do arquivo. */
 export function trashName(item: TrashItem): string {
-  return item.kind === "folder" ? `Pasta “${item.name}” · ${itemsLabel(item.items)}` : item.name;
+  return item.kind === "folder" ? t("folders.trashFolder", { name: item.name, items: itemsLabel(item.items) }) : item.name;
 }
 
 /** "Estava em Google Fotos\Viagem", ou na raiz do disco. */
 export function trashOrigin(item: TrashItem, rootLabel: string): string {
-  return `Estava em ${item.folder === "" ? rootLabel : item.folder.split("/").join("\\")}`;
+  return t("folders.wasIn", { folder: item.folder === "" ? rootLabel : item.folder.split("/").join("\\") });
 }

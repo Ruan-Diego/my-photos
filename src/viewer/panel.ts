@@ -2,7 +2,7 @@
 
 import { calendar, duration, MONTHS, type Item } from "../timeline/timeline.ts";
 import { fileSize } from "./navigation.ts";
-import { numberFormat } from "../i18n/i18n.ts";
+import { numberFormat, t } from "../i18n/i18n.ts";
 
 /** O que o comando `media_panel_details` devolve. */
 export interface MediaPanel {
@@ -26,18 +26,18 @@ export function fullDate(item: Item): string | null {
   }
   const when = calendar(item.time, item.offset);
   const hour = `${String(when.hour).padStart(2, "0")}:${String(when.minute).padStart(2, "0")}`;
-  return `${when.day} de ${MONTHS[when.month].toLowerCase()} de ${when.year}, ${hour}`;
+  return t("details.dateTime", { day: when.day, month: MONTHS[when.month].toLowerCase(), year: String(when.year), hour });
 }
 
 /** O selo embaixo da data: de onde ela veio. A data do disco é a menos confiável. */
 export function dateSource(source: MediaPanel["dateSource"]): { label: string; tone: "ok" | "warn" } | null {
   switch (source) {
     case "takeout_json":
-      return { label: "Do JSON do Takeout", tone: "ok" };
+      return { label: t("details.fromJson"), tone: "ok" };
     case "exif":
-      return { label: "Do EXIF da foto", tone: "ok" };
+      return { label: t("details.fromExif"), tone: "ok" };
     case "filesystem":
-      return { label: "Da data do arquivo no disco", tone: "warn" };
+      return { label: t("details.fromFile"), tone: "warn" };
     default:
       return null;
   }
@@ -50,19 +50,19 @@ export function coordinates(latitude: number | null, longitude: number | null): 
   if (latitude === null || longitude === null) {
     return null;
   }
-  const north = `${degrees.format(Math.abs(latitude))}° ${latitude < 0 ? "S" : "N"}`;
-  const east = `${degrees.format(Math.abs(longitude))}° ${longitude < 0 ? "O" : "L"}`;
+  const north = `${degrees.format(Math.abs(latitude))}° ${latitude < 0 ? t("details.south") : t("details.north")}`;
+  const east = `${degrees.format(Math.abs(longitude))}° ${longitude < 0 ? t("details.west") : t("details.east")}`;
   return `${north} · ${east}`;
 }
 
 export function matchLabel(match: MediaPanel["jsonMatch"]): string {
   switch (match) {
     case "exact":
-      return "exato";
+      return t("details.matchExact");
     case "heuristic":
-      return "aproximado";
+      return t("details.matchHeuristic");
     default:
-      return "nenhum";
+      return t("details.none");
   }
 }
 
@@ -72,17 +72,17 @@ export function fileRows(
   panel: MediaPanel,
 ): [string, string][] {
   const rows: [string, string][] = [
-    ["Nome", info.filename],
-    ["Pasta", panel.folder],
+    [t("details.name"), info.filename],
+    [t("details.folder"), panel.folder],
   ];
   if (info.width !== null && info.height !== null) {
-    rows.push(["Dimensões", `${info.width} × ${info.height}`]);
+    rows.push([t("details.dimensions"), `${info.width} × ${info.height}`]);
   }
   if (info.sizeBytes !== null) {
-    rows.push(["Tamanho", fileSize(info.sizeBytes)]);
+    rows.push([t("details.size"), fileSize(info.sizeBytes)]);
   }
   if (panel.durationMs !== null) {
-    rows.push(["Duração", duration(panel.durationMs)]);
+    rows.push([t("details.duration"), duration(panel.durationMs)]);
   }
   return rows;
 }
@@ -90,10 +90,10 @@ export function fileRows(
 /** As linhas de "Técnico". */
 export function technicalRows(panel: MediaPanel): [string, string][] {
   return [
-    ["JSON pareado", panel.jsonFilename ?? "nenhum"],
-    ["Pareamento", matchLabel(panel.jsonMatch)],
-    ["Câmera", panel.camera ?? "não informada"],
-    ["SHA-256", panel.sha256 ?? "ainda não calculado"],
+    [t("details.pairedJson"), panel.jsonFilename ?? t("details.none")],
+    [t("details.matching"), matchLabel(panel.jsonMatch)],
+    [t("details.camera"), panel.camera ?? t("details.cameraUnknown")],
+    ["SHA-256", panel.sha256 ?? t("details.hashPending")],
   ];
 }
 
