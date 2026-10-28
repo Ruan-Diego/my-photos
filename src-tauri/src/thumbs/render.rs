@@ -17,7 +17,16 @@ pub struct Rendered {
     pub height: u32,
 }
 
+/// A decoder that panics on a malformed file counts as a corrupt file (F36).
 pub fn render(
+    original: &Path,
+    size: ThumbSize,
+    orientation: Option<u16>,
+) -> Result<Rendered, ThumbError> {
+    crate::isolate::contained(|| decode_and_render(original, size, orientation)).unwrap_or(Err(ThumbError::Corrupt))
+}
+
+fn decode_and_render(
     original: &Path,
     size: ThumbSize,
     orientation: Option<u16>,

@@ -51,8 +51,9 @@ pub fn fill_perceptual_hashes(connection: &Connection, root: &Path, stop: &dyn F
             break;
         }
         // An unreadable thumbnail just stays without a hash; the next run tries again.
-        if let Ok(image) = image::open(thumb_path(root, id, ThumbSize::Small)) {
-            update.execute(params![id, format!("{:016x}", dhash(&image))])?;
+        let hash = crate::isolate::contained(|| image::open(thumb_path(root, id, ThumbSize::Small)).map(|image| dhash(&image)));
+        if let Some(Ok(hash)) = hash {
+            update.execute(params![id, format!("{hash:016x}")])?;
             hashed += 1;
         }
     }

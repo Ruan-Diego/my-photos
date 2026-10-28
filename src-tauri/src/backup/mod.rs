@@ -78,6 +78,10 @@ pub fn backup_now(connection: &Connection, folder: &Path, now: &str) -> Result<P
     if file.exists() {
         return Ok(file);
     }
+    // F36: a damaged database is never copied: the copy would push a sound one out of KEEP.
+    if let Some(complaint) = crate::problems::integrity(connection).map_err(|error| error.to_string())? {
+        return Err(format!("o banco de dados está danificado ({complaint}); a cópia não foi feita"));
+    }
     connection
         .execute("VACUUM INTO ?1", [file.to_string_lossy()])
         .map_err(|error| error.to_string())?;

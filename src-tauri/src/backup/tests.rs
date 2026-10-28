@@ -130,3 +130,27 @@ fn bak04_import_reads_only_exports_in_the_backups_folder() {
     std::fs::write(folder.join("dados-3.json"), r#"{"app":"my-photos","version":1,"exportedAt":"","favorites":[],"unfavorites":[],"notes":[]}"#).unwrap();
     assert!(read_export(&folder, "dados-3.json").is_ok());
 }
+
+#[test]
+fn sec02_a_damaged_database_is_not_copied_over_the_sound_ones() {
+    let (scratch, connection) = library("sec02");
+    for n in 0..400 {
+        media(&connection, &format!("pasta/IMG_{n:04}.jpg"), &format!("{n:064}"), None);
+    }
+    let folder = folder(&connection).unwrap();
+    backup_now(&connection, &folder, "2026-10-27T12:00:00Z").unwrap();
+    drop(connection);
+
+    // Garbage over the header of the last b-tree page, as a bad sector would leave it.
+    let path = scratch.0.join(".myphotos").join("library.db");
+    let mut bytes = std::fs::read(&path).unwrap();
+    let last = bytes.len() - 4096;
+    bytes[last..last + 64].fill(0xA5);
+    std::fs::write(&path, bytes).unwrap();
+
+    let connection = Connection::open(&path).unwrap();
+    let refused = backup_now(&connection, &folder, "2026-10-28T12:00:00Z");
+    assert!(refused.is_err(), "{refused:?}");
+    let names: Vec<String> = list(&folder).into_iter().map(|backup| backup.name).collect();
+    assert_eq!(names, ["library-20261027120000.db"], "the sound copy stays the newest");
+}

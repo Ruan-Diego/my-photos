@@ -4,8 +4,7 @@
   "description": "Capability for the main window",
   "windows": ["main"],
   "permissions": [
-    "core:default",
-    "opener:default",
+    "core:event:default",
     "allow-app-health",
     "allow-library-summary",
     "allow-library-folder",

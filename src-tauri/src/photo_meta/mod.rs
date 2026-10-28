@@ -76,7 +76,14 @@ impl EmbeddedError {
     }
 }
 
+/// A parser that panics on a malformed file leaves it with no metadata, marked as
+/// corrupt EXIF (F36), like a block that could not be read.
 pub fn read_embedded(path: &Path) -> Result<EmbeddedMetadata, EmbeddedError> {
+    crate::isolate::contained(|| read_embedded_unguarded(path))
+        .unwrap_or_else(|| Ok(EmbeddedMetadata { exif_corrupt: true, ..EmbeddedMetadata::default() }))
+}
+
+fn read_embedded_unguarded(path: &Path) -> Result<EmbeddedMetadata, EmbeddedError> {
     let file = File::open(path).map_err(|_| EmbeddedError::Unreadable)?;
     let mut metadata = EmbeddedMetadata::default();
     let (exif, corrupt) = read_exif(file)?;
