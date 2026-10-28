@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { THEME_OPTIONS, type ThemeChoice } from "../theme/theme";
 import { fileSize } from "../viewer/navigation";
-import { currentLocale, LOCALES } from "../i18n/i18n";
+import { currentLocale, LOCALES, t } from "../i18n/i18n";
 import { exportOptions, importText, lastBackupLine, type BackupOverview, type ImportOutcome } from "./backup";
 import {
   cacheOptions,
@@ -80,7 +80,7 @@ export function SettingsScreen({ theme, onTheme, motion, onMotion, onScan, index
     setBackingUp(true);
     work
       .then((text) => setNotice(text))
-      .catch((error) => setNotice(`Não deu certo: ${String(error)}`))
+      .catch((error) => setNotice(t("settings.actionFailed", { error: String(error) })))
       .finally(() => {
         setBackingUp(false);
         reloadBackups();
@@ -92,7 +92,7 @@ export function SettingsScreen({ theme, onTheme, motion, onMotion, onScan, index
       current === null ? current : { ...current, ...(key === VIDEO_COVERS ? { videoCovers: on } : { scanOnConnect: on }) },
     );
     invoke("settings_set_flag", { key, on }).catch((error) => {
-      setNotice(`Não foi possível salvar: ${String(error)}`);
+      setNotice(t("settings.saveFailed", { error: String(error) }));
       reload();
     });
   };
@@ -102,7 +102,7 @@ export function SettingsScreen({ theme, onTheme, motion, onMotion, onScan, index
     invoke("settings_set_cache_limit", { bytes })
       .then(() => setNotice(null))
       .catch((error) => {
-        setNotice(`Não foi possível salvar: ${String(error)}`);
+        setNotice(t("settings.saveFailed", { error: String(error) }));
         reload();
       });
   };
@@ -110,8 +110,8 @@ export function SettingsScreen({ theme, onTheme, motion, onMotion, onScan, index
   const clear = () => {
     setClearing(true);
     invoke<number>("thumbnails_clear")
-      .then((bytes) => setNotice(`${fileSize(bytes)} de miniaturas apagados. "Procurar arquivos novos" refaz as miniaturas.`))
-      .catch((error) => setNotice(`As miniaturas não foram apagadas: ${String(error)}`))
+      .then((bytes) => setNotice(t("settings.thumbnailsCleared", { size: fileSize(bytes), action: t("disk.scanNew") })))
+      .catch((error) => setNotice(t("settings.clearFailed", { error: String(error) })))
       .finally(() => {
         setClearing(false);
         setConfirming(false);
@@ -130,10 +130,10 @@ export function SettingsScreen({ theme, onTheme, motion, onMotion, onScan, index
   return (
     <main className="page" aria-labelledby="page-title">
       <header className="page-header">
-        <h1 id="page-title">Configurações</h1>
+        <h1 id="page-title">{t("section.settings")}</h1>
       </header>
       <div className="page-body settings-body">
-        <nav className="settings-nav" aria-label="Seções das configurações">
+        <nav className="settings-nav" aria-label={t("settings.sectionsLabel")}>
           {SECTIONS.map((section) => (
             <button key={section.id} type="button" aria-current={current === section.id} onClick={() => go(section.id)}>
               {section.label}
@@ -144,7 +144,7 @@ export function SettingsScreen({ theme, onTheme, motion, onMotion, onScan, index
         <div className="settings">
           {failure !== null ? (
             <p className="settings-notice" role="alert">
-              Não foi possível ler as configurações da biblioteca: {failure}
+              {t("settings.readFailed", { error: failure })}
             </p>
           ) : null}
           {notice !== null ? (
@@ -154,37 +154,37 @@ export function SettingsScreen({ theme, onTheme, motion, onMotion, onScan, index
           ) : null}
 
           <section id="settings-biblioteca" className="card" aria-labelledby="settings-biblioteca-title">
-            <h2 id="settings-biblioteca-title">Biblioteca</h2>
+            <h2 id="settings-biblioteca-title">{t("settings.sections.library")}</h2>
             <div className="settings-row">
               <div className="settings-what">
-                <strong>{settings?.rootPath ?? "Disco não conectado"}</strong>
+                <strong>{settings?.rootPath ?? t("settings.diskNotConnected")}</strong>
                 <span>{settings === null ? " " : volumeLine(settings)}</span>
               </div>
-              <button type="button" className="button-link" disabled title="Uma biblioteca por disco por enquanto (AD-011)">
-                Trocar pasta
+              <button type="button" className="button-link" disabled title={t("settings.oneLibrary")}>
+                {t("onboarding.changeFolder")}
               </button>
             </div>
             <div className="settings-actions">
               <button type="button" className="button-solid" disabled={onScan === undefined} onClick={onScan}>
-                Procurar arquivos novos
+                {t("disk.scanNew")}
               </button>
-              <button type="button" className="button-line" disabled title="Chega numa próxima versão; a busca incremental já relê o que mudou">
-                Reindexar tudo
+              <button type="button" className="button-line" disabled title={t("settings.reindexLater")}>
+                {t("settings.reindexAll")}
               </button>
             </div>
           </section>
 
           <section id="settings-dados" className="card" aria-labelledby="settings-dados-title">
-            <h2 id="settings-dados-title">Dados e cache</h2>
+            <h2 id="settings-dados-title">{t("settings.sections.data")}</h2>
             <dl className="settings-paths">
-              <dt>Banco</dt>
+              <dt>{t("settings.database")}</dt>
               <dd>{settings === null ? " " : databaseLine(settings)}</dd>
-              <dt>Lixeira</dt>
+              <dt>{t("section.trash")}</dt>
               <dd>{settings === null ? " " : trashLine(settings)}</dd>
             </dl>
             <div className="settings-cache">
               <div className="settings-cache-head">
-                <label htmlFor="cache-limit">Limite do cache de miniaturas</label>
+                <label htmlFor="cache-limit">{t("settings.cacheLimit")}</label>
                 <span>{usage?.text ?? " "}</span>
               </div>
               <div className="settings-meter" aria-hidden="true">
@@ -208,10 +208,10 @@ export function SettingsScreen({ theme, onTheme, motion, onMotion, onScan, index
                 {confirming ? (
                   <>
                     <button type="button" className="button-danger" disabled={clearing} onClick={clear}>
-                      {clearing ? "Apagando…" : `Apagar ${fileSize(settings?.thumbnailBytes ?? 0)} de miniaturas`}
+                      {clearing ? t("settings.clearing") : t("settings.clearThumbnails", { size: fileSize(settings?.thumbnailBytes ?? 0) })}
                     </button>
                     <button ref={cancelClear} type="button" className="button-line" disabled={clearing} onClick={() => setConfirming(false)}>
-                      Cancelar
+                      {t("common.cancel")}
                     </button>
                   </>
                 ) : (
@@ -220,25 +220,25 @@ export function SettingsScreen({ theme, onTheme, motion, onMotion, onScan, index
                     type="button"
                     className="button-line"
                     disabled={settings === null || indexing || settings.thumbnailBytes === 0}
-                    title={indexing ? "Espere a indexação terminar" : undefined}
+                    title={indexing ? t("settings.waitIndexing") : undefined}
                     onClick={() => setConfirming(true)}
                   >
-                    Limpar miniaturas
+                    {t("settings.clearThumbnailsShort")}
                   </button>
                 )}
               </div>
               {confirming ? (
-                <p className="settings-hint">As miniaturas somem até a próxima "Procurar arquivos novos", que refaz todas (no seu HD levou cerca de 40 minutos).</p>
+                <p className="settings-hint">{t("settings.clearHint")}</p>
               ) : null}
             </div>
           </section>
 
           <section id="settings-backup" className="card" aria-labelledby="settings-backup-title">
-            <h2 id="settings-backup-title">Backup</h2>
+            <h2 id="settings-backup-title">{t("settings.sections.backup")}</h2>
             <dl className="settings-paths">
-              <dt>Pasta</dt>
+              <dt>{t("details.folder")}</dt>
               <dd>{backups?.folder ?? " "}</dd>
-              <dt>Último</dt>
+              <dt>{t("settings.lastBackup")}</dt>
               <dd className="settings-backup-last">{backups === null ? " " : lastBackupLine(backups)}</dd>
             </dl>
             <div className="settings-actions">
@@ -246,23 +246,23 @@ export function SettingsScreen({ theme, onTheme, motion, onMotion, onScan, index
                 type="button"
                 className="button-line"
                 disabled={backups === null || backingUp}
-                onClick={() => backupAction(invoke<string>("backup_now").then(() => "Cópia do banco feita."))}
+                onClick={() => backupAction(invoke<string>("backup_now").then(() => t("settings.backupDone")))}
               >
-                Fazer backup agora
+                {t("settings.backupNow")}
               </button>
               <button
                 type="button"
                 className="button-line"
                 disabled={backups === null || backingUp}
                 onClick={() =>
-                  backupAction(invoke<string>("appdata_export").then((file) => `Favoritos e notas exportados em ${file}.`))
+                  backupAction(invoke<string>("appdata_export").then((file) => t("settings.exported", { file })))
                 }
               >
-                Exportar favoritos e notas
+                {t("settings.exportData")}
               </button>
             </div>
             <div className="settings-import">
-              <label htmlFor="backup-import">Importar favoritos e notas de</label>
+              <label htmlFor="backup-import">{t("settings.importFrom")}</label>
               <div className="settings-actions">
                 <select
                   id="backup-import"
@@ -271,7 +271,7 @@ export function SettingsScreen({ theme, onTheme, motion, onMotion, onScan, index
                   onChange={(event) => setChosenExport(event.target.value)}
                 >
                   {backups === null || exportOptions(backups).length === 0 ? (
-                    <option value="">Nenhuma exportação na pasta</option>
+                    <option value="">{t("settings.noExports")}</option>
                   ) : (
                     exportOptions(backups).map((option) => (
                       <option key={option.name} value={option.name}>
@@ -284,20 +284,20 @@ export function SettingsScreen({ theme, onTheme, motion, onMotion, onScan, index
                   type="button"
                   className="button-line"
                   disabled={chosenExport === "" || backingUp || indexing}
-                  title={indexing ? "Espere a indexação terminar" : undefined}
+                  title={indexing ? t("settings.waitIndexing") : undefined}
                   onClick={() => backupAction(invoke<ImportOutcome>("appdata_import", { name: chosenExport }).then(importText))}
                 >
-                  Importar
+                  {t("settings.import")}
                 </button>
               </div>
               <p className="settings-hint">
-                A foto é encontrada pelo caminho ou, se mudou de pasta, pelo conteúdo. Para trazer de outro computador, copie o arquivo dados-….json para esta pasta.
+                {t("settings.importHint")}
               </p>
             </div>
           </section>
 
           <section id="settings-indexacao" className="card" aria-labelledby="settings-indexacao-title">
-            <h2 id="settings-indexacao-title">Indexação</h2>
+            <h2 id="settings-indexacao-title">{t("settings.sections.indexing")}</h2>
             <div className="settings-switches">
               <label className="settings-switch">
                 <input
@@ -307,7 +307,7 @@ export function SettingsScreen({ theme, onTheme, motion, onMotion, onScan, index
                   disabled={settings === null}
                   onChange={(event) => setFlag(VIDEO_COVERS, event.target.checked)}
                 />
-                <span>Gerar capa dos vídeos</span>
+                <span>{t("settings.videoCovers")}</span>
               </label>
               {coversNote !== null ? <p className="settings-hint">{coversNote}</p> : null}
               <label className="settings-switch">
@@ -318,11 +318,11 @@ export function SettingsScreen({ theme, onTheme, motion, onMotion, onScan, index
                   disabled={settings === null}
                   onChange={(event) => setFlag(SCAN_ON_CONNECT, event.target.checked)}
                 />
-                <span>Procurar arquivos novos ao conectar o HD</span>
+                <span>{t("settings.scanOnConnect")}</span>
               </label>
             </div>
             <div className="settings-ignored">
-              <span>Pastas sempre ignoradas</span>
+              <span>{t("settings.ignoredFolders")}</span>
               <div>
                 {(settings?.ignoredFolders ?? []).map((name) => (
                   <code key={name}>{name}</code>
@@ -332,9 +332,9 @@ export function SettingsScreen({ theme, onTheme, motion, onMotion, onScan, index
           </section>
 
           <section id="settings-aparencia" className="card" aria-labelledby="settings-aparencia-title">
-            <h2 id="settings-aparencia-title">Aparência</h2>
+            <h2 id="settings-aparencia-title">{t("settings.sections.appearance")}</h2>
             <fieldset className="choice-row">
-              <legend>Tema</legend>
+              <legend>{t("settings.theme")}</legend>
               {THEME_OPTIONS.map((option) => (
                 <label key={option.choice} className="choice" data-on={option.choice === theme ? "" : undefined}>
                   <input type="radio" name="theme" checked={option.choice === theme} onChange={() => onTheme(option.choice)} />
@@ -344,7 +344,7 @@ export function SettingsScreen({ theme, onTheme, motion, onMotion, onScan, index
             </fieldset>
             <div className="settings-selects">
               <label>
-                Animações
+                {t("settings.motion")}
                 <select value={motion} onChange={(event) => onMotion(event.target.value as MotionChoice)}>
                   {MOTION_OPTIONS.map((option) => (
                     <option key={option.choice} value={option.choice}>
@@ -354,7 +354,7 @@ export function SettingsScreen({ theme, onTheme, motion, onMotion, onScan, index
                 </select>
               </label>
               <label>
-                Idioma
+                {t("settings.language")}
                 {/* F34: um idioma por arquivo em src/i18n; com um só, a escolha fica travada. */}
                 <select value={currentLocale()} disabled={Object.keys(LOCALES).length < 2}>
                   {Object.entries(LOCALES).map(([code, messages]) => (
@@ -375,8 +375,8 @@ export function SettingsScreen({ theme, onTheme, motion, onMotion, onScan, index
               </svg>
             </span>
             <div>
-              <h2 id="settings-privacidade-title">Privacidade</h2>
-              <span>O My Photos não faz nenhuma conexão de rede. Fotos, índice e miniaturas nunca saem deste computador.</span>
+              <h2 id="settings-privacidade-title">{t("settings.sections.privacy")}</h2>
+              <span>{t("settings.privacyNote")}</span>
             </div>
           </section>
         </div>

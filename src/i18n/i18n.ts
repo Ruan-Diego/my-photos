@@ -56,6 +56,11 @@ export function t(key: Key, params: Record<string, string | number> = {}): strin
   });
 }
 
+/** Para chaves montadas em tempo de execução (um código do Rust): `undefined` se não houver texto. */
+export function maybe(key: string, params: Record<string, string | number> = {}): string | undefined {
+  return key in ptBR ? t(key as Key, params) : undefined;
+}
+
 /** Listas separadas por `|` (meses, dias da semana). */
 export function list(key: Key): string[] {
   return t(key).split("|");

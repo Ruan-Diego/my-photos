@@ -1,7 +1,7 @@
 // F23: a tela Pessoas (artboard `People`). Sem React: testável no Node.
 
 import { SEARCH_HASH } from "../search/query.ts";
-import { formatCount, t } from "../i18n/i18n.ts";
+import { t } from "../i18n/i18n.ts";
 
 /** O que o comando `people_list` devolve. */
 export interface PersonCard {
@@ -32,13 +32,7 @@ export function filterPeople(people: PersonCard[], text: string): PersonCard[] {
 
 /** "28 pessoas marcadas no Google Fotos, lidas dos JSONs do Takeout" */
 export function peopleSubtitle(total: number): string {
-  if (total === 0) {
-    return "Ninguém marcado no Google Fotos";
-  }
-  if (total === 1) {
-    return "1 pessoa marcada no Google Fotos, lida dos JSONs do Takeout";
-  }
-  return `${formatCount(total)} pessoas marcadas no Google Fotos, lidas dos JSONs do Takeout`;
+  return total === 0 ? t("people.subtitleNone") : t("people.subtitle", { n: total });
 }
 
 /** "812 itens" */

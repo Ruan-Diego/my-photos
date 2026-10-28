@@ -7,6 +7,7 @@ import { Viewer } from "../viewer/Viewer";
 import { personFromHash } from "../people/people";
 import { placeFromHash } from "../locations/locations";
 import { albumFromHash } from "../albums/albums";
+import { t } from "../i18n/i18n";
 import {
   chips,
   folderLabel,
@@ -89,7 +90,7 @@ function Tile({ item }: { item: Item }) {
           <svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M7 4l13 8-13 8z" />
           </svg>
-          {item.duration === null ? "Vídeo" : duration(item.duration)}
+          {item.duration === null ? t("timeline.video") : duration(item.duration)}
         </span>
       ) : null}
     </a>
@@ -197,12 +198,12 @@ export function SearchScreen({ data }: { data: TimelineData | null }) {
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
             <path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-4-4" />
           </svg>
-          <span className="visually-hidden">Buscar</span>
+          <span className="visually-hidden">{t("section.search")}</span>
           <input
             ref={input}
             type="search"
             value={text}
-            placeholder="Pessoa, local, data, nome de arquivo ou pasta"
+            placeholder={t("search.placeholder")}
             onChange={(event) => setText(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Escape") {
@@ -220,7 +221,7 @@ export function SearchScreen({ data }: { data: TimelineData | null }) {
         {active.length > 0 ? (
           <div className="search-chips">
             {active.map((chip) => (
-              <button key={chip.key} type="button" className="search-chip" aria-label={`Remover filtro ${chip.label}`} onClick={() => setFilters(removeChip(filters, chip.key))}>
+              <button key={chip.key} type="button" className="search-chip" aria-label={t("search.removeFilter", { label: chip.label })} onClick={() => setFilters(removeChip(filters, chip.key))}>
                 {chip.label}
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
                   <path d="M6 6l12 12M18 6L6 18" />
@@ -228,20 +229,20 @@ export function SearchScreen({ data }: { data: TimelineData | null }) {
               </button>
             ))}
             <button type="button" className="search-clear" onClick={() => setFilters(NO_FILTERS)}>
-              Limpar filtros
+              {t("search.clearFilters")}
             </button>
           </div>
         ) : null}
       </header>
 
       <div className="search-body">
-        <aside className="search-filters" aria-label="Filtros">
+        <aside className="search-filters" aria-label={t("search.filters")}>
           <fieldset>
-            <legend>Data</legend>
+            <legend>{t("search.date")}</legend>
             <div className="search-dates">
               {(["from", "until"] as const).map((key) => (
                 <label key={key}>
-                  {key === "from" ? "De" : "Até"}
+                  {key === "from" ? t("search.from") : t("search.until")}
                   <input
                     type="text"
                     inputMode="numeric"
@@ -256,22 +257,22 @@ export function SearchScreen({ data }: { data: TimelineData | null }) {
           </fieldset>
 
           <fieldset>
-            <legend>Tipo</legend>
+            <legend>{t("search.type")}</legend>
             <label className="search-check">
-              <input type="checkbox" checked={filters.photos} onChange={(event) => set({ photos: event.target.checked })} /> Fotos
+              <input type="checkbox" checked={filters.photos} onChange={(event) => set({ photos: event.target.checked })} /> {t("section.timeline")}
               {found !== null && !blank ? <span>{found.photos}</span> : null}
             </label>
             <label className="search-check">
-              <input type="checkbox" checked={filters.videos} onChange={(event) => set({ videos: event.target.checked })} /> Vídeos
+              <input type="checkbox" checked={filters.videos} onChange={(event) => set({ videos: event.target.checked })} /> {t("indexing.countVideos")}
               {found !== null && !blank ? <span>{found.videos}</span> : null}
             </label>
             <label className="search-check">
-              <input type="checkbox" checked={filters.favoritesOnly} onChange={(event) => set({ favoritesOnly: event.target.checked })} /> Só favoritos
+              <input type="checkbox" checked={filters.favoritesOnly} onChange={(event) => set({ favoritesOnly: event.target.checked })} /> {t("search.onlyFavorites")}
             </label>
           </fieldset>
 
           <fieldset>
-            <legend>Pessoas</legend>
+            <legend>{t("section.people")}</legend>
             {options.people.length > 0 ? (
               <div className="search-people">
                 {options.people.map((person) => (
@@ -282,19 +283,19 @@ export function SearchScreen({ data }: { data: TimelineData | null }) {
                 ))}
               </div>
             ) : (
-              <p className="search-muted">Ninguém marcado no Google Fotos</p>
+              <p className="search-muted">{t("details.noPeople")}</p>
             )}
           </fieldset>
 
           <label className="search-field">
-            Local
-            <input type="text" placeholder="Nome do lugar" value={filters.place} onChange={(event) => set({ place: event.target.value })} />
+            {t("details.place")}
+            <input type="text" placeholder={t("search.placeName")} value={filters.place} onChange={(event) => set({ place: event.target.value })} />
           </label>
 
           <label className="search-field">
-            Pasta
+            {t("details.folder")}
             <select value={filters.folder ?? ""} onChange={(event) => set({ folder: event.target.value === "" ? null : event.target.value })}>
-              <option value="">Todas as pastas</option>
+              <option value="">{t("search.allFolders")}</option>
               {options.folders.map((folder) => (
                 <option key={folder} value={folder}>
                   {folderLabel(folder)}
@@ -304,22 +305,22 @@ export function SearchScreen({ data }: { data: TimelineData | null }) {
           </label>
         </aside>
 
-        <section className="search-results" aria-label="Resultados">
+        <section className="search-results" aria-label={t("search.resultsLabel")}>
           {blank ? (
             <div className="search-heading search-heading-blank">
-              <h1 id="search-title">Buscar</h1>
-              <span>Digite um nome de arquivo, pasta, pessoa ou data (ex.: "praia 2022"), ou escolha um filtro.</span>
+              <h1 id="search-title">{t("section.search")}</h1>
+              <span>{t("search.hint")}</span>
             </div>
           ) : failure !== null ? (
             <div className="search-heading">
-              <h1 id="search-title">A busca falhou</h1>
+              <h1 id="search-title">{t("search.failed")}</h1>
               <span>{failure}</span>
             </div>
           ) : (
             <>
               <div className="search-heading" aria-live="polite">
-                <h1 id="search-title">{found === null ? "Buscando…" : resultsTitle(results.length)}</h1>
-                {results.length > 0 ? <span>ordenados por data, mais recentes primeiro</span> : null}
+                <h1 id="search-title">{found === null ? t("search.searching") : resultsTitle(results.length)}</h1>
+                {results.length > 0 ? <span>{t("search.sortedByDate")}</span> : null}
               </div>
               <div className="search-grid">
                 {results.slice(0, shown).map((item) => (

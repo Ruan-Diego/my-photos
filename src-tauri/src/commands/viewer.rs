@@ -90,6 +90,7 @@ pub struct MediaInfo {
 }
 
 struct Original {
+    root: PathBuf,
     path: PathBuf,
     content_type: &'static str,
     video: bool,
@@ -135,10 +136,19 @@ fn original(connection: &Connection, media_id: i64) -> Option<Original> {
         .ok()??;
     let content_type = if video { video_type(&extension)? } else { content_type(&extension)? };
     Some(Original {
+        root: PathBuf::from(&root),
         path: absolute_path(Path::new(&root), &relative),
         content_type,
         video,
     })
+}
+
+/// F36: only a file that, after links and junctions, sits inside the library root
+/// reaches the window, even if the index were edited to point elsewhere.
+fn inside_library(original: Original) -> Option<Original> {
+    let root = original.root.canonicalize().ok()?;
+    let path = original.path.canonicalize().ok()?;
+    path.starts_with(&root).then_some(Original { path, ..original })
 }
 
 /// The answer for one request: the whole photo, or the asked range of a video
@@ -197,6 +207,7 @@ pub fn serve_original(context: UriSchemeContext<'_, Wry>, request: tauri::http::
             original(guard.as_ref()?, media_id)
         });
         let response = found
+            .and_then(inside_library)
             .and_then(|original| answer(&original, range.as_deref()))
             .unwrap_or_else(|| {
                 Response::builder()
@@ -282,6 +293,31 @@ mod tests {
     }
 
     #[test]
+    fn sec06_the_media_protocol_serves_only_files_inside_the_library() {
+        let scratch = Scratch::new("viewer-inside");
+        let root = scratch.path.join("library");
+        fs::create_dir_all(root.join("Ruan")).unwrap();
+        fs::write(root.join("Ruan/a.jpg"), b"jpeg").unwrap();
+        fs::write(scratch.path.join("secret.jpg"), b"secret").unwrap();
+        let connection = database();
+        connection.execute("UPDATE libraries SET root_path = ?1", [root.to_string_lossy()]).unwrap();
+        connection.execute("UPDATE media_items SET relative_path = 'Ruan/a.jpg' WHERE id = 1", []).unwrap();
+        connection
+            .execute("UPDATE media_items SET relative_path = '../secret.jpg', extension = 'jpg' WHERE id = 2", [])
+            .unwrap();
+
+        let inside = super::inside_library(original(&connection, 1).unwrap()).unwrap();
+        assert_eq!(fs::read(&inside.path).unwrap(), b"jpeg");
+        assert!(super::inside_library(original(&connection, 2).unwrap()).is_none(), "an edited index cannot reach outside");
+        #[cfg(unix)]
+        {
+            std::os::unix::fs::symlink(scratch.path.join("secret.jpg"), root.join("Ruan/link.jpg")).unwrap();
+            connection.execute("UPDATE media_items SET relative_path = 'Ruan/link.jpg' WHERE id = 2", []).unwrap();
+            assert!(super::inside_library(original(&connection, 2).unwrap()).is_none(), "a link out of the library");
+        }
+    }
+
+    #[test]
     fn video01_ranges_are_parsed_and_capped() {
         assert_eq!(parse_range("bytes=0-", 1000), Some((0, 999)));
         assert_eq!(parse_range("bytes=100-199", 1000), Some((100, 199)));
@@ -300,7 +336,7 @@ mod tests {
         let scratch = Scratch::new("f20-range");
         let path = scratch.path.join("VID.mp4");
         fs::write(&path, (0..=255u8).collect::<Vec<_>>()).unwrap();
-        let video = super::Original { path: path.clone(), content_type: "video/mp4", video: true };
+        let video = super::Original { root: scratch.path.clone(), path: path.clone(), content_type: "video/mp4", video: true };
 
         let response = answer(&video, Some("bytes=10-19")).unwrap();
         assert_eq!(response.status(), 206);
@@ -316,7 +352,7 @@ mod tests {
         assert_eq!(past.status(), 416);
         assert_eq!(past.headers()["content-range"], "bytes */256");
 
-        let photo = super::Original { path, content_type: "image/jpeg", video: false };
+        let photo = super::Original { root: scratch.path.clone(), path, content_type: "image/jpeg", video: false };
         let whole = answer(&photo, Some("bytes=10-19")).unwrap();
         assert_eq!(whole.status(), 200);
         assert_eq!(whole.body().len(), 256);

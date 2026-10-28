@@ -2,7 +2,7 @@
 
 import { FAVORITE, VIDEO, type Item, type TimelineData } from "../timeline/timeline.ts";
 import { fileSize } from "../viewer/navigation.ts";
-import { formatCount, list } from "../i18n/i18n.ts";
+import { formatCount, list, t } from "../i18n/i18n.ts";
 
 export type Kind = "identical" | "similar";
 
@@ -28,15 +28,15 @@ export interface Duplicates {
 
 export type KindFilter = "all" | Kind;
 
-const MONTHS = list("calendar.months").map((month) => month.slice(0, 3).toLowerCase());
+const MONTHS = list("common.shortMonths");
 
 /** "Todas · 214", "Idênticas · 187", "Parecidas · 27". */
 export function kindFilters(groups: Group[]): { id: KindFilter; label: string }[] {
   const of = (kind: Kind) => groups.filter((group) => group.kind === kind).length;
   return [
-    { id: "all", label: `Todas · ${formatCount(groups.length)}` },
-    { id: "identical", label: `Idênticas · ${formatCount(of("identical"))}` },
-    { id: "similar", label: `Parecidas · ${formatCount(of("similar"))}` },
+    { id: "all", label: t("duplicates.all", { count: formatCount(groups.length) }) },
+    { id: "identical", label: t("duplicates.identical", { count: formatCount(of("identical")) }) },
+    { id: "similar", label: t("duplicates.similar", { count: formatCount(of("similar")) }) },
   ];
 }
 
@@ -44,7 +44,7 @@ export function filterGroups(groups: Group[], filter: KindFilter): Group[] {
   return filter === "all" ? groups : groups.filter((group) => group.kind === filter);
 }
 
-export const KIND_LABEL: Record<Kind, string> = { identical: "Idênticas · SHA-256", similar: "Parecidas · hash perceptual" };
+export const KIND_LABEL: Record<Kind, string> = { identical: t("duplicates.identicalKind"), similar: t("duplicates.similarKind") };
 
 export function fileName(path: string): string {
   return path.split("/").pop() ?? path;
@@ -61,17 +61,17 @@ export function folderLabel(path: string): string {
 export function groupTitle(group: Group): string {
   const first = fileName(group.copies[0].path);
   const n = group.copies.length;
-  return group.kind === "identical" ? `${first} · ${n} cópias` : `${first.replace(/\.[^.]+$/, "")} · ${n} versões`;
+  return group.kind === "identical" ? t("duplicates.copies", { name: first, count: n }) : t("duplicates.versions", { name: first.replace(/\.[^.]+$/, ""), count: n });
 }
 
 /** "3,1 MB repetidos"; para parecidas, se os tamanhos batem. */
 export function groupSaving(group: Group): string {
   if (group.kind === "identical") {
     const size = group.copies[0].sizeBytes ?? 0;
-    return `${fileSize(size * (group.copies.length - 1))} repetidos`;
+    return t("duplicates.repeated", { size: fileSize(size * (group.copies.length - 1)) });
   }
   const sizes = new Set(group.copies.map((copy) => `${copy.width}×${copy.height}`));
-  return sizes.size > 1 ? "tamanhos diferentes" : "mesmo tamanho";
+  return sizes.size > 1 ? t("duplicates.differentSizes") : t("duplicates.sameSize");
 }
 
 /** "10 ago 2022" (UTC, como o índice guarda). */
@@ -80,7 +80,7 @@ export function shortDate(iso: string | null): string | null {
     return null;
   }
   const date = new Date(iso);
-  return Number.isNaN(date.getTime()) ? null : `${date.getUTCDate()} ${MONTHS[date.getUTCMonth()]} ${date.getUTCFullYear()}`;
+  return Number.isNaN(date.getTime()) ? null : t("common.shortDate", { day: date.getUTCDate(), month: MONTHS[date.getUTCMonth()], year: String(date.getUTCFullYear()) });
 }
 
 /** Idênticas: "3,1 MB · 10 ago 2022"; parecidas: "4032 × 3024 · 3,8 MB". */
@@ -125,9 +125,9 @@ export function viewerItems(groups: Group[], data: TimelineData | null): Item[] 
 export function emptyDuplicates(filter: KindFilter, hashed: number, photos: number): { title: string; detail: string } {
   if (filter === "similar" && hashed < photos) {
     return {
-      title: "Nenhuma parecida ainda",
-      detail: `Só ${formatCount(hashed)} de ${formatCount(photos)} fotos foram comparadas. Use "Procurar arquivos novos" para comparar as outras.`,
+      title: t("duplicates.noSimilarYet"),
+      detail: t("duplicates.partlyCompared", { hashed: formatCount(hashed), photos: formatCount(photos), action: t("disk.scanNew") }),
     };
   }
-  return { title: "Nenhuma duplicata", detail: "Nenhum arquivo repetido foi encontrado na biblioteca." };
+  return { title: t("duplicates.noneTitle"), detail: t("duplicates.noneDetail") };
 }

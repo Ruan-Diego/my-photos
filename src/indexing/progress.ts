@@ -1,7 +1,7 @@
 // F17: o que a tela de progresso (artboard `Indexing`) e o cartão da lateral mostram.
 
 import type { DiskCard } from "../shell/library";
-import { formatCount, t } from "../i18n/i18n.ts";
+import { formatCount, list, t } from "../i18n/i18n.ts";
 
 export type Stage = "scanning" | "hashing" | "matching" | "resolving" | "thumbnails";
 
@@ -58,10 +58,9 @@ export function starting(): Progress {
   return { stage: "scanning", done: 0, total: 0, bytesDone: 0, bytesTotal: 0, counts: NO_COUNTS, recent: [] };
 }
 
-
 // As seis etapas do canvas. Leitura e pareamento saem da mesma passada do F08,
 // metadados e gravação do mesmo lote do F10: andam juntas.
-export const STEPS = ["Varredura", "Leitura dos JSONs", "Pareamento", "Metadados", "Gravação no índice", "Miniaturas"] as const;
+export const STEPS = list("indexing.steps");
 
 const CURRENT_STEP: Record<Stage, number> = {
   scanning: 0,
@@ -125,14 +124,14 @@ export function remaining(fraction: number, elapsedMs: number): string | null {
   const left = (elapsedMs * (1 - fraction)) / fraction;
   const minutes = Math.round(left / 60_000);
   if (minutes < 1) {
-    return "menos de 1 min restante";
+    return t("indexing.lessThanMinute");
   }
   if (minutes < 60) {
-    return `cerca de ${minutes} min restantes`;
+    return t("indexing.aboutMinutes", { minutes });
   }
   const hours = Math.floor(minutes / 60);
   const rest = minutes % 60;
-  return rest === 0 ? `cerca de ${hours} h restantes` : `cerca de ${hours} h ${rest} min restantes`;
+  return rest === 0 ? t("indexing.aboutHours", { hours }) : t("indexing.aboutHoursMinutes", { hours, minutes: rest });
 }
 
 /** "62% · cerca de 4 min restantes" */
@@ -146,15 +145,15 @@ export function percentLine(fraction: number, elapsedMs: number): string {
 export function headline(progress: Progress): string {
   switch (progress.stage) {
     case "scanning":
-      return "Procurando arquivos…";
+      return t("indexing.scanning");
     case "matching":
-      return "Lendo os JSONs do Takeout…";
+      return t("indexing.matching");
     case "hashing":
-      return `${formatCount(progress.done)} de ${formatCount(progress.total)} arquivos lidos`;
+      return t("indexing.hashing", { done: formatCount(progress.done), total: formatCount(progress.total) });
     case "resolving":
-      return `${formatCount(progress.done)} de ${formatCount(progress.total)} mídias`;
+      return t("indexing.resolving", { done: formatCount(progress.done), total: formatCount(progress.total) });
     case "thumbnails":
-      return `${formatCount(progress.done)} de ${formatCount(progress.total)} miniaturas`;
+      return t("indexing.thumbnails", { done: formatCount(progress.done), total: formatCount(progress.total) });
   }
 }
 
@@ -165,12 +164,12 @@ export interface CountCard {
 
 export function countCards(counts: Counts): CountCard[] {
   return [
-    { label: "Fotos", value: formatCount(counts.photos) },
-    { label: "Vídeos", value: formatCount(counts.videos) },
-    { label: "Data pelo JSON do Takeout", value: formatCount(counts.dateFromJson) },
-    { label: "Data pelo EXIF", value: formatCount(counts.dateFromExif) },
-    { label: "JSON em outra parte do export", value: formatCount(counts.jsonInOtherPart) },
-    { label: "Pessoas encontradas", value: formatCount(counts.people) },
+    { label: t("indexing.countPhotos"), value: formatCount(counts.photos) },
+    { label: t("indexing.countVideos"), value: formatCount(counts.videos) },
+    { label: t("indexing.countJson"), value: formatCount(counts.dateFromJson) },
+    { label: t("indexing.countExif"), value: formatCount(counts.dateFromExif) },
+    { label: t("indexing.countOtherPart"), value: formatCount(counts.jsonInOtherPart) },
+    { label: t("indexing.countPeople"), value: formatCount(counts.people) },
   ];
 }
 
@@ -179,8 +178,8 @@ export function problemsLine(problems: number, paused: boolean): string | null {
   if (problems === 0) {
     return null;
   }
-  const items = problems === 1 ? "1 item não reconhecido" : `${formatCount(problems)} itens não reconhecidos`;
-  return paused ? `${items} até agora` : `${items} até agora — a indexação continua`;
+  const items = t("indexing.unrecognized", { n: problems });
+  return paused ? t("indexing.soFar", { items }) : t("indexing.soFarContinues", { items });
 }
 
 /** `Viagem Europa 2022\foto001.jpg`: a pasta e o arquivo, como no Windows. */
@@ -194,21 +193,21 @@ export interface LogLine {
   warn: boolean;
 }
 
-const DATE_FROM: Record<string, string> = {
-  exif: "data do EXIF",
-  filesystem: "data do arquivo",
+const DATE_FROM: Record<string, () => string> = {
+  exif: () => t("indexing.dateFromExif"),
+  filesystem: () => t("indexing.dateFromFile"),
 };
 
 export function logLine(recent: Recent): LogLine {
   if (recent.kind === "paired") {
-    return { text: `pareado · ${shortPath(recent.relativePath)} ← ${recent.jsonName ?? "JSON"}`, warn: false };
+    return { text: t("indexing.paired", { path: shortPath(recent.relativePath), json: recent.jsonName ?? "JSON" }), warn: false };
   }
-  const date = recent.dateSource === null ? "sem data" : (DATE_FROM[recent.dateSource] ?? recent.dateSource);
-  return { text: `sem JSON · ${shortPath(recent.relativePath)} → ${date}`, warn: true };
+  const date = recent.dateSource === null ? t("indexing.noDate") : (DATE_FROM[recent.dateSource]?.() ?? recent.dateSource);
+  return { text: t("indexing.noJson", { path: shortPath(recent.relativePath), date }), warn: true };
 }
 
 export function thumbnailLine(thumbnail: RecentThumbnail): LogLine {
-  return { text: `miniatura · ${shortPath(thumbnail.relativePath)}`, warn: false };
+  return { text: t("indexing.thumbnailLine", { path: shortPath(thumbnail.relativePath) }), warn: false };
 }
 
 /** As últimas `keep` linhas, a mais nova embaixo. */
@@ -217,25 +216,25 @@ export function pushLines(lines: LogLine[], more: LogLine[], keep = 4): LogLine[
 }
 
 function drive(root: string | null): string {
-  return root ?? "a biblioteca";
+  return root ?? t("indexing.theLibrary");
 }
 
 /** Rótulo acima do título. */
 export function label(root: string | null, paused: boolean): string {
-  return paused ? `Pausado · ${drive(root)}` : `Indexando ${drive(root)}`;
+  return paused ? t("indexing.pausedLabel", { drive: drive(root) }) : t("indexing.indexingLabel", { drive: drive(root) });
 }
 
 /** Cartão da lateral enquanto a indexação roda ou está pausada. */
 export function indexingCard(root: string | null, progress: Progress, paused: boolean): DiskCard {
   const percent = `${Math.floor(overall(progress) * 100)}%`;
   if (paused) {
-    return { tone: "warn", title: "Indexação pausada", detail: `${percent} feito`, action: "Continuar" };
+    return { tone: "warn", title: t("indexing.pausedTitle"), detail: t("indexing.percentDone", { percent }), action: t("indexing.continue") };
   }
   return {
     tone: "ok",
-    title: `Indexando ${drive(root)}`,
-    detail: `${percent} · ${headline(progress).replace("…", "").toLowerCase()}`,
-    action: "Ver progresso",
+    title: t("indexing.indexingLabel", { drive: drive(root) }),
+    detail: t("common.join", { a: percent, b: headline(progress).replace("…", "").toLowerCase() }),
+    action: t("indexing.seeProgress"),
   };
 }
 
@@ -247,9 +246,9 @@ export function interrupted(summary: { connected: boolean; lastIndexedAt: string
 export function interruptedCard(mediaCount: number): DiskCard {
   return {
     tone: "warn",
-    title: "Indexação incompleta",
-    detail: `${t("count.media", { n: mediaCount })} até agora`,
-    action: "Continuar",
+    title: t("indexing.incomplete"),
+    detail: t("indexing.soFarMedia", { media: t("count.media", { n: mediaCount }) }),
+    action: t("indexing.continue"),
   };
 }
 
@@ -266,8 +265,8 @@ export function missingThumbnails(
 export function thumbnailsCard(missing: number): DiskCard {
   return {
     tone: "warn",
-    title: "Indexação incompleta",
+    title: t("indexing.incomplete"),
     detail: t("count.thumbnailsLeft", { n: missing }),
-    action: "Continuar",
+    action: t("indexing.continue"),
   };
 }

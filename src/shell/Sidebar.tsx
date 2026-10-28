@@ -1,6 +1,7 @@
 import { motion } from "motion/react";
 import { hashFor, SECTIONS, type Section, type SectionId } from "./sections";
 import type { DiskCard } from "./library";
+import { t } from "../i18n/i18n";
 
 function Icon({ d }: { d: string }) {
   return (
@@ -45,7 +46,7 @@ export function Sidebar({
   const main = SECTIONS.filter((section) => section.group === "main");
   const care = SECTIONS.filter((section) => section.group === "care");
   return (
-    <nav className="side" aria-label="Seções">
+    <nav className="side" aria-label={t("sidebar.label")}>
       <a className="side-logo" href={hashFor("timeline")}>
         <Logo />
         My Photos
@@ -58,7 +59,7 @@ export function Sidebar({
       </div>
 
       <div className="side-group">
-        <span className="side-heading">Acervo</span>
+        <span className="side-heading">{t("sidebar.care")}</span>
         {care.map((section) => (
           <Item key={section.id} section={section} active={section.id === active} />
         ))}

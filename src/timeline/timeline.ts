@@ -1,5 +1,6 @@
 // F18: a linha do tempo (artboard `Timeline`): agrupar por mês e dia, montar as linhas
 // justificadas e saber quais linhas estão na tela. Sem React: testável no Node.
+
 import { list, t } from "../i18n/i18n.ts";
 
 /** O que o comando `timeline` devolve: um vetor por campo, mais novo primeiro. */
@@ -22,10 +23,10 @@ export const EMPTY: TimelineData = { ids: [], times: [], offsets: [], ratios: []
 export type Filter = "all" | "photos" | "videos" | "favorites";
 
 export const FILTERS: readonly { id: Filter; label: string }[] = [
-  { id: "all", label: "Tudo" },
-  { id: "photos", label: "Fotos" },
-  { id: "videos", label: "Vídeos" },
-  { id: "favorites", label: "Favoritos" },
+  { id: "all", label: t("timeline.filterAll") },
+  { id: "photos", label: t("timeline.filterPhotos") },
+  { id: "videos", label: t("timeline.filterVideos") },
+  { id: "favorites", label: t("timeline.filterFavorites") },
 ];
 
 export interface Item {
@@ -54,7 +55,6 @@ export interface Month {
   days: Day[];
 }
 
-/** Do idioma escolhido ao abrir o app (F34). */
 export const MONTHS = list("calendar.months");
 export const WEEKDAYS = list("calendar.weekdays");
 
@@ -93,12 +93,12 @@ export function calendar(time: number, offset: number | null): Calendar {
 
 /** "Agosto de 2022" */
 export function monthTitle(year: number, month: number): string {
-  return `${MONTHS[month]} de ${year}`;
+  return t("timeline.monthTitle", { month: MONTHS[month], year: String(year) });
 }
 
 /** "Qua, 10 de ago" */
 export function dayLabel(when: Calendar): string {
-  return `${WEEKDAYS[when.weekday]}, ${when.day} de ${MONTHS[when.month].slice(0, 3).toLowerCase()}`;
+  return t("timeline.dayLabel", { weekday: WEEKDAYS[when.weekday], day: when.day, month: MONTHS[when.month].slice(0, 3).toLowerCase() });
 }
 
 /** "14 itens". O canvas põe o local antes; o índice ainda não tem nome de lugar. */
@@ -120,20 +120,20 @@ export function duration(ms: number): string {
  * "Vídeo de …, 2:18, favorito", "Foto sem data".
  */
 export function tileLabel(item: Item): string {
-  const kind = item.video ? "Vídeo" : "Foto";
+  const kind = item.video ? "video" : "photo";
   let text: string;
   if (item.time === null) {
-    text = `${kind} sem data`;
+    text = t(`timeline.tile.${kind}Undated`);
   } else {
     const when = calendar(item.time, item.offset);
     const clock = `${when.hour}:${String(when.minute).padStart(2, "0")}`;
-    text = `${kind} de ${when.day} de ${MONTHS[when.month].toLowerCase()} de ${when.year} às ${clock}`;
+    text = t(`timeline.tile.${kind}Dated`, { day: when.day, month: MONTHS[when.month].toLowerCase(), year: String(when.year), clock });
   }
   if (item.video && item.duration !== null) {
-    text += `, ${duration(item.duration)}`;
+    text += t("timeline.tile.duration", { duration: duration(item.duration) });
   }
   if (item.favorite) {
-    text += item.video ? ", favorito" : ", favorita";
+    text += t(`timeline.tile.${kind}Favorite`);
   }
   return text;
 }
@@ -151,7 +151,7 @@ function keep(flags: number, filter: Filter): boolean {
   }
 }
 
-export const UNDATED = "Sem data";
+export const UNDATED = t("timeline.undated");
 
 /** `20220810` para o dia do calendário, sem montar o objeto inteiro (F32: 300 mil itens). */
 function dayNumber(date: Date, utc: boolean): number {
@@ -196,7 +196,7 @@ export function group(data: TimelineData, filter: Filter): Month[] {
         day = null;
       }
       if (day === null || day.key !== dayKey) {
-        day = { key: dayKey, label: when === null ? "Data não encontrada no arquivo nem no JSON" : dayLabel(when), items: [] };
+        day = { key: dayKey, label: when === null ? t("timeline.undatedDetail") : dayLabel(when), items: [] };
         month.days.push(day);
       }
     }
@@ -381,14 +381,14 @@ export function yearAt(lines: Line[], scrollTop: number): number | null {
 
 export function emptyText(filter: Filter, total: number): { title: string; detail: string } {
   if (total === 0) {
-    return { title: "Nenhuma foto ainda", detail: "Indexe a biblioteca para ver suas fotos aqui." };
+    return { title: t("timeline.empty.noneTitle"), detail: t("timeline.empty.noneDetail") };
   }
   switch (filter) {
     case "videos":
-      return { title: "Nenhum vídeo", detail: "A biblioteca não tem vídeos indexados." };
+      return { title: t("timeline.empty.videosTitle"), detail: t("timeline.empty.videosDetail") };
     case "favorites":
-      return { title: "Nenhum favorito", detail: "Toque no coração ao ver uma foto ou vídeo. As favoritas do Google Fotos também aparecem aqui." };
+      return { title: t("timeline.empty.favoritesTitle"), detail: t("timeline.empty.favoritesDetail") };
     default:
-      return { title: "Nenhuma foto", detail: "A biblioteca só tem vídeos." };
+      return { title: t("timeline.empty.photosTitle"), detail: t("timeline.empty.photosDetail") };
   }
 }

@@ -144,13 +144,13 @@ export function dateChip(filters: Filters): string | null {
     if (from.slice(0, 7) === until.slice(0, 7) && from.endsWith("-01") && lastDayOfMonth(until)) {
       return shortMonth(from);
     }
-    return `${filters.from.trim()} a ${filters.until.trim()}`;
+    return t("search.dateRange", { from: filters.from.trim(), until: filters.until.trim() });
   }
   if (from !== null) {
-    return `desde ${filters.from.trim()}`;
+    return t("search.dateFrom", { from: filters.from.trim() });
   }
   if (until !== null) {
-    return `até ${filters.until.trim()}`;
+    return t("search.dateUntil", { until: filters.until.trim() });
   }
   return null;
 }
@@ -161,21 +161,21 @@ export type ChipKey = "date" | "type" | "favorites" | "folder" | "place" | "albu
 export function chips(filters: Filters, people: PersonOption[], albums: AlbumOption[] = []): { key: ChipKey; label: string }[] {
   const result: { key: ChipKey; label: string }[] = [];
   if (filters.album !== null) {
-    result.push({ key: "album", label: albums.find((album) => album.id === filters.album)?.name ?? "Álbum" });
+    result.push({ key: "album", label: albums.find((album) => album.id === filters.album)?.name ?? t("search.album") });
   }
   const date = dateChip(filters);
   if (date !== null) {
     result.push({ key: "date", label: date });
   }
   if (filters.photos !== filters.videos) {
-    result.push({ key: "type", label: filters.photos ? "Só fotos" : "Só vídeos" });
+    result.push({ key: "type", label: filters.photos ? t("search.onlyPhotos") : t("search.onlyVideos") });
   }
   if (filters.favoritesOnly) {
-    result.push({ key: "favorites", label: "Favoritos" });
+    result.push({ key: "favorites", label: t("section.favorites") });
   }
   for (const id of filters.people) {
     const person = people.find((option) => option.id === id);
-    result.push({ key: `person:${id}`, label: person?.name ?? "Pessoa" });
+    result.push({ key: `person:${id}`, label: person?.name ?? t("search.person") });
   }
   if (filters.place.trim() !== "") {
     // "São Paulo, SP, Brasil" vira "São Paulo".
@@ -213,13 +213,9 @@ export function folderLabel(path: string): string {
   return path.replace(/^Takeout\//i, "").replace(/\//g, "\\");
 }
 
-
 /** "48 resultados" */
 export function resultsTitle(total: number): string {
-  if (total === 0) {
-    return "Nenhum resultado";
-  }
-  return t("count.results", { n: total });
+  return total === 0 ? t("search.resultsNone") : t("count.results", { n: total });
 }
 
 /** `#/buscar`: a tela (F22); `#/buscar/1066` abre o visualizador por cima. */

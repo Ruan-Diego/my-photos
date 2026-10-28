@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { formatCount, t } from "../i18n/i18n";
 import {
   diagnosticLines,
   filterProblems,
@@ -13,7 +14,6 @@ import {
   type StatusFilter,
   type Tab,
 } from "./problems";
-import { formatCount } from "../i18n/i18n";
 
 /** Linhas na tabela; o relatório exportado tem todas. */
 const ROW_LIMIT = 500;
@@ -34,7 +34,7 @@ function Items({ overview }: { overview: Overview }) {
   const rows = filterProblems(overview.problems, filter);
   const root = overview.diagnostics.rootPath;
   return (
-    <section role="tabpanel" aria-label="Itens não reconhecidos" className="problems-panel">
+    <section role="tabpanel" aria-label={t("problems.tabItems")} className="problems-panel">
       <div className="problems-chips">
         {statusFilters(overview.problems).map((chip) => (
           <button key={chip.id} type="button" className="problems-chip" aria-pressed={filter === chip.id} onClick={() => setFilter(chip.id)}>
@@ -44,9 +44,9 @@ function Items({ overview }: { overview: Overview }) {
       </div>
       {rows.length === 0 ? (
         <div className="page-empty">
-          <p className="page-empty-title">Nada aqui</p>
+          <p className="page-empty-title">{t("problems.nothingTitle")}</p>
           <p className="page-empty-detail">
-            {overview.problems.length === 0 ? "A última indexação reconheceu todos os arquivos." : "Nenhum item com esse status."}
+            {overview.problems.length === 0 ? t("problems.nothingDetail") : t("problems.noStatusMatch")}
           </p>
         </div>
       ) : (
@@ -54,10 +54,10 @@ function Items({ overview }: { overview: Overview }) {
           <table>
             <thead>
               <tr>
-                <th scope="col">Caminho</th>
-                <th scope="col">Motivo</th>
-                <th scope="col">O que o app fez</th>
-                <th scope="col">Status</th>
+                <th scope="col">{t("folders.path")}</th>
+                <th scope="col">{t("problems.reason")}</th>
+                <th scope="col">{t("problems.action")}</th>
+                <th scope="col">{t("problems.status")}</th>
               </tr>
             </thead>
             <tbody>
@@ -79,7 +79,7 @@ function Items({ overview }: { overview: Overview }) {
       )}
       {rows.length > ROW_LIMIT ? (
         <p className="problems-note">
-          Mostrando {formatCount(ROW_LIMIT)} de {formatCount(rows.length)}. O relatório exportado tem todos.
+          {t("problems.showingRows", { shown: formatCount(ROW_LIMIT), total: formatCount(rows.length) })}
         </p>
       ) : null}
     </section>
@@ -88,7 +88,7 @@ function Items({ overview }: { overview: Overview }) {
 
 function ReportPanel({ overview }: { overview: Overview }) {
   return (
-    <section role="tabpanel" aria-label="Relatório da indexação" className="problems-panel problems-report">
+    <section role="tabpanel" aria-label={t("problems.tabReport")} className="problems-panel problems-report">
       {reportCards(overview.report).map((card) => (
         <div key={card.label} className="problems-card">
           <span>{card.label}</span>
@@ -111,7 +111,7 @@ function DiagnosticsPanel({ overview }: { overview: Overview }) {
       .finally(() => setChecking(false));
   };
   return (
-    <section role="tabpanel" aria-label="Diagnóstico" className="problems-panel problems-diagnostics">
+    <section role="tabpanel" aria-label={t("problems.tabDiagnostics")} className="problems-panel problems-diagnostics">
       {diagnosticLines(overview.diagnostics, integrity).map((line) => (
         <div key={line.label} className="problems-line">
           <span className={`problems-dot problems-dot-${line.tone}`} aria-hidden="true" />
@@ -120,7 +120,7 @@ function DiagnosticsPanel({ overview }: { overview: Overview }) {
         </div>
       ))}
       <button type="button" className="problems-button" onClick={check} disabled={checking}>
-        {checking ? "Verificando…" : "Verificar integridade do banco"}
+        {checking ? t("problems.checking") : t("problems.checkDatabase")}
       </button>
     </section>
   );
@@ -135,8 +135,8 @@ export function ProblemsScreen() {
   const exportReport = () => {
     setExporting(true);
     invoke<string>("problems_export")
-      .then((path) => setExported(`Relatório salvo em ${path}`))
-      .catch((error) => setExported(`Não foi possível salvar o relatório: ${String(error)}`))
+      .then((path) => setExported(t("problems.savedAt", { path })))
+      .catch((error) => setExported(t("problems.saveFailed", { error: String(error) })))
       .finally(() => setExporting(false));
   };
 
@@ -145,11 +145,11 @@ export function ProblemsScreen() {
       <header className="page-header problems-header">
         <div className="problems-top">
           <div className="people-heading">
-            <h1 id="problems-title">Problemas</h1>
-            <span>Nenhum deles parou a indexação. Arquivos .zip e .html do Takeout são ignorados e não aparecem aqui.</span>
+            <h1 id="problems-title">{t("section.problems")}</h1>
+            <span>{t("problems.subtitle")}</span>
           </div>
           <button type="button" className="problems-button" onClick={exportReport} disabled={overview === null || exporting}>
-            Exportar relatório
+            {t("problems.exportReport")}
           </button>
         </div>
         {exported !== null ? (
@@ -157,7 +157,7 @@ export function ProblemsScreen() {
             {exported}
           </p>
         ) : null}
-        <div role="tablist" aria-label="Seções" className="problems-tabs">
+        <div role="tablist" aria-label={t("sidebar.label")} className="problems-tabs">
           {TABS.map((option) => (
             <button key={option.id} type="button" role="tab" aria-selected={tab === option.id} onClick={() => setTab(option.id)}>
               {option.label}
@@ -168,7 +168,7 @@ export function ProblemsScreen() {
       <div className="page-body">
         {failure !== null ? (
           <div className="page-empty">
-            <p className="page-empty-title">Não foi possível ler os problemas</p>
+            <p className="page-empty-title">{t("problems.readFailed")}</p>
             <p className="page-empty-detail">{failure}</p>
           </div>
         ) : overview === null ? null : tab === "items" ? (

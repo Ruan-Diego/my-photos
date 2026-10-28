@@ -1,13 +1,15 @@
 // Tema claro e escuro (artboard `Tema`): seguir o Windows por padrão, ou fixo.
 
+import { t } from "../i18n/i18n.ts";
+
 export type ThemeChoice = "system" | "light" | "dark";
 
 export const THEME_KEY = "myphotos.theme";
 
 export const THEME_OPTIONS: ReadonlyArray<{ choice: ThemeChoice; label: string }> = [
-  { choice: "system", label: "Seguir o Windows" },
-  { choice: "light", label: "Claro" },
-  { choice: "dark", label: "Escuro" },
+  { choice: "system", label: t("settings.followWindows") },
+  { choice: "light", label: t("settings.themeLight") },
+  { choice: "dark", label: t("settings.themeDark") },
 ];
 
 /** Anything stored that is not a known choice means "follow Windows". */
