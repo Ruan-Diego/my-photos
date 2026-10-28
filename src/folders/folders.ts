@@ -1,4 +1,5 @@
 // Pastas e lixeira (F48, artboards `Folders` e `Trash`; AD-008, AD-009).
+import { formatCount, t } from "../i18n/i18n.ts";
 
 export interface Folder {
   /** `""` é a raiz; senão `a/b`, com `/`. */
@@ -96,10 +97,9 @@ export function select(selected: ReadonlySet<number>, order: readonly number[], 
   return next;
 }
 
-const count = new Intl.NumberFormat("pt-BR");
 
 export function itemsLabel(n: number): string {
-  return n === 1 ? "1 item" : `${count.format(n)} itens`;
+  return t("count.items", { n });
 }
 
 /** "124 itens nesta pasta · 118 com JSON do Takeout". */
@@ -108,12 +108,12 @@ export function folderSummary(items: readonly FolderItem[]): string {
     return "Nenhuma foto ou vídeo direto nesta pasta";
   }
   const json = items.filter((item) => item.hasJson).length;
-  return `${itemsLabel(items.length)} nesta pasta · ${count.format(json)} com JSON do Takeout`;
+  return `${itemsLabel(items.length)} nesta pasta · ${formatCount(json)} com JSON do Takeout`;
 }
 
 /** O que dizer depois de mover, excluir ou restaurar. */
 export function outcomeText(outcome: Outcome, verb: string, tail = ""): string {
-  const done = outcome.done === 1 ? `1 item ${verb}${tail}` : `${count.format(outcome.done)} itens ${verb}s${tail}`;
+  const done = outcome.done === 1 ? `1 item ${verb}${tail}` : `${formatCount(outcome.done)} itens ${verb}s${tail}`;
   if (outcome.skipped.length === 0) {
     return `${done}.`;
   }

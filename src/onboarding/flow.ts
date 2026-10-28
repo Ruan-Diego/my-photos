@@ -1,6 +1,7 @@
 // F16: quando mostrar as boas-vindas (artboard `Main`) e o cartão de uma indexação que falhou.
 
 import type { DiskCard, LibrarySummary } from "../shell/library";
+import { formatCount } from "../i18n/i18n.ts";
 
 export interface LibraryFolder {
   rootPath: string;
@@ -18,7 +19,6 @@ export function needsOnboarding(summary: LibrarySummary | null): boolean {
   return summary !== null && summary.connected && summary.lastIndexedAt === null && summary.mediaCount === 0;
 }
 
-const count = new Intl.NumberFormat("pt-BR");
 
 /** "FOTOS · 3 exports do Takeout encontrados" */
 export function folderDetail(folder: LibraryFolder): string {
@@ -27,7 +27,7 @@ export function folderDetail(folder: LibraryFolder): string {
       ? "nenhum export do Takeout encontrado"
       : folder.takeoutExports === 1
         ? "1 export do Takeout encontrado"
-        : `${count.format(folder.takeoutExports)} exports do Takeout encontrados`;
+        : `${formatCount(folder.takeoutExports)} exports do Takeout encontrados`;
   return folder.volumeLabel ? `${folder.volumeLabel} · ${exports}` : exports;
 }
 

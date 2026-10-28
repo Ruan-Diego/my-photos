@@ -2,6 +2,7 @@
 
 import { calendar, duration, MONTHS, type Item } from "../timeline/timeline.ts";
 import { fileSize } from "./navigation.ts";
+import { numberFormat } from "../i18n/i18n.ts";
 
 /** O que o comando `media_panel_details` devolve. */
 export interface MediaPanel {
@@ -42,7 +43,7 @@ export function dateSource(source: MediaPanel["dateSource"]): { label: string; t
   }
 }
 
-const degrees = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+const degrees = numberFormat({ minimumFractionDigits: 4, maximumFractionDigits: 4 });
 
 /** "38,7139° N · 9,1394° O"; `null` sem GPS. */
 export function coordinates(latitude: number | null, longitude: number | null): string | null {

@@ -2,6 +2,7 @@
 
 import { period } from "../locations/locations.ts";
 import { SEARCH_HASH } from "../search/query.ts";
+import { collator, t } from "../i18n/i18n.ts";
 
 /** O que o comando `albums_list` devolve. */
 export interface AlbumCard {
@@ -22,26 +23,25 @@ export const ORDERS: { value: AlbumOrder; label: string }[] = [
   { value: "size", label: "Mais itens" },
 ];
 
-const collator = new Intl.Collator("pt-BR", { sensitivity: "base", numeric: true });
+const names = collator({ sensitivity: "base", numeric: true });
 
 export function sortAlbums(albums: AlbumCard[], order: AlbumOrder): AlbumCard[] {
   const sorted = [...albums];
   if (order === "name") {
-    sorted.sort((a, b) => collator.compare(a.name, b.name));
+    sorted.sort((a, b) => names.compare(a.name, b.name));
   } else if (order === "size") {
-    sorted.sort((a, b) => b.count - a.count || collator.compare(a.name, b.name));
+    sorted.sort((a, b) => b.count - a.count || names.compare(a.name, b.name));
   } else {
     // Sem data vai para o fim.
-    sorted.sort((a, b) => (b.last ?? "").localeCompare(a.last ?? "") || collator.compare(a.name, b.name));
+    sorted.sort((a, b) => (b.last ?? "").localeCompare(a.last ?? "") || names.compare(a.name, b.name));
   }
   return sorted;
 }
 
-const count = new Intl.NumberFormat("pt-BR");
 
 /** "124 itens · ago 2022" */
 export function albumMeta(album: AlbumCard): string {
-  const items = album.count === 1 ? "1 item" : `${count.format(album.count)} itens`;
+  const items = t("count.items", { n: album.count });
   const when = period(album.first, album.last);
   return when === null ? items : `${items} · ${when}`;
 }

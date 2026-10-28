@@ -16,6 +16,7 @@ import {
   type View,
 } from "./locations";
 import { WORLD_PATH } from "./world";
+import { formatCount, t } from "../i18n/i18n";
 
 const LIST_LIMIT = 100;
 
@@ -156,7 +157,7 @@ function PlacesMap({ places }: { places: Place[] }) {
                 type="button"
                 className="locations-pin"
                 style={{ left, top, width: size, height: size }}
-                aria-label={`${name}: ${pin.count.toLocaleString("pt-BR")} ${pin.count === 1 ? "item" : "itens"}`}
+                aria-label={`${name}: ${t("count.items", { n: pin.count })}`}
                 title={name}
                 onClick={() => {
                   if (single) {
@@ -197,7 +198,7 @@ function PlaceRow({ place }: { place: Place }) {
         <strong>{placeName(place.label)}</strong>
         <span>{placeMeta(place)}</span>
       </span>
-      <span className="locations-count">{place.count.toLocaleString("pt-BR")}</span>
+      <span className="locations-count">{formatCount(place.count)}</span>
     </a>
   );
 }

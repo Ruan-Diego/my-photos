@@ -1,4 +1,5 @@
 // Cartão do disco no rodapé da barra lateral (artboard `Sidebar`).
+import { dateText, t } from "../i18n/i18n.ts";
 
 export interface LibrarySummary {
   connected: boolean;
@@ -19,18 +20,17 @@ export interface DiskCard {
   action: string | null;
 }
 
-const count = new Intl.NumberFormat("pt-BR");
 
 function clock(iso: string, now: Date): string | null {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) {
     return null;
   }
-  const time = date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  const time = dateText(date, { hour: "2-digit", minute: "2-digit" });
   if (date.toDateString() === now.toDateString()) {
     return `atualizado às ${time}`;
   }
-  const day = date.toLocaleDateString("pt-BR", { day: "numeric", month: "short" });
+  const day = dateText(date, { day: "numeric", month: "short" });
   return `atualizado em ${day.replace(".", "")}`;
 }
 
@@ -44,7 +44,7 @@ export function diskCard(summary: LibrarySummary | null, now: Date = new Date())
       action: "Procurar de novo",
     };
   }
-  const media = `${count.format(summary.mediaCount)} ${summary.mediaCount === 1 ? "mídia" : "mídias"}`;
+  const media = t("count.media", { n: summary.mediaCount });
   const when = summary.lastIndexedAt === null ? "ainda não indexado" : clock(summary.lastIndexedAt, now);
   return {
     tone: "ok",

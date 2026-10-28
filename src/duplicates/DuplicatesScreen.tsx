@@ -21,6 +21,7 @@ import {
   type Kind,
   type KindFilter,
 } from "./duplicates";
+import { formatCount } from "../i18n/i18n";
 
 function useDuplicates(): [Duplicates | null, string | null] {
   const [duplicates, setDuplicates] = useState<Duplicates | null>(null);
@@ -131,7 +132,7 @@ export function DuplicatesScreen({ data }: { data: TimelineData | null }) {
             )}
             {groups.length > GROUP_LIMIT ? (
               <p className="problems-note">
-                Mostrando {GROUP_LIMIT} de {groups.length.toLocaleString("pt-BR")} grupos, os com mais espaço repetido primeiro.
+                Mostrando {GROUP_LIMIT} de {formatCount(groups.length)} grupos, os com mais espaço repetido primeiro.
               </p>
             ) : null}
           </>

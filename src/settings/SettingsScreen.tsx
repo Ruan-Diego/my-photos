@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { THEME_OPTIONS, type ThemeChoice } from "../theme/theme";
 import { fileSize } from "../viewer/navigation";
+import { currentLocale, LOCALES } from "../i18n/i18n";
 import {
   cacheOptions,
   cacheUsage,
@@ -264,8 +265,13 @@ export function SettingsScreen({ theme, onTheme, motion, onMotion, onScan, index
               </label>
               <label>
                 Idioma
-                <select value="pt-BR" disabled>
-                  <option value="pt-BR">Português (Brasil)</option>
+                {/* F34: um idioma por arquivo em src/i18n; com um só, a escolha fica travada. */}
+                <select value={currentLocale()} disabled={Object.keys(LOCALES).length < 2}>
+                  {Object.entries(LOCALES).map(([code, messages]) => (
+                    <option key={code} value={code}>
+                      {String(messages["language.name"])}
+                    </option>
+                  ))}
                 </select>
               </label>
             </div>

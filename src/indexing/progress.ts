@@ -1,6 +1,7 @@
 // F17: o que a tela de progresso (artboard `Indexing`) e o cartão da lateral mostram.
 
 import type { DiskCard } from "../shell/library";
+import { formatCount, t } from "../i18n/i18n.ts";
 
 export type Stage = "scanning" | "hashing" | "matching" | "resolving" | "thumbnails";
 
@@ -57,7 +58,6 @@ export function starting(): Progress {
   return { stage: "scanning", done: 0, total: 0, bytesDone: 0, bytesTotal: 0, counts: NO_COUNTS, recent: [] };
 }
 
-const count = new Intl.NumberFormat("pt-BR");
 
 // As seis etapas do canvas. Leitura e pareamento saem da mesma passada do F08,
 // metadados e gravação do mesmo lote do F10: andam juntas.
@@ -150,11 +150,11 @@ export function headline(progress: Progress): string {
     case "matching":
       return "Lendo os JSONs do Takeout…";
     case "hashing":
-      return `${count.format(progress.done)} de ${count.format(progress.total)} arquivos lidos`;
+      return `${formatCount(progress.done)} de ${formatCount(progress.total)} arquivos lidos`;
     case "resolving":
-      return `${count.format(progress.done)} de ${count.format(progress.total)} mídias`;
+      return `${formatCount(progress.done)} de ${formatCount(progress.total)} mídias`;
     case "thumbnails":
-      return `${count.format(progress.done)} de ${count.format(progress.total)} miniaturas`;
+      return `${formatCount(progress.done)} de ${formatCount(progress.total)} miniaturas`;
   }
 }
 
@@ -165,12 +165,12 @@ export interface CountCard {
 
 export function countCards(counts: Counts): CountCard[] {
   return [
-    { label: "Fotos", value: count.format(counts.photos) },
-    { label: "Vídeos", value: count.format(counts.videos) },
-    { label: "Data pelo JSON do Takeout", value: count.format(counts.dateFromJson) },
-    { label: "Data pelo EXIF", value: count.format(counts.dateFromExif) },
-    { label: "JSON em outra parte do export", value: count.format(counts.jsonInOtherPart) },
-    { label: "Pessoas encontradas", value: count.format(counts.people) },
+    { label: "Fotos", value: formatCount(counts.photos) },
+    { label: "Vídeos", value: formatCount(counts.videos) },
+    { label: "Data pelo JSON do Takeout", value: formatCount(counts.dateFromJson) },
+    { label: "Data pelo EXIF", value: formatCount(counts.dateFromExif) },
+    { label: "JSON em outra parte do export", value: formatCount(counts.jsonInOtherPart) },
+    { label: "Pessoas encontradas", value: formatCount(counts.people) },
   ];
 }
 
@@ -179,7 +179,7 @@ export function problemsLine(problems: number, paused: boolean): string | null {
   if (problems === 0) {
     return null;
   }
-  const items = problems === 1 ? "1 item não reconhecido" : `${count.format(problems)} itens não reconhecidos`;
+  const items = problems === 1 ? "1 item não reconhecido" : `${formatCount(problems)} itens não reconhecidos`;
   return paused ? `${items} até agora` : `${items} até agora — a indexação continua`;
 }
 
@@ -248,7 +248,7 @@ export function interruptedCard(mediaCount: number): DiskCard {
   return {
     tone: "warn",
     title: "Indexação incompleta",
-    detail: `${count.format(mediaCount)} ${mediaCount === 1 ? "mídia" : "mídias"} até agora`,
+    detail: `${t("count.media", { n: mediaCount })} até agora`,
     action: "Continuar",
   };
 }
@@ -267,7 +267,7 @@ export function thumbnailsCard(missing: number): DiskCard {
   return {
     tone: "warn",
     title: "Indexação incompleta",
-    detail: missing === 1 ? "falta 1 miniatura" : `faltam ${count.format(missing)} miniaturas`,
+    detail: t("count.thumbnailsLeft", { n: missing }),
     action: "Continuar",
   };
 }

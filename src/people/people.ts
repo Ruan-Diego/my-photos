@@ -1,6 +1,7 @@
 // F23: a tela Pessoas (artboard `People`). Sem React: testável no Node.
 
 import { SEARCH_HASH } from "../search/query.ts";
+import { formatCount, t } from "../i18n/i18n.ts";
 
 /** O que o comando `people_list` devolve. */
 export interface PersonCard {
@@ -11,7 +12,6 @@ export interface PersonCard {
   cover: number | null;
 }
 
-const count = new Intl.NumberFormat("pt-BR");
 
 /** "Ana Lúcia" e "ana lucia" se acham. */
 function fold(text: string): string {
@@ -38,12 +38,12 @@ export function peopleSubtitle(total: number): string {
   if (total === 1) {
     return "1 pessoa marcada no Google Fotos, lida dos JSONs do Takeout";
   }
-  return `${count.format(total)} pessoas marcadas no Google Fotos, lidas dos JSONs do Takeout`;
+  return `${formatCount(total)} pessoas marcadas no Google Fotos, lidas dos JSONs do Takeout`;
 }
 
 /** "812 itens" */
 export function itemsLabel(total: number): string {
-  return total === 1 ? "1 item" : `${count.format(total)} itens`;
+  return t("count.items", { n: total });
 }
 
 /** A busca já filtrada pela pessoa: `#/buscar?pessoa=7`. */

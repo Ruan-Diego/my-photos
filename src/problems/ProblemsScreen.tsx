@@ -13,6 +13,7 @@ import {
   type StatusFilter,
   type Tab,
 } from "./problems";
+import { formatCount } from "../i18n/i18n";
 
 /** Linhas na tabela; o relatório exportado tem todas. */
 const ROW_LIMIT = 500;
@@ -78,7 +79,7 @@ function Items({ overview }: { overview: Overview }) {
       )}
       {rows.length > ROW_LIMIT ? (
         <p className="problems-note">
-          Mostrando {ROW_LIMIT.toLocaleString("pt-BR")} de {rows.length.toLocaleString("pt-BR")}. O relatório exportado tem todos.
+          Mostrando {formatCount(ROW_LIMIT)} de {formatCount(rows.length)}. O relatório exportado tem todos.
         </p>
       ) : null}
     </section>
