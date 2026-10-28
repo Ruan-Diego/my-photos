@@ -22,6 +22,7 @@ export const DEFAULT_CACHE_LIMIT = 4 * 1024 ** 3;
 export const SECTIONS = [
   { id: "biblioteca", label: "Biblioteca" },
   { id: "dados", label: "Dados e cache" },
+  { id: "backup", label: "Backup" },
   { id: "indexacao", label: "Indexação" },
   { id: "aparencia", label: "Aparência" },
   { id: "privacidade", label: "Privacidade" },
@@ -37,6 +38,17 @@ export function volumeLine(settings: Pick<Settings, "volumeLabel">): string {
 export function databaseLine(settings: Pick<Settings, "databasePath" | "databaseBytes">): string {
   const path = settings.databasePath ?? "Banco sem arquivo";
   return settings.databaseBytes === null ? path : `${path} · ${fileSize(settings.databaseBytes)}`;
+}
+
+/** F48/F35: a lixeira do app, ao lado do banco: "E:\\.myphotos\\trash · 30 dias". */
+export function trashLine(settings: Pick<Settings, "databasePath">): string {
+  const path = settings.databasePath;
+  if (path === null) {
+    return "Banco sem arquivo";
+  }
+  const cut = Math.max(path.lastIndexOf("\\"), path.lastIndexOf("/"));
+  const separator = path.includes("\\") ? "\\" : "/";
+  return `${path.slice(0, cut)}${separator}trash · 30 dias`;
 }
 
 /** "1,2 GB usados de 4 GB" e quanto da barra pintar (0 a 1). */
