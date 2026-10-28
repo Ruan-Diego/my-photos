@@ -3,7 +3,7 @@
 Duas formas de gerar o instalador:
 
 - **No PC**, sem Actions: `scripts/release.ps1`, que também gera o `latest.json` do auto-update.
-- **No GitHub Actions** (`release.yml`), por tag `v*`. Para sair com o updater, o workflow ainda precisa do `--config src-tauri/tauri.release.conf.json` e da chave privada nos secrets.
+- **No GitHub Actions** (`release.yml`), por tag `v*`. Para sair com o updater e o ffmpeg, o workflow ainda precisa rodar o `fetch-ffmpeg.ps1`, usar `--config src-tauri/tauri.release.conf.json` e ter a chave privada nos secrets.
 
 ## Uma vez só
 
@@ -21,13 +21,26 @@ npx tauri signer generate -w $HOME\.tauri\myphotos.key
 
 ### 2. Onde ficam as atualizações
 
-`plugins.updater.endpoints` aponta para o `latest.json` do último release de um repositório **público**. O `my-photos` é privado, e o app não tem como se logar no GitHub:
+`plugins.updater.endpoints` aponta para o `latest.json` do último release publicado do próprio `my-photos`, que é público:
 
 ```
-https://github.com/Ruan-Diego/my-photos-releases/releases/latest/download/latest.json
+https://github.com/Ruan-Diego/my-photos/releases/latest/download/latest.json
 ```
 
-Crie o repositório público `my-photos-releases` (vazio, só para os instaladores) ou troque o endereço.
+Um release em rascunho ou marcado como pré-release não conta como "latest". Só o publicado chega aos apps instalados.
+
+### 3. ffmpeg
+
+O instalador de release leva o `ffmpeg.exe` e o `ffprobe.exe` ao lado do `My Photos.exe`, que é onde o app procura primeiro. Eles fazem a capa e a duração dos vídeos.
+
+- A fonte é o build **LGPL** estático do [BtbN/FFmpeg-Builds](https://github.com/BtbN/FFmpeg-Builds) (`ffmpeg-master-latest-win64-lgpl.zip`).
+- O `release.ps1` baixa os dois com o `scripts/fetch-ffmpeg.ps1` para `src-tauri/binaries/ffmpeg/`, que fica fora do git.
+- O script recusa um build GPL: ele lê o configure gravado no próprio `ffprobe.exe` e para se achar `--enable-gpl` ou `--enable-nonfree`.
+- Junto vão o `ffmpeg-LICENSE.txt` (LGPL) e o `ffmpeg-README.txt`, com a versão exata, o configure, o SHA-256 dos dois executáveis e onde está o código-fonte. É o que a LGPL pede para redistribuir.
+- O app só chama o ffmpeg como programa separado, sem ligar o código dele ao seu.
+- Custo: os dois executáveis têm 139 MB cada, e o instalador cresce uns 85 MB.
+- Para trocar de build (uma versão estável, por exemplo): apague `src-tauri/binaries/ffmpeg/` e rode `scripts/fetch-ffmpeg.ps1 -Url <zip LGPL do BtbN>`.
+- O build de desenvolvimento não leva o ffmpeg e continua achando o do `PATH`.
 
 ## Cada versão
 
@@ -39,10 +52,11 @@ O script:
 
 1. confere a chave pública e a privada;
 2. põe a versão no `package.json` e no `Cargo.toml` (o teste `pkg01` exige as duas iguais);
-3. roda `npm ci`, os testes do Rust e `tauri build` com `tauri.release.conf.json`;
-4. deixa em `release/v0.2.0/` o `MyPhotos_0.2.0_x64-setup.exe`, a `.sig` e o `latest.json`.
+3. baixa o ffmpeg LGPL, se ainda não estiver em `src-tauri/binaries/ffmpeg/`;
+4. roda `npm ci`, os testes do Rust e `tauri build` com `tauri.release.conf.json`;
+5. deixa em `release/v0.2.0/` o `MyPhotos_0.2.0_x64-setup.exe`, a `.sig` e o `latest.json`.
 
-Com `-Publish`, ele também cria o release `v0.2.0` no repositório de atualizações (precisa do `gh` logado). Depois, faça commit da versão nova.
+Com `-Publish`, ele também cria e publica o release `v0.2.0` no `my-photos` (precisa do `gh` logado). Depois, faça commit da versão nova.
 
 ## Como o app atualiza
 

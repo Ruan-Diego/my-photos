@@ -142,4 +142,36 @@ mod tests {
         assert_eq!(nsis["languages"], serde_json::json!(["PortugueseBR"]));
         assert_eq!(config["productName"], "My Photos");
     }
+
+    const GITIGNORE: &str = include_str!("../../.gitignore");
+
+    /// F37: the release installer carries the LGPL ffmpeg where `locate_ffmpeg` looks
+    /// first (beside the executable), with its license and where its source is.
+    #[test]
+    fn pkg02_the_release_installer_carries_the_lgpl_ffmpeg() {
+        let release: serde_json::Value = serde_json::from_str(RELEASE_CONFIG).unwrap();
+        let resources = release["bundle"]["resources"].as_object().expect("resources map");
+        let targets: Vec<&str> = resources.values().filter_map(|target| target.as_str()).collect();
+        // Flat names, no folder: the install directory is the executable's.
+        for tool in ["ffmpeg", "ffprobe"] {
+            let name = format!("{tool}.exe");
+            assert!(targets.contains(&name.as_str()), "{name} is not installed beside the app");
+        }
+        // The installed folder, as the installer lays it out, is one `locate_ffmpeg` accepts.
+        #[cfg(windows)]
+        {
+            let scratch = crate::db::tests::Scratch::new("pkg02");
+            for target in &targets {
+                std::fs::write(scratch.path.join(target), b"").unwrap();
+            }
+            assert!(crate::thumbs::video::locate_in([scratch.path.clone()]).is_some());
+        }
+        assert!(targets.contains(&"ffmpeg-LICENSE.txt") && targets.contains(&"ffmpeg-README.txt"), "LGPL license and source");
+        // Fetched by scripts/fetch-ffmpeg.ps1, never committed.
+        assert!(resources.keys().all(|source| source.starts_with("binaries/ffmpeg/")));
+        assert!(GITIGNORE.lines().any(|line| line.trim() == "/binaries/"));
+        // Development builds stay without it (and still find one on PATH).
+        let config: serde_json::Value = serde_json::from_str(CONFIG).unwrap();
+        assert!(config["bundle"].get("resources").is_none());
+    }
 }

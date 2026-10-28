@@ -123,6 +123,14 @@
 - **Date**: 2026-10-28
 - **Status**: active
 
+### AD-016
+- **Decision**: O instalador de release leva o **ffmpeg LGPL** (build estático do BtbN) ao lado do app, com a licença e o README da fonte. As atualizações saem dos Releases do próprio `my-photos`, que ficou público.
+- **Reason**: Definido pelo Ruan em 2026-10-28 ("empacote o ffmpeg LGPL no instalador"; "o repositório agora tá público").
+- **Trade-off**: O instalador cresce uns 85 MB. O build `master-latest` do BtbN é um snapshot de desenvolvimento, e a versão exata fica registrada no `ffmpeg-README.txt`. Um build estável pode ser escolhido com `-Url`.
+- **Scope**: F13, F37.
+- **Date**: 2026-10-28
+- **Status**: active
+
 ## Handoff
 
 - **Feature**: F07 EXIF Parser — concluída (Verifier PASS na iteração 4: EXIF-01..06; 71/77 mutantes mortos, os 6 sobreviventes sem efeito visível no spec). F06 concluída (PASS iteração 3). F05 concluída (PASS iteração 3; SCAN-07 no `E:` PASS em 2026-10-12: 6132 mídias, 38 pastas, 2ª varredura 6132 `unchanged`, 0 hash)

@@ -6,5 +6,5 @@
 - [x] Teste `pkg01`
 - [ ] Assinatura de código (precisa do certificado do Ruan)
 - [x] Atualização desligada por padrão: plugin só no release, "Procurar agora" e "Procurar atualizações ao abrir", testes `sec07`/UPD-01, `scripts/release.ps1`
-- [ ] Chave do updater e repositório público de releases (Ruan)
-- [ ] ffmpeg no instalador (decisão do Ruan)
+- [ ] Chave do updater (Ruan); o repositório já é público
+- [x] ffmpeg LGPL no instalador de release (`fetch-ffmpeg.ps1`, `bundle.resources`, teste `pkg02`)
