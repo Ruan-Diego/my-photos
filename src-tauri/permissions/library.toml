@@ -160,3 +160,23 @@ commands.allow = ["trash_restore"]
 identifier = "allow-trash-restore-all"
 description = "Enables the trash_restore_all command."
 commands.allow = ["trash_restore_all"]
+
+[[permission]]
+identifier = "allow-backup-overview"
+description = "Enables the backup_overview command."
+commands.allow = ["backup_overview"]
+
+[[permission]]
+identifier = "allow-backup-now"
+description = "Enables the backup_now command."
+commands.allow = ["backup_now"]
+
+[[permission]]
+identifier = "allow-appdata-export"
+description = "Enables the appdata_export command."
+commands.allow = ["appdata_export"]
+
+[[permission]]
+identifier = "allow-appdata-import"
+description = "Enables the appdata_import command."
+commands.allow = ["appdata_import"]

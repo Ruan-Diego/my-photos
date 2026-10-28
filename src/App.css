@@ -464,6 +464,27 @@ button.side-card-action {
   gap: 8px;
 }
 
+/* F35: cartão Backup. */
+.settings-import {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings-import label {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.settings-paths .settings-backup-last {
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.settings-import select {
+  max-width: 100%;
+}
+
 .settings-cache-head {
   display: flex;
   flex-wrap: wrap;

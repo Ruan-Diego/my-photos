@@ -3,10 +3,12 @@ import { invoke } from "@tauri-apps/api/core";
 import { THEME_OPTIONS, type ThemeChoice } from "../theme/theme";
 import { fileSize } from "../viewer/navigation";
 import { currentLocale, LOCALES } from "../i18n/i18n";
+import { exportOptions, importText, lastBackupLine, type BackupOverview, type ImportOutcome } from "./backup";
 import {
   cacheOptions,
   cacheUsage,
   databaseLine,
+  trashLine,
   MOTION_OPTIONS,
   SCAN_ON_CONNECT,
   SECTIONS,
@@ -59,6 +61,31 @@ export function SettingsScreen({ theme, onTheme, motion, onMotion, onScan, index
   }, []);
 
   useEffect(reload, [reload]);
+
+  // F35: cópias do banco e exportação de favoritos e notas.
+  const [backups, setBackups] = useState<BackupOverview | null>(null);
+  const [chosenExport, setChosenExport] = useState("");
+  const [backingUp, setBackingUp] = useState(false);
+  const reloadBackups = useCallback(() => {
+    invoke<BackupOverview>("backup_overview")
+      .then((value) => {
+        const names = exportOptions(value).map((option) => option.name);
+        setBackups(value);
+        setChosenExport((current) => (names.includes(current) ? current : (names[0] ?? "")));
+      })
+      .catch(() => setBackups(null));
+  }, []);
+  useEffect(reloadBackups, [reloadBackups]);
+  const backupAction = (work: Promise<string>) => {
+    setBackingUp(true);
+    work
+      .then((text) => setNotice(text))
+      .catch((error) => setNotice(`Não deu certo: ${String(error)}`))
+      .finally(() => {
+        setBackingUp(false);
+        reloadBackups();
+      });
+  };
 
   const setFlag = (key: string, on: boolean) => {
     setSettings((current) =>
@@ -153,7 +180,7 @@ export function SettingsScreen({ theme, onTheme, motion, onMotion, onScan, index
               <dt>Banco</dt>
               <dd>{settings === null ? " " : databaseLine(settings)}</dd>
               <dt>Lixeira</dt>
-              <dd className="settings-later">Chega com as operações de arquivo</dd>
+              <dd>{settings === null ? " " : trashLine(settings)}</dd>
             </dl>
             <div className="settings-cache">
               <div className="settings-cache-head">
@@ -203,6 +230,69 @@ export function SettingsScreen({ theme, onTheme, motion, onMotion, onScan, index
               {confirming ? (
                 <p className="settings-hint">As miniaturas somem até a próxima "Procurar arquivos novos", que refaz todas (no seu HD levou cerca de 40 minutos).</p>
               ) : null}
+            </div>
+          </section>
+
+          <section id="settings-backup" className="card" aria-labelledby="settings-backup-title">
+            <h2 id="settings-backup-title">Backup</h2>
+            <dl className="settings-paths">
+              <dt>Pasta</dt>
+              <dd>{backups?.folder ?? " "}</dd>
+              <dt>Último</dt>
+              <dd className="settings-backup-last">{backups === null ? " " : lastBackupLine(backups)}</dd>
+            </dl>
+            <div className="settings-actions">
+              <button
+                type="button"
+                className="button-line"
+                disabled={backups === null || backingUp}
+                onClick={() => backupAction(invoke<string>("backup_now").then(() => "Cópia do banco feita."))}
+              >
+                Fazer backup agora
+              </button>
+              <button
+                type="button"
+                className="button-line"
+                disabled={backups === null || backingUp}
+                onClick={() =>
+                  backupAction(invoke<string>("appdata_export").then((file) => `Favoritos e notas exportados em ${file}.`))
+                }
+              >
+                Exportar favoritos e notas
+              </button>
+            </div>
+            <div className="settings-import">
+              <label htmlFor="backup-import">Importar favoritos e notas de</label>
+              <div className="settings-actions">
+                <select
+                  id="backup-import"
+                  value={chosenExport}
+                  disabled={backups === null || exportOptions(backups).length === 0}
+                  onChange={(event) => setChosenExport(event.target.value)}
+                >
+                  {backups === null || exportOptions(backups).length === 0 ? (
+                    <option value="">Nenhuma exportação na pasta</option>
+                  ) : (
+                    exportOptions(backups).map((option) => (
+                      <option key={option.name} value={option.name}>
+                        {option.label}
+                      </option>
+                    ))
+                  )}
+                </select>
+                <button
+                  type="button"
+                  className="button-line"
+                  disabled={chosenExport === "" || backingUp || indexing}
+                  title={indexing ? "Espere a indexação terminar" : undefined}
+                  onClick={() => backupAction(invoke<ImportOutcome>("appdata_import", { name: chosenExport }).then(importText))}
+                >
+                  Importar
+                </button>
+              </div>
+              <p className="settings-hint">
+                A foto é encontrada pelo caminho ou, se mudou de pasta, pelo conteúdo. Para trazer de outro computador, copie o arquivo dados-….json para esta pasta.
+              </p>
             </div>
           </section>
 

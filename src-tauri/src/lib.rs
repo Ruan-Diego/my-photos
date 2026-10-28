@@ -1,4 +1,5 @@
 pub mod albums;
+pub mod backup;
 pub mod favorites;
 pub mod fileops;
 pub mod bench;
@@ -46,6 +47,16 @@ pub fn run() {
                 if let Some(root) = root {
                     let _ = fileops::purge_expired(connection, std::path::Path::new(&root), &now);
                 }
+                // F35: a copy of the database once a day, the newest seven kept. On its own
+                // connection and thread: copying the database must not hold up the window.
+                if let (Some(folder), Some(path)) = (backup::folder(connection), connection.path().map(str::to_owned)) {
+                    let now = now.clone();
+                    std::thread::spawn(move || {
+                        if let Ok(copy) = rusqlite::Connection::open(&path) {
+                            let _ = backup::auto_backup(&copy, &folder, std::time::SystemTime::now(), &now);
+                        }
+                    });
+                }
             }
             app.manage(DbState(library.map(|c| Mutex::new(Some(c)))));
             app.manage(commands::onboarding::IndexingState::default());
@@ -84,7 +95,11 @@ pub fn run() {
             commands::fileops::media_trash,
             commands::fileops::trash_list,
             commands::fileops::trash_restore,
-            commands::fileops::trash_restore_all
+            commands::fileops::trash_restore_all,
+            commands::backup::backup_overview,
+            commands::backup::backup_now,
+            commands::backup::appdata_export,
+            commands::backup::appdata_import
         ])
         .register_asynchronous_uri_scheme_protocol(
             commands::timeline::THUMB_SCHEME,
