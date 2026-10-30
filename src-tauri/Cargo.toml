@@ -1,6 +1,6 @@
 [package]
 name = "my-photos"
-version = "0.1.0"
+version = "1.0.0"
 description = "My Photos: fotos e vídeos do seu disco, sem nuvem"
 authors = ["Ruan"]
 edition = "2021"

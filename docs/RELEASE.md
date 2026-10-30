@@ -1,40 +1,60 @@
 # Release do My Photos (Windows)
 
-Duas formas de gerar o instalador:
+O release sai do GitHub Actions (`.github/workflows/release.yml`), num runner Windows. O repositório é público, então os minutos são gratuitos. O workflow:
 
-- **No PC**, sem Actions: `scripts/release.ps1`, que também gera o `latest.json` do auto-update.
-- **No GitHub Actions** (`release.yml`), por tag `v*`. Para sair com o updater e o ffmpeg, o workflow ainda precisa rodar o `fetch-ffmpeg.ps1`, usar `--config src-tauri/tauri.release.conf.json` e ter a chave privada nos secrets.
+- baixa o ffmpeg LGPL;
+- assina o `My Photos.exe` e o instalador com o certificado de código;
+- assina a atualização com a chave do updater;
+- publica o release com o `latest.json` que o auto-update dos apps instalados lê.
 
 ## Uma vez só
 
-### 1. Chave do auto-update
+### 1. Secrets do repositório
 
-O app só instala uma atualização assinada com esta chave. A chave privada **nunca** vai para o repositório.
+As chaves foram geradas em 2026-10-30 (AD-017). Só a parte pública está no repositório:
+
+- a chave pública do updater, em `src-tauri/tauri.release.conf.json`;
+- a impressão digital do certificado, no mesmo arquivo;
+- o certificado público, em `src-tauri/certs/myphotos-codesign.cer`.
+
+As partes privadas ficam em 4 secrets. Crie cada um em **Settings › Secrets and variables › Actions › New repository secret**:
+
+| Secret | Conteúdo |
+| --- | --- |
+| `TAURI_SIGNING_PRIVATE_KEY` | o texto do arquivo `myphotos-updater.key` |
+| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | o texto de `updater-key-password.txt` |
+| `WINDOWS_CERTIFICATE` | o texto de `myphotos-codesign.pfx.base64.txt` (o `.pfx` em base64) |
+| `WINDOWS_CERTIFICATE_PASSWORD` | o texto de `codesign-pfx-password.txt` |
+
+Guarde também os quatro arquivos num cofre de senhas. Sem a chave do updater e a senha dela, as versões já instaladas não aceitam mais nenhuma atualização. O workflow para com uma mensagem clara se faltar algum secret, e confere que o certificado do secret é o mesmo da impressão digital da config.
+
+### 2. Confiar no certificado neste PC
+
+O certificado é **autoassinado** (AD-017). Só confiam nele os computadores onde ele for importado. Para o Windows mostrar "Ruan Diego (My Photos)" como editor verificado no seu PC, rode uma vez no PowerShell, na raiz do repositório:
 
 ```
-npx tauri signer generate -w $HOME\.tauri\myphotos.key
+Import-Certificate -FilePath src-tauri\certs\myphotos-codesign.cer -CertStoreLocation Cert:\CurrentUser\Root
+Import-Certificate -FilePath src-tauri\certs\myphotos-codesign.cer -CertStoreLocation Cert:\CurrentUser\TrustedPublisher
 ```
 
-1. Copie a chave **pública** que o comando imprime para `src-tauri/tauri.release.conf.json`, em `plugins.updater.pubkey`, e faça commit.
-2. Guarde a chave privada e a senha num cofre de senhas. Sem elas, as versões já instaladas não aceitam mais nenhuma atualização.
-3. Se você usou senha, rode `$env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = "..."` antes do release.
+O primeiro comando abre uma confirmação do Windows. Em outros computadores, o SmartScreen continua avisando "Editor desconhecido" ("Mais informações" › "Executar assim mesmo"). Para isso sumir, só com um certificado de uma autoridade (Certum, Sectigo, Azure Trusted Signing), que entra no lugar dos dois secrets do certificado.
 
-### 2. Onde ficam as atualizações
+### 3. Onde ficam as atualizações
 
-`plugins.updater.endpoints` aponta para o `latest.json` do último release publicado do próprio `my-photos`, que é público:
+`plugins.updater.endpoints` aponta para o `latest.json` do último release publicado do próprio `my-photos`:
 
 ```
 https://github.com/Ruan-Diego/my-photos/releases/latest/download/latest.json
 ```
 
-Um release em rascunho ou marcado como pré-release não conta como "latest". Só o publicado chega aos apps instalados.
+Um release em rascunho ou pré-release não conta como "latest". Só o publicado chega aos apps instalados.
 
-### 3. ffmpeg
+## ffmpeg
 
 O instalador de release leva o `ffmpeg.exe` e o `ffprobe.exe` ao lado do `My Photos.exe`, que é onde o app procura primeiro. Eles fazem a capa e a duração dos vídeos.
 
 - A fonte é o build **LGPL** estático do [BtbN/FFmpeg-Builds](https://github.com/BtbN/FFmpeg-Builds) (`ffmpeg-master-latest-win64-lgpl.zip`).
-- O `release.ps1` baixa os dois com o `scripts/fetch-ffmpeg.ps1` para `src-tauri/binaries/ffmpeg/`, que fica fora do git.
+- O workflow (e o `release.ps1`) baixa os dois com o `scripts/fetch-ffmpeg.ps1` para `src-tauri/binaries/ffmpeg/`, que fica fora do git.
 - O script recusa um build GPL: ele lê o configure gravado no próprio `ffprobe.exe` e para se achar `--enable-gpl` ou `--enable-nonfree`.
 - Junto vão o `ffmpeg-LICENSE.txt` (LGPL) e o `ffmpeg-README.txt`, com a versão exata, o configure, o SHA-256 dos dois executáveis e onde está o código-fonte. É o que a LGPL pede para redistribuir.
 - O app só chama o ffmpeg como programa separado, sem ligar o código dele ao seu.
@@ -44,19 +64,13 @@ O instalador de release leva o `ffmpeg.exe` e o `ffprobe.exe` ao lado do `My Pho
 
 ## Cada versão
 
-```
-powershell -ExecutionPolicy Bypass -File scripts/release.ps1 -Version 0.2.0 -Notes "O que mudou"
-```
+1. Ponha a versão nova no `package.json` (`npm version 1.1.0 --no-git-tag-version`) e no `Cargo.toml`. O teste `pkg01` exige as duas iguais. Faça o merge na `main`.
+2. Crie a tag e envie: `git tag v1.1.0 && git push origin v1.1.0`. Também dá para usar Actions › release › "Run workflow".
+3. Em uns 15 minutos, o release `v1.1.0` aparece publicado com o `My Photos_1.1.0_x64-setup.exe`, a `.sig` e o `latest.json`. Os apps com a busca de atualizações ligada já enxergam a versão nova.
 
-O script:
+### Sem Actions, no PC
 
-1. confere a chave pública e a privada;
-2. põe a versão no `package.json` e no `Cargo.toml` (o teste `pkg01` exige as duas iguais);
-3. baixa o ffmpeg LGPL, se ainda não estiver em `src-tauri/binaries/ffmpeg/`;
-4. roda `npm ci`, os testes do Rust e `tauri build` com `tauri.release.conf.json`;
-5. deixa em `release/v0.2.0/` o `MyPhotos_0.2.0_x64-setup.exe`, a `.sig` e o `latest.json`.
-
-Com `-Publish`, ele também cria e publica o release `v0.2.0` no `my-photos` (precisa do `gh` logado). Depois, faça commit da versão nova.
+`scripts/release.ps1 -Version 1.1.0 -Publish` faz o mesmo localmente. Antes, importe o `.pfx` no repositório de certificados do Windows (duplo clique no arquivo, "Usuário atual") e deixe a chave em `$HOME\.tauri\myphotos.key`, com `$env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD` definido.
 
 ## Como o app atualiza
 

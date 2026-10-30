@@ -176,4 +176,28 @@ mod tests {
         let config: serde_json::Value = serde_json::from_str(CONFIG).unwrap();
         assert!(config["bundle"].get("resources").is_none());
     }
+
+    const RELEASE_WORKFLOW: &str = include_str!("../../../.github/workflows/release.yml");
+    const CERTIFICATE: &[u8] = include_bytes!("../../certs/myphotos-codesign.cer");
+
+    /// F37 (AD-017): the release is signed twice: the updater's key (the installed apps
+    /// check it) and the self-signed code-signing certificate (Windows checks it).
+    #[test]
+    fn pkg03_the_release_is_signed() {
+        let release: serde_json::Value = serde_json::from_str(RELEASE_CONFIG).unwrap();
+        let pubkey = release["plugins"]["updater"]["pubkey"].as_str().unwrap();
+        assert!(pubkey.len() > 100, "the updater's public key is set");
+        let windows = &release["bundle"]["windows"];
+        let thumbprint = windows["certificateThumbprint"].as_str().unwrap();
+        assert!(thumbprint.len() == 40 && thumbprint.chars().all(|c| c.is_ascii_hexdigit()), "{thumbprint}");
+        assert!(windows["timestampUrl"].as_str().unwrap().starts_with("http"), "signatures outlive the certificate");
+        // The public half of the certificate is in the repository, to trust it on a PC.
+        assert_eq!(CERTIFICATE[0], 0x30, "DER certificate");
+        // The workflow builds with the release config and signs with the secrets.
+        assert!(RELEASE_WORKFLOW.contains("--config src-tauri/tauri.release.conf.json"));
+        for secret in ["TAURI_SIGNING_PRIVATE_KEY", "TAURI_SIGNING_PRIVATE_KEY_PASSWORD", "WINDOWS_CERTIFICATE", "WINDOWS_CERTIFICATE_PASSWORD"] {
+            assert!(RELEASE_WORKFLOW.contains(&format!("secrets.{secret} ")) || RELEASE_WORKFLOW.contains(&format!("secrets.{secret} }}")), "{secret}");
+        }
+        assert!(RELEASE_WORKFLOW.contains("fetch-ffmpeg.ps1"));
+    }
 }

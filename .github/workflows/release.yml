@@ -1,7 +1,15 @@
 name: release
 
-# F37: o instalador do Windows. Uma tag `v0.2.0` (igual à versão do package.json) gera
-# `My Photos_0.2.0_x64-setup.exe` num release em rascunho, para revisar antes de publicar.
+# F37: o instalador do Windows. Uma tag `v1.0.0` (igual à versão do package.json), ou
+# "Run workflow" à mão, gera `My Photos_1.0.0_x64-setup.exe` assinado, com o ffmpeg LGPL,
+# a assinatura do updater e o `latest.json`, e publica o release: o auto-update dos apps
+# instalados lê o `latest.json` do último release publicado (docs/RELEASE.md).
+#
+# Secrets do repositório (Settings › Secrets and variables › Actions):
+#   TAURI_SIGNING_PRIVATE_KEY           conteúdo do myphotos-updater.key
+#   TAURI_SIGNING_PRIVATE_KEY_PASSWORD  a senha dele
+#   WINDOWS_CERTIFICATE                 o .pfx do certificado de código, em base64
+#   WINDOWS_CERTIFICATE_PASSWORD        a senha do .pfx
 on:
   push:
     tags: ["v*"]
@@ -25,12 +33,40 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         shell: bash
         run: test "v$(node -p "require('./package.json').version")" = "${GITHUB_REF_NAME}"
+      - name: Os secrets estão configurados
+        shell: bash
+        env:
+          UPDATER_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+        run: |
+          test -n "$UPDATER_KEY" || { echo "::error::Falta o secret TAURI_SIGNING_PRIVATE_KEY (docs/RELEASE.md)"; exit 1; }
+          test -n "$CERTIFICATE" || { echo "::error::Falta o secret WINDOWS_CERTIFICATE (docs/RELEASE.md)"; exit 1; }
+      - name: ffmpeg LGPL
+        shell: pwsh
+        run: ./scripts/fetch-ffmpeg.ps1
+      - name: Certificado de assinatura de código
+        shell: pwsh
+        env:
+          CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: |
+          $pfx = Join-Path $env:RUNNER_TEMP "codesign.pfx"
+          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:CERTIFICATE))
+          $password = ConvertTo-SecureString $env:CERTIFICATE_PASSWORD -AsPlainText -Force
+          $cert = Import-PfxCertificate -FilePath $pfx -CertStoreLocation Cert:\CurrentUser\My -Password $password
+          Remove-Item $pfx
+          $expected = (Get-Content src-tauri/tauri.release.conf.json -Raw | ConvertFrom-Json).bundle.windows.certificateThumbprint
+          if ($cert.Thumbprint -ne $expected) { throw "O certificado do secret ($($cert.Thumbprint)) não é o do tauri.release.conf.json ($expected)." }
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: v__VERSION__
           releaseName: My Photos __VERSION__
-          releaseBody: Instalador do Windows. Baixe `My Photos_*_x64-setup.exe`.
-          releaseDraft: true
-          args: --bundles nsis
+          releaseBody: Instalador do Windows. Baixe `My Photos_*_x64-setup.exe`. O certificado é autoassinado; veja docs/RELEASE.md para confiar nele.
+          releaseDraft: false
+          includeUpdaterJson: true
+          updaterJsonPreferNsis: true
+          args: --bundles nsis --config src-tauri/tauri.release.conf.json
