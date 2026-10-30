@@ -49,7 +49,7 @@ if (-not (Test-Path (Join-Path $tauri "binaries\ffmpeg\ffprobe.exe"))) {
 # 4. Testes e build com a config de release (updater, ffmpeg e artefatos assinados).
 npm ci
 if ($LASTEXITCODE -ne 0) { throw "npm ci falhou" }
-cargo test --manifest-path src-tauri/Cargo.toml
+cargo test --manifest-path src-tauri/Cargo.toml --features dev-tools
 if ($LASTEXITCODE -ne 0) { throw "os testes do Rust falharam" }
 npx tauri build --bundles nsis --config $releaseFile
 if ($LASTEXITCODE -ne 0) { throw "tauri build falhou" }

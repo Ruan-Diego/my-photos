@@ -6,7 +6,7 @@ authors = ["Ruan"]
 edition = "2021"
 # u32::is_multiple_of (photo_meta::date) is stable since 1.87.
 rust-version = "1.87"
-# Two binaries since F03 (f03-bench); `tauri dev` runs the app.
+# More than one binary since F03 (the dev tools below); `tauri dev` runs the app.
 default-run = "my-photos"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -17,6 +17,33 @@ default-run = "my-photos"
 # This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
 name = "my_photos_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
+
+# Ferramentas de desenvolvimento (medições, varredura e indexação pela linha de comando).
+# Ficam fora do build normal, e portanto fora do instalador:
+#   cargo run --features dev-tools --bin f05-scan
+[features]
+dev-tools = []
+
+[[bin]]
+name = "f03-bench"
+required-features = ["dev-tools"]
+
+[[bin]]
+name = "f05-scan"
+required-features = ["dev-tools"]
+
+[[bin]]
+name = "f10-index"
+required-features = ["dev-tools"]
+
+[[bin]]
+name = "f12-thumbs"
+required-features = ["dev-tools"]
+
+# Roda o f03-bench; o CI usa `cargo test --features dev-tools`.
+[[test]]
+name = "f03_bench"
+required-features = ["dev-tools"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
