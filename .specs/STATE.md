@@ -131,14 +131,29 @@
 - **Date**: 2026-10-28
 - **Status**: active
 
+### AD-017
+- **Decision**: A assinatura de código usa um **certificado autoassinado** ("Ruan Diego (My Photos)", RSA 3072, válido até 2031-10-30, impressão digital `E165E7D0C39C8E9C82927DB638F887CFAC5BA566`). O release sai do GitHub Actions (`release.yml`, runner Windows), assinado com esse certificado e com a chave do updater, e é publicado com o `latest.json`.
+- **Reason**: Definido pelo Ruan em 2026-10-30 ("pode ser autoassinado"). O repositório ficou público, e o Actions voltou a ter minutos.
+- **Trade-off**: Só os PCs que importam o `.cer` confiam no editor. Nos outros, o SmartScreen avisa "Editor desconhecido". Trocar por um certificado de autoridade é só substituir dois secrets e a impressão digital. As chaves privadas foram geradas na sessão do Claude e entregues ao Ruan para os secrets e o cofre de senhas; não estão no repositório.
+- **Scope**: F37.
+- **Date**: 2026-10-30
+- **Status**: active
+
 ## Handoff
 
-- **Feature**: F07 EXIF Parser — concluída (Verifier PASS na iteração 4: EXIF-01..06; 71/77 mutantes mortos, os 6 sobreviventes sem efeito visível no spec). F06 concluída (PASS iteração 3). F05 concluída (PASS iteração 3; SCAN-07 no `E:` PASS em 2026-10-12: 6132 mídias, 38 pastas, 2ª varredura 6132 `unchanged`, 0 hash)
-- **Phase / Task**: Phase 1. F07 em `src-tauri/src/photo_meta/` (`read_embedded`): data de captura local + UTC quando o fuso é conhecido (OffsetTime* ou relógio do GPS), GPS validado, dimensões pelo conteúdo (cabeçalho em JPEG/PNG/GIF/WebP; EXIF em HEIF e TIFF/RAW), orientação 1–8, `raw_json` do EXIF, `exif_corrupt`, `unreadable`. Dependências novas, Rust puro: `kamadak-exif` 0.6.1, `imagesize` 0.15.0; `rust-version = "1.87"`
-- **Completed**: F01–F07. Defaults da F05/F06/F07 confirmados pelo stakeholder em 2026-10-06 ("continue with defaults"). CI `windows-latest` verde desde o run 4. Relatórios em `.specs/features/f0{5,6,7}-*/validation.md`
-- **In-progress**: PR #37 (branch `claude/fervent-planck-oroz5y`, 2026-10-28): segunda parte da F34 (todos os textos das telas no `pt-BR.ts`, detector `scan.ts`, texto idêntico ao da `main` nas 12 telas) e dois reforços da F36 (limites do decodificador, protocolo `media` só dentro da raiz). F37 Windows Packaging: instalador NSIS por usuário em português, versão única do package.json, `release.yml` (tag `v*` → release em rascunho). Assinatura (certificado), atualização (updater vai contra zero rede) e ffmpeg no instalador esperam o Ruan. F36 (PR #35), F35 (PR #34), F34 (PR #33) e F33 (PR #32) mescladas em 2026-10-28 sem CI (Actions do Windows sem runner desde 2026-10-27). F27 pulada (AD-011). Todo comando novo precisa de permissão em `permissions/` e na capability (teste `acl01`); toda rede nova quebra o teste `sec04`
-- **Next step**: Merge da F37 (sem CI enquanto o Actions do Windows não tiver runner) (ordem do Ruan, 2026-10-27: mesclar e seguir sem perguntar); com ela as features do MVP (F01–F37) estão feitas; a Fase 5 (pós-MVP, F38+) e o build assinado do critério de saída esperam o Ruan. No Windows: `npm run tauri build`, instalar sem administrador, desinstalar e ver `E:\.myphotos` intacta; No Windows: abrir o app com a CSP nova (miniaturas, vídeos, progresso da indexação); No Windows: conferir as cópias em `E:\.myphotos\backups`; No Windows: Narrador no visualizador; No Windows: rolar a linha do tempo do `E:`; testar mover, renomear e lixeira com uma foto de teste; abrir o app no `E:` para preencher os lugares, "Procurar arquivos novos" para montar os álbuns, ver pessoas, locais, buscar, tocar vídeos. Investigar os 406 vídeos datados de 23/set e os 169 "JSON em outra parte do export". Manual no `E:`: `f12-thumbs` (HEIC `unsupported`), `libraries.volume_id` (F11). Decidir empacotamento do ffmpeg
-- **Blockers**: nenhum (`C:` com ~38 GB livres em 2026-10-12). `E:` deu "erro fatal de hardware" uma vez em 2026-10-02 — vigiar
-- **Open questions**: riscos da F07 a medir na varredura real (F10): WebP com EXIF prefixado por `Exif\0\0` vira `exif_corrupt`; o crate lê TIFF/RAW inteiro e percorre JPEG sem EXIF até o fim (ler junto com o hash na F10/F32); HEIC/WebP/RAW reais nunca testados; hora EXIF sem fuso fica só local (a F09 decide). Mídia movida fora do app vira nova + `missing_file` (F10/F48). Anomalia do baseline HDD. Lições candidatas da F04 aguardam Python
+- **Feature**: MVP (F01–F37) completo no código. F27 pulada (AD-011). Phase 4: F32–F37 na `main`, incluindo a segunda parte da F34 (PR #37), o auto-update desligado por padrão (PR #38, AD-015) e o ffmpeg LGPL no instalador (PR #39, AD-016)
+- **Phase / Task**: Phase 4, critério de saída. Falta o primeiro build assinado (AD-017) e as medições no `E:`
+- **Completed**: F01–F26, F28–F37. CI `windows-latest` de volta e verde desde 2026-10-28 (repositório público; o PR #39 corrigiu o `pkg01` com CRLF)
+- **In-progress**: release 1.0.0 (versão já em 1.0.0 no `package.json` e no `Cargo.toml`). Chave do updater e certificado autoassinado gerados em 2026-10-30; a parte pública está no repositório (`tauri.release.conf.json`, `src-tauri/certs/myphotos-codesign.cer`)
+- **Next step**:
+  1. Ruan: criar os 4 secrets do `release.yml` (`docs/RELEASE.md` › Secrets) e guardar os arquivos num cofre.
+  2. Disparar o release `v1.0.0` (tag ou "Run workflow").
+  3. No PC: importar o `.cer` (Root e TrustedPublisher), instalar sem administrador, conferir a assinatura nas Propriedades e o ffmpeg "disponível" em Problemas, abrir no `E:`, ver o backup em `E:\.myphotos\backups`, desinstalar e ver `E:\.myphotos` intacta.
+  4. Testes manuais: mover, renomear e lixeira com uma foto de teste; rolar a linha do tempo do `E:`; Narrador no visualizador; atualizar de 1.0.0 para 1.0.1 pela tela.
+  5. Métricas do MVP no `E:` (ROADMAP): JSON pareado > 98%, timeline < 2 s, ~60 fps, busca < 300 ms e zero alterações nos arquivos durante a indexação, conferido por hash.
+  6. Investigar com o banco do `E:`: os 406 vídeos datados de 23/set, os 169 "JSON em outra parte do export", HEIC sem miniatura (AD-013) e `libraries.volume_id` (F11).
+  7. Confirmar AD-012 (fuso -03:00) e AD-013 (HEIC/RAW sem miniatura), ainda "proposed".
+- **Blockers**: nenhum no código. O release precisa dos secrets
+- **Open questions**: as da F07 continuam (WebP com `Exif\0\0`, HEIC/WebP/RAW reais nunca testados). Mídia atrás de junção que sai do `E:` não abre no visualizador (F36, `sec06`). O ffmpeg vem do `master-latest` do BtbN (snapshot), com a versão registrada no `ffmpeg-README.txt`
 - **Uncommitted files**: PRD HTML, `.specs/LESSONS.md`, `.specs/lessons.json` (só na máquina local)
-- **Branch**: `main` (F05–F07 mescladas pelo PR #2 em 2026-10-11)
+- **Branch**: `main`

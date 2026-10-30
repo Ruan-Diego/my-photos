@@ -27,14 +27,12 @@ Meta do ROADMAP (RNF-018): instalador do Windows (MSI/NSIS via Tauri), auto-upda
   - Custo: cerca de 85 MB a mais no instalador (os dois executáveis têm 139 MB cada).
 - **PKG-07 (onde ficam as atualizações)**: o `my-photos` ficou público (2026-10-28). O updater lê o `latest.json` do último release publicado dele mesmo.
 
+- **PKG-08 (assinatura, decidida pelo Ruan em 2026-10-30: autoassinado, AD-017)**: o `release.yml` importa o `.pfx` dos secrets, confere a impressão digital contra a de `tauri.release.conf.json` (`bundle.windows.certificateThumbprint`, com `timestampUrl`) e o Tauri assina o executável e o instalador. A mesma execução assina a atualização com a chave do updater e publica o release com o `latest.json`. O `.cer` público está em `src-tauri/certs/` para confiar nele no PC. Teste `pkg03`.
+
 ## Decisões que dependem do Ruan
 
-- **Chave do updater**: é gerada no PC do Ruan (`npx tauri signer generate`), e a pública vai para `tauri.release.conf.json`. Sem ela, o `release.ps1` para com instrução.
+- **Secrets do release**: a chave do updater e o certificado foram gerados em 2026-10-30. A parte pública está no repositório, e as partes privadas precisam virar os 4 secrets do `release.yml` (`docs/RELEASE.md`).
 
-- **Assinatura de código**:
-  - Precisa de um certificado de assinatura de código. Ele é pago: OV ou EV, ou Azure Trusted Signing.
-  - Sem ele, o instalador funciona, mas o SmartScreen mostra "O Windows protegeu o computador" e é preciso clicar em "Mais informações" e depois em "Executar assim mesmo".
-  - O `digestAlgorithm` já é `sha256`. Com o certificado, entram `certificateThumbprint` (ou `signCommand`) e `timestampUrl` no `tauri.conf.json`, e um passo de importar o PFX no `release.yml`.
 
 ## Divergências do canvas
 
